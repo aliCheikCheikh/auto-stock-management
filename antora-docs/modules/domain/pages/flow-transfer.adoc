@@ -1,0 +1,189 @@
+= Flux : Transfert interne
+:toc: left
+:icons: font
+
+== Contexte
+
+Le vendeur constate que le magasin est presque vide pour un produit donné.
+Il prend des unités de la réserve pour remplir le rayon.
+
+C'est un mouvement interne : le stock global ne change pas, seule la répartition entre emplacements est modifiée.
+
+== Scénario
+
+[quote]
+Le magasin n'a plus qu'un filtre. Le vendeur transfère 10 filtres de la réserve vers le magasin.
+
+== Diagramme de séquence
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+
+actor Vendeur as V
+participant "Application Service\n(TransferStockUseCase)" as AS
+participant "StorageLocation\n(Réserve)" as SLR
+participant "StorageLocation\n(Magasin)" as SLM
+participant "StockMovement\nRepository" as SMR
+
+V -> AS : transférer(productId,\n  sourceId=réserve,\n  destId=magasin,\n  qty=10, userId)
+activate AS
+
+== Phase 1 : Validation ==
+
+AS -> SLR : hasEnoughStock(productId, 10)
+SLR --> AS : true (stock réserve = 25)
+
+== Phase 2 : Exécution ==
+
+AS -> SLR : decreaseStock(productId, 10)
+activate SLR
+SLR -> SLR : StockLevel 25 → 15
+SLR --> AS
+deactivate SLR
+
+AS -> SLM : increaseStock(productId, 10)
+activate SLM
+SLM -> SLM : StockLevel 1 → 11
+SLM --> AS
+deactivate SLM
+
+AS -> AS : save(source)
+AS -> AS : save(destination)
+
+== Phase 3 : Enregistrement ==
+
+AS -> AS : StockMovement.createTransfer(\n  productId, réserveId,\n  magasinId, 10, userId)
+
+AS -> SMR : save(movement)
+
+note right of AS
+  Stock global inchangé :
+  Avant : 25 + 1 = 26
+  Après : 15 + 11 = 26
+end note
+
+AS --> V : Transfert effectué
+deactivate AS
+
+@enduml
+----
+
+== Détail du mouvement créé
+
+=== StockMovement (TRANSFER)
+
+[cols="1,2"]
+|===
+| Attribut | Valeur
+
+| type | `TRANSFER`
+| productId | (filtre à huile)
+| sourceLocationId | Réserve
+| destinationLocationId | Magasin
+| quantity | 10
+| performedBy | Vendeur
+| saleId | `null` (pas lié à une vente)
+|===
+
+== Différences avec les autres flux
+
+[cols="1,1,1,1"]
+|===
+| | Approvisionnement | Vente | Transfert
+
+| Type de mouvement
+| `ENTRY`
+| `EXIT`
+| `TRANSFER`
+
+| Source
+| `null` (externe)
+| Emplacement(s) interne(s)
+| Emplacement interne
+
+| Destination
+| Emplacement(s) interne(s)
+| `null` (client)
+| Emplacement interne
+
+| Stock global
+| Augmente
+| Diminue
+| **Inchangé**
+
+| Nombre de mouvements
+| 1 par emplacement cible
+| 1 par emplacement source
+| **1 seul**
+
+| Lien avec Sale
+| Non
+| Oui (`saleId`)
+| Non
+
+| Décision de répartition
+| Utilisateur
+| Système (allocation)
+| Utilisateur
+|===
+
+== Cas d'erreur
+
+=== Stock insuffisant dans la source
+
+Si la réserve n'a que 5 filtres et qu'on demande un transfert de 10 :
+
+[source]
+----
+StorageLocation.decreaseStock(productId, 10)
+→ InsufficientStockException
+  "Stock insuffisant en réserve pour le produit Filtre à huile.
+   Disponible : 5, demandé : 10"
+----
+
+Le transfert est refusé. Aucun mouvement n'est créé, aucun stock n'est modifié.
+
+=== Source et destination identiques
+
+[source]
+----
+StockMovement.createTransfer(productId, magasinId, magasinId, 10, userId)
+→ InvalidMovementException
+  "La source et la destination d'un transfert doivent être différentes"
+----
+
+Cet invariant est protégé par la factory method `createTransfer` du `StockMovement`.
+
+== Événements émis
+
+[cols="1,2"]
+|===
+| Événement | Condition
+
+| `ShopFloorLow`
+| Si, après le transfert, le stock de la **source** (si c'est un `SHOP_FLOOR`) passe en dessous du `lowStockIndicator`. Rare dans ce sens, mais le modèle le prévoit.
+|===
+
+[NOTE]
+====
+Un transfert ne déclenche **jamais** de `LowStockAlert` ni de `StockReplenished`, puisque le stock global ne change pas.
+====
+
+== Quand déclencher un transfert ?
+
+Le transfert est une action **manuelle** déclenchée par le vendeur.
+Cependant, le système aide à la décision grâce à l'événement `ShopFloorLow` :
+
+[source]
+----
+ShopFloorLow émis
+→ Notification sur le tableau de bord :
+  "Filtre à huile : seulement 1 unité en magasin.
+   15 unités disponibles en réserve."
+→ Le vendeur décide de transférer (ou pas)
+----
+
+Le système **suggère**, le vendeur **décide**. C'est conforme à la réalité opérationnelle de la boutique.

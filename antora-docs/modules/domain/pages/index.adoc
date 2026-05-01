@@ -1,0 +1,147 @@
+= Modèle de domaine — Gestion de stock
+:toc: left
+:toclevels: 3
+:icons: font
+
+== Contexte métier
+
+Le système gère le stock d'une boutique de vente de pièces détachées automobiles (huiles, filtres, pièces moteur, etc.).
+
+La gestion actuelle est manuelle, ce qui provoque des ruptures de stock, des achats en double et un manque de visibilité.
+L'objectif est de fournir un système simple, fiable et évolutif.
+
+== Utilisateurs
+
+* 2 utilisateurs au départ (le propriétaire et son frère)
+* Utilisation sur tablette
+* Pas de code-barres — recherche manuelle par nom ou référence
+
+== Approche architecturale
+
+[cols="1,3"]
+|===
+| Élément | Choix
+
+| Modélisation
+| Domain-Driven Design (DDD)
+
+| Architecture
+| Hexagonale (Ports & Adapters)
+
+| Méthodologie
+| Test-Driven Development (TDD)
+
+| Documentation
+| Antora + PlantUML
+|===
+
+== Vue d'ensemble des agrégats
+
+Le domaine est découpé en **7 agrégats** organisés autour de 4 agrégats principaux et 3 agrégats de support.
+
+=== Agrégats principaux
+
+[cols="1,2,1"]
+|===
+| Agrégat | Responsabilité | Aggregate Root
+
+| `Product`
+| Identité du produit, catalogue, seuil d'alerte
+| `Product`
+
+| `StorageLocation`
+| Emplacement physique, niveaux de stock par produit
+| `StorageLocation`
+
+| `StockMovement`
+| Journal immuable des mouvements (entrée, sortie, transfert)
+| `StockMovement`
+
+| `Sale`
+| Transaction de vente, lignes de vente, montant total
+| `Sale`
+|===
+
+=== Agrégats de support
+
+[cols="1,2,1"]
+|===
+| Agrégat | Responsabilité | Aggregate Root
+
+| `Category`
+| Classification des produits
+| `Category`
+
+| `Shop`
+| Boutique physique (préparation multi-boutiques)
+| `Shop`
+
+| `User`
+| Utilisateur du système
+| `User`
+|===
+
+== Diagramme de contexte
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam packageStyle rectangle
+
+package "Domaine principal" {
+  [Product] as P
+  [StorageLocation] as SL
+  [StockMovement] as SM
+  [Sale] as SA
+}
+
+package "Support" {
+  [Category] as C
+  [Shop] as SH
+  [User] as U
+}
+
+package "Domain Services" {
+  [StockAllocationService] as SAS
+  [ReceivingService] as RS
+}
+
+P --> C : appartient à
+SL --> SH : situé dans
+SM --> P : concerne
+SM --> SL : source / destination
+SM --> U : effectué par
+SM ..> SA : lié à (optionnel)
+SA --> U : enregistrée par
+SA --> P : vend
+
+SAS --> SL : consulte les niveaux
+SAS --> SM : crée les mouvements
+RS --> SL : met à jour les niveaux
+RS --> SM : crée les mouvements
+@enduml
+----
+
+== Principes de conception
+
+=== Petits agrégats
+
+Chaque agrégat est dimensionné au minimum nécessaire pour protéger ses invariants.
+Le `Product` ne contient ni le stock ni les mouvements — ceux-ci vivent dans leurs propres agrégats.
+
+=== Références par identifiant
+
+Les agrégats se référencent entre eux uniquement par identifiant typé (`ProductId`, `LocationId`, etc.), jamais par référence directe.
+Cela garantit des frontières de transaction claires.
+
+=== Immuabilité des mouvements
+
+Un `StockMovement` est créé, jamais modifié ni supprimé.
+C'est le journal de bord du stock — sa fiabilité repose sur son caractère immuable.
+
+=== Préparation multi-boutiques
+
+Le modèle intègre `Shop` dès le départ.
+Chaque `StorageLocation` est rattaché à un `Shop`, ce qui permet d'ajouter des boutiques sans migration structurelle.

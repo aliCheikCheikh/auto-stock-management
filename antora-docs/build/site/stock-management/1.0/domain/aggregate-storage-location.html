@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Agrégat StorageLocation :: Gestion de Stock - Pièces Auto</title>
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="../../..">Gestion de Stock - Pièces Auto</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="stock-management" data-version="1.0">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Vue d&#8217;ensemble</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ubiquitous-language.html">Langage ubiquitaire</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aggregates.html">Agrégats et Aggregate Roots</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-product.html">Product</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="aggregate-storage-location.html">StorageLocation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-stock-movement.html">StockMovement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-sale.html">Sale</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-category.html">Category</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-shop.html">Shop</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-user.html">User</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="value-objects.html">Value Objects</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-services.html">Domain Services</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-events.html">Événements de domaine</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="business-rules.html">Règles métier et invariants</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Flux métier</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-supply.html">Approvisionnement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-sale.html">Vente</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-transfer.html">Transfert interne</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="uml-global.html">Diagramme UML global</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="api-spec.html">Spécification API REST (OpenAPI)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Gestion de Stock - Pièces Automobiles</span>
+    <span class="version">1.0</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">1.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Gestion de Stock - Pièces Automobiles</a></li>
+    <li><a href="aggregates.html">Agrégats et Aggregate Roots</a></li>
+    <li><a href="aggregate-storage-location.html">StorageLocation</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///Users/Cheikh/ProjectSystemManagementStock/auto-stock-management/antora-docs/./modules/domain/pages/aggregate-storage-location.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Agrégat StorageLocation</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_rôle">1. Rôle</a></li>
+<li><a href="#_diagramme">2. Diagramme</a></li>
+<li><a href="#_attributs">3. Attributs</a></li>
+<li><a href="#_stocklevel_value_object_interne">4. StockLevel — Value Object interne</a></li>
+<li><a href="#_invariants">5. Invariants</a></li>
+<li><a href="#_comportements">6. Comportements</a>
+<ul class="sectlevel2">
+<li><a href="#_increasestockproductid_quantity">6.1. <code>increaseStock(productId, quantity)</code></a></li>
+<li><a href="#_decreasestockproductid_quantity">6.2. <code>decreaseStock(productId, quantity)</code></a></li>
+<li><a href="#_getstocklevelproductid">6.3. <code>getStockLevel(productId)</code></a></li>
+<li><a href="#_hasenoughstockproductid_required">6.4. <code>hasEnoughStock(productId, required)</code></a></li>
+<li><a href="#_isshopfloorlowproductid">6.5. <code>isShopFloorLow(productId)</code></a></li>
+</ul>
+</li>
+<li><a href="#_pourquoi_le_stock_est_ici_et_pas_dans_product">7. Pourquoi le stock est ici et pas dans Product</a></li>
+</ul>
+</div>
+<div class="sect1">
+<h2 id="_rôle"><a class="anchor" href="#_rôle"></a>1. Rôle</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Le <code>StorageLocation</code> représente un emplacement physique de stockage (magasin ou réserve).
+C&#8217;est ici que vit la <strong>vérité du stock par emplacement</strong> : chaque emplacement connaît la quantité de chaque produit qu&#8217;il contient.</p>
+</div>
+<div class="paragraph">
+<p>C&#8217;est le gardien de l&#8217;invariant le plus critique du système : <strong>la quantité ne peut jamais être négative</strong>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_diagramme"><a class="anchor" href="#_diagramme"></a>2. Diagramme</h2>
+<div class="sectionbody">
+<div class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-1ae43275cc6afae5a9f146e8bff09e8ab55b5c0d.svg" alt="Diagram">
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_attributs"><a class="anchor" href="#_attributs"></a>3. Attributs</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>locationId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LocationId</code> (Value Object)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Identifiant unique de l&#8217;emplacement.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shopId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ShopId</code> (Value Object)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Référence vers la boutique à laquelle cet emplacement appartient. Prêt pour le multi-boutiques.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>type</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LocationType</code> (Enum/Value Object)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Type d&#8217;emplacement : <code>SHOP_FLOOR</code> (magasin/zone de vente) ou <code>BACKSTOCK</code> (réserve/stock arrière).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>label</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>String</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Libellé lisible. Ex : "Magasin principal", "Réserve Dubaï".</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lowStockIndicator</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Indicateur secondaire : quantité en dessous de laquelle le magasin signale un besoin de transfert depuis la réserve. Pertinent uniquement pour les emplacements de type <code>SHOP_FLOOR</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stockLevels</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Map&lt;ProductId, StockLevel&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Niveaux de stock par produit dans cet emplacement.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_stocklevel_value_object_interne"><a class="anchor" href="#_stocklevel_value_object_interne"></a>4. StockLevel — Value Object interne</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Le <code>StockLevel</code> est un Value Object qui vit à l&#8217;intérieur de l&#8217;agrégat <code>StorageLocation</code>.</p>
+</div>
+<div class="paragraph">
+<p>Il n&#8217;a pas d&#8217;identité propre — il est identifié par le couple <code>(locationId, productId)</code>.
+Il est immuable au sens DDD : chaque modification retourne une nouvelle instance.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>productId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ProductId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Référence vers le produit concerné.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>quantity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Quantité disponible dans cet emplacement pour ce produit. Toujours ≥ 0.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_invariants"><a class="anchor" href="#_invariants"></a>5. Invariants</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Invariant</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Quantité ≥ 0</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">C&#8217;est l&#8217;invariant le plus important du système. Un <code>decreaseStock</code> qui ferait passer la quantité en dessous de zéro doit lever une exception métier (<code>InsufficientStockException</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>label</code> non vide</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un emplacement doit avoir un libellé.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lowStockIndicator</code> ≥ 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;indicateur ne peut pas être négatif.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_comportements"><a class="anchor" href="#_comportements"></a>6. Comportements</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_increasestockproductid_quantity"><a class="anchor" href="#_increasestockproductid_quantity"></a>6.1. <code>increaseStock(productId, quantity)</code></h3>
+<div class="paragraph">
+<p>Ajoute une quantité au <code>StockLevel</code> du produit dans cet emplacement.
+Si le produit n&#8217;a pas encore de <code>StockLevel</code>, un nouveau est créé avec la quantité fournie.</p>
+</div>
+<div class="paragraph">
+<p>Utilisé lors d&#8217;un approvisionnement (<code>ENTRY</code>) ou d&#8217;un transfert entrant (<code>TRANSFER</code> côté destination).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_decreasestockproductid_quantity"><a class="anchor" href="#_decreasestockproductid_quantity"></a>6.2. <code>decreaseStock(productId, quantity)</code></h3>
+<div class="paragraph">
+<p>Retire une quantité du <code>StockLevel</code>.
+<strong>Lève <code>InsufficientStockException</code></strong> si la quantité résultante serait négative.</p>
+</div>
+<div class="paragraph">
+<p>Utilisé lors d&#8217;une vente (<code>EXIT</code>) ou d&#8217;un transfert sortant (<code>TRANSFER</code> côté source).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_getstocklevelproductid"><a class="anchor" href="#_getstocklevelproductid"></a>6.3. <code>getStockLevel(productId)</code></h3>
+<div class="paragraph">
+<p>Retourne la quantité disponible pour un produit. Retourne 0 si le produit n&#8217;a pas de <code>StockLevel</code> dans cet emplacement.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_hasenoughstockproductid_required"><a class="anchor" href="#_hasenoughstockproductid_required"></a>6.4. <code>hasEnoughStock(productId, required)</code></h3>
+<div class="paragraph">
+<p>Vérifie si l&#8217;emplacement dispose d&#8217;au moins <code>required</code> unités du produit. Utilisé par le <code>StockAllocationService</code> pour l&#8217;allocation.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_isshopfloorlowproductid"><a class="anchor" href="#_isshopfloorlowproductid"></a>6.5. <code>isShopFloorLow(productId)</code></h3>
+<div class="paragraph">
+<p>Retourne <code>true</code> si la quantité est inférieure au <code>lowStockIndicator</code> ET que l&#8217;emplacement est de type <code>SHOP_FLOOR</code>.
+Cet indicateur signale un besoin de transfert depuis la réserve — pas une alerte critique.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_pourquoi_le_stock_est_ici_et_pas_dans_product"><a class="anchor" href="#_pourquoi_le_stock_est_ici_et_pas_dans_product"></a>7. Pourquoi le stock est ici et pas dans Product</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Argument</th>
+<th class="tableblock halign-left valign-top">Explication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Réalité physique</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Le stock est une propriété de l&#8217;endroit, pas du produit. "Il y a 3 filtres dans le magasin" décrit l&#8217;état du magasin.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Concurrence</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deux vendeurs peuvent vendre simultanément depuis le même emplacement. Le verrou transactionnel doit protéger l&#8217;emplacement, pas le produit.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Taille de l&#8217;agrégat</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un produit avec 1 000 mouvements + 5 niveaux de stock serait un agrégat obèse. L&#8217;emplacement avec ses niveaux reste petit.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

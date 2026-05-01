@@ -1,0 +1,142 @@
+= Spécification API REST (OpenAPI)
+:toc: left
+:icons: font
+
+== Source de vérité
+
+Le contrat API est maintenu dans un fichier OpenAPI 3.1 unique :
+
+[source]
+----
+auto-stock-management/api/openapi.yaml
+----
+
+Cette page ne duplique plus le YAML — elle en explique les choix.
+Toute modification de contrat se fait dans ce fichier ; la doc Antora et le
+code serveur s'alignent sur lui.
+
+== Approche Spec-Driven + TDD
+
+Deux disciplines complémentaires, chacune protégeant une couche :
+
+* **TDD** protège les règles métier du domaine (`StockLevel` ne descend
+  jamais sous zéro, `Money` ne mélange pas les devises, etc.).
+* **Spec-Driven** protège le contrat d'intégration entre backend et
+  frontend. Le fichier `openapi.yaml` tranche en cas de désaccord.
+
+== Principes de conception
+
+=== Versioning explicite
+
+Toutes les URLs sont préfixées par `/api/v1`. Une évolution incompatible
+(changement de shape de payload, suppression de champ, etc.) incrémente
+la version d'URL ; une évolution additive (nouveau champ optionnel,
+nouvel endpoint) reste sur `v1`.
+
+=== URLs : kebab-case, ressources au pluriel
+
+* `/stock-receipts`, `/stock-transfers`, `/stock-levels`, `/stock-movements`
+* `/sales`, `/products`
+* L'action est portée par le verbe HTTP, pas l'URL. Pas de `/createSale`
+  ni de `/sales/confirm`.
+
+=== Types primitifs stricts
+
+* **IDs** : UUID v4 en `string` (pas de Long exposé).
+* **Dates** : ISO 8601 UTC (`date-time`).
+* **Monnaie** : objet `Money { amount: string, currency: string }`.
+  `amount` est transporté en **string** pour éviter la perte de précision
+  que `number` JavaScript inflige à `BigDecimal`.
+
+=== Erreurs : RFC 7807 `application/problem+json`
+
+Toute réponse d'erreur est un `Problem` (`type`, `title`, `status`,
+`detail`, `instance`) enrichi de trois extensions :
+
+* `code` : code machine stable (`STOCK_INSUFFICIENT`, `PRODUCT_NOT_FOUND`…)
+  utilisé par le frontend pour le mapping i18n.
+* `errors[]` : erreurs de validation par champ.
+* `traceId` : ID de corrélation pour retrouver les logs serveur.
+
+[source,json]
+----
+{
+  "type": "https://api.stock.example.com/errors/stock-insufficient",
+  "title": "Stock insuffisant",
+  "status": 409,
+  "detail": "Quantité demandée 10, disponible 4 sur le shop 3c4d…",
+  "code": "STOCK_INSUFFICIENT",
+  "traceId": "8f1e2a7b-…"
+}
+----
+
+=== Idempotence des mutations
+
+`POST /stock-receipts`, `POST /sales`, `POST /stock-transfers` acceptent
+un header `Idempotency-Key: <UUID>`. Deux requêtes portant la même clé
+dans une fenêtre de 24h retournent la même réponse sans réexécuter
+l'opération — critique pour éviter les doubles ventes en cas de retry
+réseau côté point de vente.
+
+=== Pagination uniforme
+
+Toutes les listes utilisent le même contrat :
+
+* Query : `?page=0&size=20&sort=field,direction`
+* Response : `{ "content": [...], "page": { page, size, totalElements, totalPages } }`
+
+=== Les rôles filtrent les données, pas les endpoints
+
+L'endpoint `GET /sales` est accessible aux deux rôles. Le backend filtre
+les champs financiers visibles (ex. `totalAmount`) selon le rôle porté
+par le JWT. Le frontend n'a pas besoin d'URL différentes.
+
+== Endpoints disponibles
+
+[cols="3,2,5"]
+|===
+| Endpoint | Use Case | Résumé
+
+| `POST /stock-receipts`
+| `ReceiveStockUseCase`
+| Réception fournisseur. Crée le produit à la volée si besoin,
+  répartit entre plusieurs emplacements.
+
+| `POST /sales`
+| `SellProductUseCase`
+| Vente avec allocation automatique (priorité shop floor).
+
+| `POST /stock-transfers`
+| `TransferStockUseCase`
+| Transfert entre emplacements du même shop.
+
+| `GET /products`, `GET /products/{id}`
+| lecture
+| Catalogue produit.
+
+| `GET /stock-levels`, `GET /products/{id}/stock-levels`
+| lecture
+| Niveau de stock par produit / emplacement.
+
+| `GET /sales`, `GET /sales/{id}`
+| lecture
+| Historique des ventes.
+
+| `GET /stock-movements`
+| lecture
+| Journal d'audit des entrées, sorties, transferts.
+|===
+
+== Évolutions futures (non contractualisées)
+
+Ces endpoints ne sont **pas** dans `openapi.yaml` tant qu'ils ne sont
+pas implémentés côté serveur :
+
+* Authentification (login / refresh / logout) — attend l'ajout de
+  l'adaptateur d'authentification.
+* Dashboard analytique (`summary`, `daily-revenue`) — attend la
+  projection / read model dédiée.
+* Annulation d'une vente.
+* Inventaire physique et ajustement de stock.
+
+La règle : on ne publie pas de spec pour du code qui n'existe pas.

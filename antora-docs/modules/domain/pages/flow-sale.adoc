@@ -1,0 +1,167 @@
+= Flux : Vente
+:toc: left
+:icons: font
+
+== Contexte
+
+Un client demande des produits. Le vendeur enregistre la vente.
+Le système alloue automatiquement le stock entre magasin et réserve.
+
+== Scénario
+
+[quote]
+Un client demande 4 filtres. Magasin : 3 unités, Réserve : 7 unités.
+
+== Diagramme de séquence
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+
+actor Vendeur as V
+participant "SellProductUseCase" as AS
+participant "ProductRepository" as PR
+participant "StockAllocation\nService" as SAS
+participant "Sale" as SA
+participant "SaleRepository" as SR
+participant "StorageLocation\n(Magasin)" as SLM
+participant "StorageLocation\n(Réserve)" as SLR
+participant "StockMovement\nRepository" as SMR
+participant "EventPublisher" as EP
+
+V -> AS : sell(SellProductCommand)
+activate AS
+
+== Phase 1 : Résolution du produit ==
+
+AS -> PR : findById(productId)
+PR --> AS : Product
+
+== Phase 2 : Allocation ==
+
+AS -> SAS : allocate(productId, 4, shopId)
+activate SAS
+SAS -> SAS : récupère les StorageLocation\n(priorité SHOP_FLOOR)
+SAS --> AS : [(magasin,3), (réserve,1)]
+deactivate SAS
+
+== Phase 3 : Création + persistance de la vente ==
+
+AS -> SA : Sale.create(sellerId, [lineRequest])
+SA -> SA : lineTotal = 4 × unitPrice\ntotalAmount = sum(lineTotals)
+SA --> AS : sale (avec saleId)
+AS -> SR : save(sale)
+
+== Phase 4 : Exécution des mouvements ==
+
+loop pour chaque AllocationResult
+  AS -> SLM : decreaseStock(productId, qty)
+  SLM -> SLM : StockLevel -= qty\n(émet ShopFloorLow si seuil franchi)
+  AS -> SLM : pullEvents()
+  SLM --> AS : events
+  AS -> SLM : save(location)
+
+  AS -> AS : StockMovement.createExit(\n  productId, locId, qty, sellerId, saleId)
+  AS -> SMR : save(movement)
+end
+
+== Phase 5 : Événements globaux ==
+
+AS -> AS : globalStock = sum(locations)
+alt globalStock < minimumGlobalThreshold
+  AS -> AS : append LowStockAlert
+end
+AS -> AS : append SaleCompleted
+
+AS -> EP : publish(events)
+
+AS --> V : void (Sale persistée,\nmouvements créés, événements publiés)
+deactivate AS
+
+@enduml
+----
+
+== Pourquoi 2 mouvements et pas 1 ?
+
+[cols="1,1"]
+|===
+| 1 mouvement (rejeté) | 2 mouvements (retenu)
+
+| "4 filtres vendus" sans préciser d'où
+| "3 du magasin + 1 de la réserve"
+
+| Perte de traçabilité physique
+| Traçabilité complète par emplacement
+
+| Impossible de recalculer les niveaux par emplacement
+| Cohérence entre mouvements et StockLevel garantie
+|===
+
+== Objets créés
+
+=== Sale
+
+[cols="1,2"]
+|===
+| Attribut | Valeur
+
+| soldBy | Vendeur
+| occurredAt | Maintenant
+| totalAmount | 4 × prix unitaire
+|===
+
+=== SaleLineItem
+
+[cols="1,2"]
+|===
+| Attribut | Valeur
+
+| productId | (filtre à huile)
+| quantity | 4
+| unitPrice | Prix au moment de la vente
+| lineTotal | 4 × unitPrice
+|===
+
+=== StockMovement n°1 (EXIT magasin)
+
+[cols="1,2"]
+|===
+| Attribut | Valeur
+
+| type | `EXIT`
+| sourceLocationId | Magasin
+| destinationLocationId | `null`
+| quantity | 3
+| saleId | (référence vers la Sale)
+|===
+
+=== StockMovement n°2 (EXIT réserve)
+
+[cols="1,2"]
+|===
+| Attribut | Valeur
+
+| type | `EXIT`
+| sourceLocationId | Réserve
+| destinationLocationId | `null`
+| quantity | 1
+| saleId | (référence vers la Sale)
+|===
+
+== Événements émis
+
+[cols="1,2"]
+|===
+| Événement | Condition
+
+| `SaleCompleted`
+| Toujours émis.
+
+| `LowStockAlert`
+| Si stock global < `minimumGlobalThreshold`.
+
+| `ShopFloorLow`
+| Si stock magasin < `lowStockIndicator` (ici le magasin passe à 0).
+|===

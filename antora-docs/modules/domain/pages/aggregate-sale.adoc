@@ -1,0 +1,208 @@
+= Agrégat Sale
+:toc: left
+:icons: font
+
+== Rôle
+
+La `Sale` représente une transaction de vente.
+Elle suit le modèle du **Panier Validé** : l'agrégat est créé de manière atomique (en une seule fois) lorsque le vendeur valide sa sélection.
+Elle contient les lignes de vente (`SaleLineItem`) qui détaillent les produits vendus, leurs quantités et leurs prix.
+
+La `Sale` est le concept **commercial** : elle porte le montant total et sait _quoi_ a été vendu à _quel prix_.
+La traçabilité physique (d'où vient chaque unité) est portée par les `StockMovement` liés.
+
+== Diagramme
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+
+class Sale <<Aggregate Root>> {
+  - saleId : SaleId
+  - soldBy : UserId
+  - occurredAt : DateTime
+  - totalAmount : Money
+  - lines : List<SaleLineItem>
+  --
+  + {static} create(sellerId: UserId, lineRequests: List<SaleLineRequest>) : Sale
+  + getSaleId() : SaleId
+  + getSoldBy() : UserId
+  + getOccurredAt() : DateTime
+  + getTotalAmount() : Money
+  + getLines() : List<SaleLineDto>
+}
+
+class SaleLineItem <<Entity>> {
+  - productId : ProductId
+  - quantity : int
+  - unitPrice : Money
+  - lineTotal : Money
+  --
+}
+
+class SaleLineRequest <<DTO>> {
+  + productId : ProductId
+  + quantity : int
+  + unitPrice : Money
+}
+
+class SaleId <<Value Object>> {
+  - value : UUID
+}
+
+Sale *-- SaleId
+Sale "1" *-- "1..*" SaleLineItem : contient (immuable)
+SaleLineItem *-- Money : unitPrice, lineTotal
+Sale ..> SaleLineRequest : utilise pour création
+
+@enduml
+----
+
+== Contrat d'Entrée : SaleLineRequest
+
+Pour protéger l'encapsulation de l'entité interne, la création d'une vente prend en entrée une liste de `SaleLineInput` (un DTO immuable / Record).
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `productId`
+| `ProductId`
+| Identifiant du produit à vendre.
+
+| `quantity`
+| `int`
+| Quantité demandée par le vendeur.
+
+| `unitPrice`
+| `Money`
+| Prix unitaire au moment de la demande.
+|===
+
+== Attributs de Sale
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `saleId`
+| `SaleId` (Value Object)
+| Identifiant unique de la vente.
+
+| `soldBy`
+| `UserId`
+| Utilisateur ayant enregistré la vente.
+
+| `occurredAt`
+| `DateTime`
+| Date et heure exactes de la validation de la vente.
+
+| `totalAmount`
+| `Money` (Value Object)
+| Montant total de la vente. Calculé dynamiquement lors de la création.
+
+| `lines`
+| `List<SaleLineItem>`
+| Lignes de vente internes. Au moins une ligne obligatoire. Rendue immuable (`List.copyOf`) à la construction. Exposée à l'extérieur via `getLines()` sous forme de `List<SaleLineDto>` pour protéger l'encapsulation.
+|===
+
+== Attributs de SaleLineItem
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `productId`
+| `ProductId`
+| Produit vendu sur cette ligne.
+
+| `quantity`
+| `int`
+| Nombre d'unités vendues.
+
+| `unitPrice`
+| `Money`
+| Prix unitaire au moment de la vente (snapshot du prix du produit).
+
+| `lineTotal`
+| `Money`
+| Total de la ligne : `quantity × unitPrice`. Calculé à l'instanciation de la ligne.
+|===
+
+== Invariants (Règles Métier)
+
+[cols="1,1,3"]
+|===
+| Code | Nom de l'Invariant | Description
+
+| **R-SALE-01**
+| **Atomicité & Présence**
+| Une vente doit être créée avec au minimum une ligne (`SaleLineInput`).
+
+| **R-SALE-02**
+| **Quantité > 0**
+| Chaque ligne doit vendre au moins une unité (vérifié dans `SaleLineItem`).
+
+| **R-SALE-03**
+| **Prix unitaire > 0**
+| Le prix capturé doit être strictement positif (vérifié dans `SaleLineItem`).
+
+| **R-SALE-04**
+| **Intégrité du Total**
+| Le `totalAmount` de la vente est la somme exacte des `lineTotal` de ses lignes.
+|===
+
+== SaleLineItem : entité interne, pas Value Object
+
+Le `SaleLineItem` est une **entité interne** de l'agrégat `Sale`, pas un Value Object.
+
+Pourquoi ? Parce que deux lignes dans la même vente pourraient concerner le même produit au même prix (par exemple si un ajustement est fait).
+L'identité de la ligne est positionnelle au sein de la vente.
+
+Cependant, elle n'a **aucune existence hors de sa Sale** — on ne peut pas la consulter, la modifier ou la référencer indépendamment.
+
+== Relation avec StockMovement
+
+La `Sale` déclenche la création de `StockMovement`, mais ne les contient pas.
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+
+rectangle "Sale" as S #E6F1FB
+rectangle "SaleLineItem\n(4 filtres)" as SLI #E6F1FB
+rectangle "StockMovement\nEXIT magasin x3" as SM1 #EEEDFE
+rectangle "StockMovement\nEXIT réserve x1" as SM2 #EEEDFE
+
+S *-down- SLI : contient
+SM1 .left.> S : saleId
+SM2 .left.> S : saleId
+SLI .right.> SM1 : déclenche
+SLI .right.> SM2 : déclenche
+
+note bottom of SM1
+  Les mouvements référencent
+  la vente par saleId,
+  mais ne sont PAS dans
+  l'agrégat Sale
+end note
+@enduml
+----
+
+Le `SaleLineItem` dit "4 filtres vendus à 10€".
+Les `StockMovement` disent "3 sortis du magasin, 1 sorti de la réserve".
+Ce sont deux perspectives complémentaires : commerciale et logistique.
+
+== Recettes journalières
+
+Les recettes journalières sont une **vue calculée** à partir des ventes :
+
+* Filtrer les `Sale` par `occurredAt` sur la journée
+* Sommer les `totalAmount`
+
+Cette requête est gérée au niveau du Repository ou d'un Read Model, pas par l'agrégat.

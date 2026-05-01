@@ -1,0 +1,6 @@
+name: stock-management
+title: Gestion de Stock - Pièces Automobiles
+version: '1.0'
+start_page: domain:index.adoc
+nav:
+  - modules/domain/nav.adoc

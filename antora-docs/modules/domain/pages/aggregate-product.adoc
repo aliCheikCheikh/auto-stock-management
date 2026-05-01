@@ -1,0 +1,126 @@
+= Agrégat Product
+:toc: left
+:icons: font
+
+== Rôle
+
+Le `Product` représente un article du catalogue de la boutique.
+Il porte l'identité du produit, sa classification, son prix et son seuil d'alerte global.
+
+[IMPORTANT]
+====
+Le `Product` ne contient **ni le stock ni les mouvements**.
+Le stock est géré par `StorageLocation` (via `StockLevel`), les mouvements par `StockMovement`.
+====
+
+== Diagramme
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+
+class Product <<Aggregate Root>> {
+  - productId : ProductId
+  - name : String
+  - reference : String
+  - categoryId : CategoryId
+  - minimumGlobalThreshold : int
+  - unitPrice : Money
+  --
+  + rename(newName : String) : void
+  + updateReference(newRef : String) : void
+  + changeCategory(newCategoryId : CategoryId) : void
+  + updatePrice(newPrice : Money) : void
+  + updateThreshold(newThreshold : int) : void
+  + isGlobalStockBelowThreshold(globalQuantity : int) : boolean
+}
+
+class ProductId <<Value Object>> {
+  - value : UUID
+}
+
+class Money <<Value Object>> {
+  - amount : BigDecimal
+  - currency : Currency
+  --
+  + add(other : Money) : Money
+  + multiply(quantity : int) : Money
+}
+
+Product *-- ProductId
+Product *-- Money : unitPrice
+
+@enduml
+----
+
+== Attributs
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `productId`
+| `ProductId` (Value Object)
+| Identifiant unique généré par le système. Jamais modifiable.
+
+| `name`
+| `String`
+| Nom commercial du produit, utilisé pour la recherche. Ex : "Filtre à huile Toyota Corolla".
+
+| `reference`
+| `String`
+| Référence technique du produit, unique dans le catalogue. Ex : "FH-TOY-2024-001".
+
+| `categoryId`
+| `CategoryId` (Value Object)
+| Référence vers la catégorie à laquelle appartient le produit. Un produit appartient à exactement une catégorie.
+
+| `minimumGlobalThreshold`
+| `int`
+| Seuil d'alerte sur le stock global (magasin + réserve). Quand le stock total descend en dessous, un événement `LowStockAlert` est émis.
+
+| `unitPrice`
+| `Money` (Value Object)
+| Prix de vente unitaire du produit. Encapsule le montant et la devise.
+|===
+
+== Invariants
+
+[cols="1,3"]
+|===
+| Invariant | Description
+
+| `name` non vide
+| Un produit doit toujours avoir un nom.
+
+| `reference` unique
+| Deux produits ne peuvent pas partager la même référence. Cet invariant est vérifié au niveau du Repository (infrastructure), pas de l'agrégat.
+
+| `minimumGlobalThreshold` ≥ 0
+| Le seuil ne peut pas être négatif.
+
+| `unitPrice` > 0
+| Un produit doit avoir un prix strictement positif.
+|===
+
+== Comportements
+
+=== `isGlobalStockBelowThreshold(globalQuantity)`
+
+Méthode pure qui compare une quantité globale (calculée depuis les `StorageLocation`) au seuil.
+Le `Product` ne calcule pas lui-même le stock global — il reçoit la valeur et rend un verdict.
+
+Cette séparation est voulue : le `Product` ne connaît pas les emplacements.
+C'est un Domain Service ou un Application Service qui orchestre la vérification.
+
+== Ce que Product ne fait PAS
+
+* Il ne connaît pas le stock (pas de `StockLevel` embarqué)
+* Il ne connaît pas les mouvements (pas de `StockMovement` embarqué)
+* Il ne connaît pas les ventes (pas de `Sale` embarquée)
+* Il ne connaît pas les emplacements (pas de `StorageLocation` embarquée)
+
+Toutes ces relations passent par les identifiants dans les autres agrégats.

@@ -1,0 +1,273 @@
+= Value Objects
+:toc: left
+:icons: font
+
+== Qu'est-ce qu'un Value Object ?
+
+Un Value Object est un objet du domaine défini par ses attributs, pas par une identité.
+Deux Value Objects sont égaux si tous leurs attributs sont égaux.
+Ils sont **immuables** : toute modification retourne une nouvelle instance.
+
+== Diagramme complet
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+
+package "Identifiants typés" {
+  class ProductId <<Value Object>> {
+    - value : UUID
+    --
+    + equals(other) : boolean
+    + hashCode() : int
+    + toString() : String
+  }
+
+  class CategoryId <<Value Object>> {
+    - value : UUID
+  }
+
+  class LocationId <<Value Object>> {
+    - value : UUID
+  }
+
+  class MovementId <<Value Object>> {
+    - value : UUID
+  }
+
+  class SaleId <<Value Object>> {
+    - value : UUID
+  }
+
+  class UserId <<Value Object>> {
+    - value : UUID
+  }
+
+  class ShopId <<Value Object>> {
+    - value : UUID
+  }
+}
+
+package "Objets métier" {
+  class Money <<Value Object>> {
+    - amount : BigDecimal
+    - currency : Currency
+    --
+    + add(other : Money) : Money
+    + multiply(quantity : int) : Money
+    + isPositive() : boolean
+    + equals(other) : boolean
+  }
+
+  class StockLevel <<Value Object>> {
+    - productId : ProductId
+    - quantity : int
+    --
+    + {static} of(productId : ProductId, quantity : int) : StockLevel
+    + increase(amount : int) : StockLevel
+    + decrease(amount : int) : StockLevel
+    + getProductId() : ProductId
+    + getQuantity() : int
+  }
+}
+
+package "Objets métier des Domain Services" {
+  class AllocationResult <<Value Object>> {
+    - locationId : LocationId
+    - quantity : int
+  }
+
+  class ReceivingEntry <<Value Object>> {
+    - productId : ProductId
+    - locationId : LocationId
+    - quantity : int
+  }
+}
+
+package "Enums" {
+  enum MovementType {
+    ENTRY
+    EXIT
+    TRANSFER
+  }
+
+  enum LocationType {
+    SHOP_FLOOR
+    BACKSTOCK
+  }
+
+  enum UserRole {
+    OWNER
+    SELLER
+  }
+}
+
+@enduml
+----
+
+== Identifiants typés
+
+Tous les identifiants sont des Value Objects typés, pas des `String` ou `int` nus.
+
+=== Pourquoi ?
+
+* **Sécurité du typage** : impossible de passer accidentellement un `ProductId` là où un `LocationId` est attendu. Le compilateur attrape l'erreur.
+* **Lisibilité** : `findByProductId(ProductId id)` est plus clair que `findById(String id)`.
+* **Encapsulation de la génération** : la stratégie de génération (UUID, séquence, etc.) est cachée dans le Value Object.
+
+=== Liste des identifiants
+
+[cols="1,2"]
+|===
+| Identifiant | Utilisé par
+
+| `ProductId`
+| `Product`, `StockLevel`, `StockMovement`, `SaleLineItem`
+
+| `CategoryId`
+| `Category`, `Product`
+
+| `LocationId`
+| `StorageLocation`, `StockMovement`
+
+| `MovementId`
+| `StockMovement`
+
+| `SaleId`
+| `Sale`, `StockMovement`
+
+| `UserId`
+| `User`, `StockMovement`, `Sale`
+
+| `ShopId`
+| `Shop`, `StorageLocation`
+|===
+
+== Money
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `amount`
+| `BigDecimal`
+| Montant. Utiliser `BigDecimal` (pas `double`) pour éviter les erreurs d'arrondi.
+
+| `currency`
+| `Currency`
+| Devise. Permet d'évoluer vers le multi-devises si nécessaire.
+|===
+
+=== Comportements
+
+* `add(other)` : additionne deux montants. Lève une exception si les devises diffèrent.
+* `multiply(quantity)` : multiplie le montant par une quantité. Utilisé pour calculer le `lineTotal` d'un `SaleLineItem`.
+* `isPositive()` : vérifie que le montant est strictement positif.
+
+== StockLevel
+
+Voir xref:aggregate-storage-location.adoc[StorageLocation] pour le contexte complet.
+
+Le `StockLevel` vit exclusivement à l'intérieur de `StorageLocation`.
+Il est créé et détruit avec son emplacement parent.
+
+== AllocationResult
+
+Value Object retourné par le `StockAllocationService`.
+Représente le résultat d'une allocation : "prendre X unités de cet emplacement".
+
+Voir xref:domain-services.adoc[Domain Services] pour le contexte complet.
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `locationId`
+| `LocationId`
+| Emplacement d'où les unités seront prélevées.
+
+| `quantity`
+| `int`
+| Nombre d'unités à prélever dans cet emplacement. Toujours > 0.
+|===
+
+Le `StockAllocationService` retourne une `List<AllocationResult>`.
+Par exemple pour une vente de 4 filtres : `[(magasin, 3), (réserve, 1)]`.
+
+L'Application Service (`SellProductUseCase`) itère sur cette liste pour :
+
+1. Appeler `storageLocation.decreaseStock()` sur chaque emplacement
+2. Créer un `StockMovement.createExit()` par emplacement
+
+== ReceivingEntry
+
+Value Object passé en entrée au `ReceivingService`.
+Représente une instruction de réception : "mettre X unités dans cet emplacement".
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `productId`
+| `ProductId`
+| Produit reçu.
+
+| `locationId`
+| `LocationId`
+| Emplacement où stocker les unités reçues.
+
+| `quantity`
+| `int`
+| Nombre d'unités à placer dans cet emplacement. Toujours > 0.
+|===
+
+Le vendeur saisit "50 filtres reçus, 15 au magasin, 35 en réserve".
+L'Application Service transforme ça en deux `ReceivingEntry` :
+`[(filtreId, magasinId, 15), (filtreId, réserveId, 35)]`.
+
+== Enums
+
+=== MovementType
+
+[cols="1,3"]
+|===
+| Valeur | Signification
+
+| `ENTRY`
+| Marchandise entrant dans le système (approvisionnement). Source = `null`.
+
+| `EXIT`
+| Marchandise sortant du système (vente). Destination = `null`.
+
+| `TRANSFER`
+| Mouvement interne entre emplacements. Source et destination obligatoires.
+|===
+
+=== LocationType
+
+[cols="1,3"]
+|===
+| Valeur | Signification
+
+| `SHOP_FLOOR`
+| Zone de vente (magasin). Le vendeur y puise en priorité.
+
+| `BACKSTOCK`
+| Stock arrière (réserve). Réapprovisionnement secondaire.
+|===
+
+=== UserRole
+
+[cols="1,3"]
+|===
+| Valeur | Signification
+
+| `OWNER`
+| Propriétaire de la boutique. Accès complet.
+
+| `SELLER`
+| Vendeur. Accès opérationnel (ventes, mouvements).
+|===

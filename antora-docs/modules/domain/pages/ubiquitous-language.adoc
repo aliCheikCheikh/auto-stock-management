@@ -1,0 +1,91 @@
+= Langage ubiquitaire
+:toc: left
+:icons: font
+
+Le langage ubiquitaire est le vocabulaire partagé entre les développeurs et les experts métier.
+Chaque terme a une définition unique et non ambiguë dans le contexte de ce système.
+
+== Termes du domaine
+
+[cols="1,3,1"]
+|===
+| Terme | Définition | Type DDD
+
+| **Produit** (`Product`)
+| Article référencé dans le catalogue de la boutique (filtre à huile, bougie, etc.). Identifié par un nom et une référence unique.
+| Aggregate Root
+
+| **Catégorie** (`Category`)
+| Classification logique des produits (Filtres, Huiles, Pièces moteur, etc.). Un produit appartient à une seule catégorie.
+| Aggregate Root
+
+| **Emplacement** (`StorageLocation`)
+| Lieu physique où sont stockés les produits. Il existe deux types : le **magasin** (zone de vente) et la **réserve** (stock arrière).
+| Aggregate Root
+
+| **Magasin** (`SHOP_FLOOR`)
+| Zone de vente accessible aux clients. Le vendeur y puise en priorité lors d'une vente.
+| Valeur de `LocationType`
+
+| **Réserve** (`BACKSTOCK`)
+| Zone de stockage arrière. La marchandise y est entreposée en attendant d'être transférée vers le magasin.
+| Valeur de `LocationType`
+
+| **Niveau de stock** (`StockLevel`)
+| Quantité d'un produit disponible dans un emplacement donné. Invariant : ne peut jamais être négatif.
+| Value Object
+
+| **Mouvement de stock** (`StockMovement`)
+| Enregistrement immuable d'une opération sur le stock. Trois types : entrée, sortie, transfert.
+| Aggregate Root
+
+| **Entrée** (`ENTRY`)
+| Mouvement d'approvisionnement. La marchandise entre dans un emplacement depuis l'extérieur (fournisseur). Pas de source.
+| Valeur de `MovementType`
+
+| **Sortie** (`EXIT`)
+| Mouvement de vente. La marchandise quitte un emplacement. Pas de destination. Généralement lié à une `Sale`.
+| Valeur de `MovementType`
+
+| **Transfert** (`TRANSFER`)
+| Mouvement interne entre deux emplacements (ex : réserve → magasin). Le stock global ne change pas.
+| Valeur de `MovementType`
+
+| **Vente** (`Sale`)
+| Transaction commerciale enregistrant la cession de produits à un client. Composée de lignes de vente.
+| Aggregate Root
+
+| **Ligne de vente** (`SaleLineItem`)
+| Détail d'une vente pour un produit donné : quantité, prix unitaire, total ligne.
+| Entité interne de `Sale`
+
+| **Seuil d'alerte global** (`minimumGlobalThreshold`)
+| Quantité minimale de stock global (magasin + réserve) en dessous de laquelle une alerte est émise.
+| Attribut de `Product`
+
+| **Indicateur magasin bas** (`lowStockIndicator`)
+| Quantité en dessous de laquelle l'emplacement magasin signale un besoin de réapprovisionnement depuis la réserve. Ce n'est pas une alerte critique.
+| Attribut de `StorageLocation`
+
+| **Stock global**
+| Somme des `StockLevel` d'un produit à travers tous les emplacements. C'est une **vue calculée**, pas une entité.
+| Concept dérivé
+
+| **Boutique** (`Shop`)
+| Établissement physique possédant un ou plusieurs emplacements. Prévu pour le multi-boutiques.
+| Aggregate Root
+
+| **Allocation**
+| Processus de répartition automatique d'une demande de vente entre les emplacements disponibles. Règle : puiser d'abord dans le magasin, puis dans la réserve.
+| Concept métier (Domain Service)
+|===
+
+== Ambiguïtés résolues
+
+[IMPORTANT]
+====
+Le client utilise parfois le mot **"stock"** pour désigner uniquement ce qui est en réserve.
+
+Dans ce système, **"stock"** désigne toujours la quantité totale (magasin + réserve).
+Pour désigner la quantité en réserve uniquement, on utilise le terme **"stock en réserve"** ou `StockLevel` de l'emplacement `BACKSTOCK`.
+====

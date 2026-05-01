@@ -1,0 +1,68 @@
+= Agrégat Category
+:toc: left
+:icons: font
+
+== Rôle
+
+La `Category` classifie les produits du catalogue (Filtres, Huiles, Pièces moteur, etc.).
+Un produit appartient à exactement une catégorie.
+
+C'est un agrégat simple — presque un Value Object référentiel — mais il a son propre identifiant et peut évoluer indépendamment.
+
+== Diagramme
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+
+class Category <<Aggregate Root>> {
+  - categoryId : CategoryId
+  - name : String
+  --
+  + rename(newName : String) : void
+}
+
+class CategoryId <<Value Object>> {
+  - value : UUID
+}
+
+Category *-- CategoryId
+
+@enduml
+----
+
+== Attributs
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `categoryId`
+| `CategoryId` (Value Object)
+| Identifiant unique.
+
+| `name`
+| `String`
+| Nom de la catégorie. Unique dans le système.
+|===
+
+== Invariants
+
+[cols="1,3"]
+|===
+| Invariant | Description
+
+| `name` non vide
+| Une catégorie doit avoir un nom.
+
+| `name` unique
+| Deux catégories ne peuvent pas partager le même nom. Vérifié au niveau Repository.
+|===
+
+== Évolution possible
+
+Si les besoins évoluent (description, image, sous-catégories), cet agrégat peut s'enrichir sans impacter les autres.
+Le `Product` continue à référencer sa catégorie par `CategoryId`.

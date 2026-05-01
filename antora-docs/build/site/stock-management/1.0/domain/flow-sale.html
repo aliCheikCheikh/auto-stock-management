@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Flux : Vente :: Gestion de Stock - Pièces Auto</title>
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="../../..">Gestion de Stock - Pièces Auto</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="stock-management" data-version="1.0">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Vue d&#8217;ensemble</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ubiquitous-language.html">Langage ubiquitaire</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aggregates.html">Agrégats et Aggregate Roots</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-product.html">Product</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-storage-location.html">StorageLocation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-stock-movement.html">StockMovement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-sale.html">Sale</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-category.html">Category</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-shop.html">Shop</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-user.html">User</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="value-objects.html">Value Objects</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-services.html">Domain Services</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-events.html">Événements de domaine</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="business-rules.html">Règles métier et invariants</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Flux métier</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-supply.html">Approvisionnement</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="flow-sale.html">Vente</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-transfer.html">Transfert interne</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="uml-global.html">Diagramme UML global</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="api-spec.html">Spécification API REST (OpenAPI)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Gestion de Stock - Pièces Automobiles</span>
+    <span class="version">1.0</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">1.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Gestion de Stock - Pièces Automobiles</a></li>
+    <li>Flux métier</li>
+    <li><a href="flow-sale.html">Vente</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///Users/Cheikh/ProjectSystemManagementStock/auto-stock-management/antora-docs/./modules/domain/pages/flow-sale.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Flux : Vente</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_contexte">1. Contexte</a></li>
+<li><a href="#_scénario">2. Scénario</a></li>
+<li><a href="#_diagramme_de_séquence">3. Diagramme de séquence</a></li>
+<li><a href="#_pourquoi_2_mouvements_et_pas_1">4. Pourquoi 2 mouvements et pas 1 ?</a></li>
+<li><a href="#_objets_créés">5. Objets créés</a>
+<ul class="sectlevel2">
+<li><a href="#_sale">5.1. Sale</a></li>
+<li><a href="#_salelineitem">5.2. SaleLineItem</a></li>
+<li><a href="#_stockmovement_n1_exit_magasin">5.3. StockMovement n°1 (EXIT magasin)</a></li>
+<li><a href="#_stockmovement_n2_exit_réserve">5.4. StockMovement n°2 (EXIT réserve)</a></li>
+</ul>
+</li>
+<li><a href="#_événements_émis">6. Événements émis</a></li>
+</ul>
+</div>
+<div class="sect1">
+<h2 id="_contexte"><a class="anchor" href="#_contexte"></a>1. Contexte</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Un client demande des produits. Le vendeur enregistre la vente.
+Le système alloue automatiquement le stock entre magasin et réserve.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_scénario"><a class="anchor" href="#_scénario"></a>2. Scénario</h2>
+<div class="sectionbody">
+<div class="quoteblock">
+<blockquote>
+Un client demande 4 filtres. Magasin : 3 unités, Réserve : 7 unités.
+</blockquote>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_diagramme_de_séquence"><a class="anchor" href="#_diagramme_de_séquence"></a>3. Diagramme de séquence</h2>
+<div class="sectionbody">
+<div class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-6a15107bc6b7f10138feb634c66a19fd308b2380.svg" alt="Diagram">
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_pourquoi_2_mouvements_et_pas_1"><a class="anchor" href="#_pourquoi_2_mouvements_et_pas_1"></a>4. Pourquoi 2 mouvements et pas 1 ?</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">1 mouvement (rejeté)</th>
+<th class="tableblock halign-left valign-top">2 mouvements (retenu)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">"4 filtres vendus" sans préciser d&#8217;où</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">"3 du magasin + 1 de la réserve"</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Perte de traçabilité physique</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Traçabilité complète par emplacement</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Impossible de recalculer les niveaux par emplacement</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cohérence entre mouvements et StockLevel garantie</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_objets_créés"><a class="anchor" href="#_objets_créés"></a>5. Objets créés</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_sale"><a class="anchor" href="#_sale"></a>5.1. Sale</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">soldBy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendeur</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">occurredAt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maintenant</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">totalAmount</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 × prix unitaire</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_salelineitem"><a class="anchor" href="#_salelineitem"></a>5.2. SaleLineItem</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">productId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(filtre à huile)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">quantity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">unitPrice</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prix au moment de la vente</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">lineTotal</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 × unitPrice</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_stockmovement_n1_exit_magasin"><a class="anchor" href="#_stockmovement_n1_exit_magasin"></a>5.3. StockMovement n°1 (EXIT magasin)</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXIT</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sourceLocationId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Magasin</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">destinationLocationId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">quantity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">saleId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(référence vers la Sale)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_stockmovement_n2_exit_réserve"><a class="anchor" href="#_stockmovement_n2_exit_réserve"></a>5.4. StockMovement n°2 (EXIT réserve)</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXIT</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sourceLocationId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Réserve</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">destinationLocationId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">quantity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">saleId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(référence vers la Sale)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_événements_émis"><a class="anchor" href="#_événements_émis"></a>6. Événements émis</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Événement</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SaleCompleted</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Toujours émis.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LowStockAlert</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si stock global &lt; <code>minimumGlobalThreshold</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ShopFloorLow</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si stock magasin &lt; <code>lowStockIndicator</code> (ici le magasin passe à 0).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

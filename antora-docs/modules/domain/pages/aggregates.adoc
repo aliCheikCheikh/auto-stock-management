@@ -1,0 +1,149 @@
+= Agrégats et Aggregate Roots
+:toc: left
+:icons: font
+
+== Qu'est-ce qu'un agrégat ?
+
+Un agrégat est un groupe d'objets du domaine traité comme une unité pour les modifications de données.
+Chaque agrégat a une **racine** (Aggregate Root) qui est le seul point d'entrée pour les modifications.
+
+== Principes appliqués
+
+=== Petits agrégats
+Chaque agrégat protège un ensemble minimal d'invariants.
+On ne regroupe **jamais** des objets simplement parce qu'ils sont "liés" — on les regroupe parce qu'ils doivent changer ensemble de manière cohérente.
+
+=== Références par identifiant
+Les agrégats ne se contiennent pas entre eux.
+Un `StockMovement` référence un `Product` par son `ProductId`, pas par un objet `Product` embarqué.
+
+=== Frontières transactionnelles
+Chaque agrégat correspond à une transaction.
+On ne modifie qu'un seul agrégat par transaction — la cohérence entre agrégats est assurée par la cohérence éventuelle (événements de domaine).
+
+== Diagramme des agrégats
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+
+package "Agrégat Product" <<Rectangle>> #E1F5EE {
+  class Product <<Aggregate Root>> {
+    productId : ProductId
+    name : String
+    reference : String
+    categoryId : CategoryId
+    minimumGlobalThreshold : int
+    unitPrice : Money
+  }
+}
+
+package "Agrégat StorageLocation" <<Rectangle>> #FAECE7 {
+  class StorageLocation <<Aggregate Root>> {
+    locationId : LocationId
+    shopId : ShopId
+    type : LocationType
+    label : String
+    lowStockIndicator : int
+  }
+
+  class StockLevel <<Value Object>> {
+    productId : ProductId
+    quantity : int
+  }
+
+  StorageLocation "1" *-- "0..*" StockLevel : contient
+}
+
+package "Agrégat StockMovement" <<Rectangle>> #EEEDFE {
+  class StockMovement <<Aggregate Root>> {
+    movementId : MovementId
+    productId : ProductId
+    sourceLocationId : LocationId?
+    destinationLocationId : LocationId?
+    type : MovementType
+    quantity : int
+    performedBy : UserId
+    occurredAt : DateTime
+    saleId : SaleId?
+  }
+}
+
+package "Agrégat Sale" <<Rectangle>> #E6F1FB {
+  class Sale <<Aggregate Root>> {
+    saleId : SaleId
+    soldBy : UserId
+    occurredAt : DateTime
+    totalAmount : Money
+  }
+
+  class SaleLineItem <<Entity>> {
+    productId : ProductId
+    quantity : int
+    unitPrice : Money
+    lineTotal : Money
+  }
+
+  Sale "1" *-- "1..*" SaleLineItem : contient
+}
+
+package "Agrégat Category" <<Rectangle>> #F1EFE8 {
+  class Category <<Aggregate Root>> {
+    categoryId : CategoryId
+    name : String
+  }
+}
+
+package "Agrégat Shop" <<Rectangle>> #F1EFE8 {
+  class Shop <<Aggregate Root>> {
+    shopId : ShopId
+    name : String
+    address : String
+  }
+}
+
+package "Agrégat User" <<Rectangle>> #F1EFE8 {
+  class User <<Aggregate Root>> {
+    userId : UserId
+    name : String
+    role : UserRole
+  }
+}
+
+Product ..> Category : categoryId
+StorageLocation ..> Shop : shopId
+StockMovement ..> Product : productId
+StockMovement ..> StorageLocation : sourceLocationId\ndestinationLocationId
+StockMovement ..> User : performedBy
+StockMovement ..> Sale : saleId
+Sale ..> User : soldBy
+SaleLineItem ..> Product : productId
+
+@enduml
+----
+
+== Résumé des choix
+
+[cols="1,2"]
+|===
+| Décision | Justification
+
+| `StockLevel` dans `StorageLocation`
+| Le stock est une propriété physique de l'emplacement, pas du produit. C'est l'emplacement qui protège l'invariant "quantité ≥ 0".
+
+| `StockMovement` séparé de `Product`
+| Évite un agrégat obèse. Les mouvements ont leur propre cycle de vie et sont consultés indépendamment.
+
+| `SaleLineItem` dans `Sale`
+| Une ligne de vente n'a aucun sens hors de sa vente. Elles sont créées et consultées ensemble.
+
+| `Category` comme agrégat autonome
+| Même simple, elle a son propre identifiant et peut évoluer indépendamment des produits.
+
+| `Shop` dès le départ
+| Coût minime (`shopId` sur `StorageLocation`), bénéfice futur énorme pour le multi-boutiques.
+|===

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Agrégat User :: Gestion de Stock - Pièces Auto</title>
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="../../..">Gestion de Stock - Pièces Auto</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="stock-management" data-version="1.0">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Vue d&#8217;ensemble</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ubiquitous-language.html">Langage ubiquitaire</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aggregates.html">Agrégats et Aggregate Roots</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-product.html">Product</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-storage-location.html">StorageLocation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-stock-movement.html">StockMovement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-sale.html">Sale</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-category.html">Category</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-shop.html">Shop</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="aggregate-user.html">User</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="value-objects.html">Value Objects</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-services.html">Domain Services</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-events.html">Événements de domaine</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="business-rules.html">Règles métier et invariants</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Flux métier</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-supply.html">Approvisionnement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-sale.html">Vente</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-transfer.html">Transfert interne</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="uml-global.html">Diagramme UML global</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="api-spec.html">Spécification API REST (OpenAPI)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Gestion de Stock - Pièces Automobiles</span>
+    <span class="version">1.0</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">1.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Gestion de Stock - Pièces Automobiles</a></li>
+    <li><a href="aggregates.html">Agrégats et Aggregate Roots</a></li>
+    <li><a href="aggregate-user.html">User</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///Users/Cheikh/ProjectSystemManagementStock/auto-stock-management/antora-docs/./modules/domain/pages/aggregate-user.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Agrégat User</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_rôle">1. Rôle</a></li>
+<li><a href="#_diagramme">2. Diagramme</a></li>
+<li><a href="#_attributs">3. Attributs</a></li>
+<li><a href="#_invariants">4. Invariants</a></li>
+<li><a href="#_note_sur_lauthentification">5. Note sur l&#8217;authentification</a></li>
+</ul>
+</div>
+<div class="sect1">
+<h2 id="_rôle"><a class="anchor" href="#_rôle"></a>1. Rôle</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Le <code>User</code> représente un utilisateur du système.
+Au départ, il y a deux utilisateurs (le propriétaire et son frère).
+Le modèle est prévu pour évoluer vers le multi-utilisateurs.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_diagramme"><a class="anchor" href="#_diagramme"></a>2. Diagramme</h2>
+<div class="sectionbody">
+<div class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-f7fabc78ea8f4fc964cb77b793e43beba59fc266.svg" alt="Diagram">
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_attributs"><a class="anchor" href="#_attributs"></a>3. Attributs</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>userId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UserId</code> (Value Object)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Identifiant unique.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>name</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>String</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nom de l&#8217;utilisateur.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>role</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UserRole</code> (Enum)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rôle dans le système : <code>OWNER</code> (propriétaire) ou <code>SELLER</code> (vendeur).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_invariants"><a class="anchor" href="#_invariants"></a>4. Invariants</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Invariant</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>name</code> non vide</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un utilisateur doit avoir un nom.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_note_sur_lauthentification"><a class="anchor" href="#_note_sur_lauthentification"></a>5. Note sur l&#8217;authentification</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>L&#8217;authentification (mot de passe, session, etc.) n&#8217;est <strong>pas</strong> dans le domaine.
+Elle relève de l&#8217;infrastructure (adaptateur d&#8217;authentification dans l&#8217;architecture hexagonale).
+Le <code>User</code> du domaine est un concept métier : "qui a fait cette vente ?", "qui a enregistré ce mouvement ?".</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

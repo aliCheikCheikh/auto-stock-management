@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Agrégat Sale :: Gestion de Stock - Pièces Auto</title>
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="../../..">Gestion de Stock - Pièces Auto</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="stock-management" data-version="1.0">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Vue d&#8217;ensemble</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ubiquitous-language.html">Langage ubiquitaire</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aggregates.html">Agrégats et Aggregate Roots</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-product.html">Product</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-storage-location.html">StorageLocation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-stock-movement.html">StockMovement</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="aggregate-sale.html">Sale</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-category.html">Category</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-shop.html">Shop</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-user.html">User</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="value-objects.html">Value Objects</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-services.html">Domain Services</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-events.html">Événements de domaine</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="business-rules.html">Règles métier et invariants</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Flux métier</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-supply.html">Approvisionnement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-sale.html">Vente</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-transfer.html">Transfert interne</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="uml-global.html">Diagramme UML global</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="api-spec.html">Spécification API REST (OpenAPI)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Gestion de Stock - Pièces Automobiles</span>
+    <span class="version">1.0</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">1.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Gestion de Stock - Pièces Automobiles</a></li>
+    <li><a href="aggregates.html">Agrégats et Aggregate Roots</a></li>
+    <li><a href="aggregate-sale.html">Sale</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///Users/Cheikh/ProjectSystemManagementStock/auto-stock-management/antora-docs/./modules/domain/pages/aggregate-sale.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Agrégat Sale</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_rôle">1. Rôle</a></li>
+<li><a href="#_diagramme">2. Diagramme</a></li>
+<li><a href="#_contrat_dentrée_salelinerequest">3. Contrat d&#8217;Entrée : SaleLineRequest</a></li>
+<li><a href="#_attributs_de_sale">4. Attributs de Sale</a></li>
+<li><a href="#_attributs_de_salelineitem">5. Attributs de SaleLineItem</a></li>
+<li><a href="#_invariants_règles_métier">6. Invariants (Règles Métier)</a></li>
+<li><a href="#_salelineitem_entité_interne_pas_value_object">7. SaleLineItem : entité interne, pas Value Object</a></li>
+<li><a href="#_relation_avec_stockmovement">8. Relation avec StockMovement</a></li>
+<li><a href="#_recettes_journalières">9. Recettes journalières</a></li>
+</ul>
+</div>
+<div class="sect1">
+<h2 id="_rôle"><a class="anchor" href="#_rôle"></a>1. Rôle</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>La <code>Sale</code> représente une transaction de vente.
+Elle suit le modèle du <strong>Panier Validé</strong> : l&#8217;agrégat est créé de manière atomique (en une seule fois) lorsque le vendeur valide sa sélection.
+Elle contient les lignes de vente (<code>SaleLineItem</code>) qui détaillent les produits vendus, leurs quantités et leurs prix.</p>
+</div>
+<div class="paragraph">
+<p>La <code>Sale</code> est le concept <strong>commercial</strong> : elle porte le montant total et sait <em>quoi</em> a été vendu à <em>quel prix</em>.
+La traçabilité physique (d&#8217;où vient chaque unité) est portée par les <code>StockMovement</code> liés.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_diagramme"><a class="anchor" href="#_diagramme"></a>2. Diagramme</h2>
+<div class="sectionbody">
+<div class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-9f4e3b57e9d351a8ab5829f2ef16421c0dd7d02e.svg" alt="Diagram">
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_contrat_dentrée_salelinerequest"><a class="anchor" href="#_contrat_dentrée_salelinerequest"></a>3. Contrat d&#8217;Entrée : SaleLineRequest</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Pour protéger l&#8217;encapsulation de l&#8217;entité interne, la création d&#8217;une vente prend en entrée une liste de <code>SaleLineRequest</code> (un DTO immuable / Record).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>productId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ProductId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Identifiant du produit à vendre.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>quantity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Quantité demandée par le vendeur.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>unitPrice</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Money</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prix unitaire au moment de la demande.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_attributs_de_sale"><a class="anchor" href="#_attributs_de_sale"></a>4. Attributs de Sale</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>saleId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SaleId</code> (Value Object)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Identifiant unique de la vente.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soldBy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UserId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Utilisateur ayant enregistré la vente.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>occurredAt</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DateTime</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Date et heure exactes de la validation de la vente.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>totalAmount</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Money</code> (Value Object)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Montant total de la vente. Calculé dynamiquement lors de la création.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lines</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>List&lt;SaleLineItem&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lignes de vente internes. Au moins une ligne obligatoire. Rendue immuable (<code>List.copyOf</code>) à la construction. Exposée à l&#8217;extérieur via <code>getLines()</code> sous forme de <code>List&lt;SaleLineDto&gt;</code> pour protéger l&#8217;encapsulation.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_attributs_de_salelineitem"><a class="anchor" href="#_attributs_de_salelineitem"></a>5. Attributs de SaleLineItem</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>productId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ProductId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Produit vendu sur cette ligne.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>quantity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nombre d&#8217;unités vendues.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>unitPrice</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Money</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prix unitaire au moment de la vente (snapshot du prix du produit).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lineTotal</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Money</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total de la ligne : <code>quantity × unitPrice</code>. Calculé à l&#8217;instanciation de la ligne.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_invariants_règles_métier"><a class="anchor" href="#_invariants_règles_métier"></a>6. Invariants (Règles Métier)</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Code</th>
+<th class="tableblock halign-left valign-top">Nom de l&#8217;Invariant</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>R-SALE-01</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Atomicité &amp; Présence</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Une vente doit être créée avec au minimum une ligne (<code>SaleLineRequest</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>R-SALE-02</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Quantité &gt; 0</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chaque ligne doit vendre au moins une unité (vérifié dans <code>SaleLineItem</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>R-SALE-03</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Prix unitaire &gt; 0</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Le prix capturé doit être strictement positif (vérifié dans <code>SaleLineItem</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>R-SALE-04</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Intégrité du Total</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Le <code>totalAmount</code> de la vente est la somme exacte des <code>lineTotal</code> de ses lignes.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_salelineitem_entité_interne_pas_value_object"><a class="anchor" href="#_salelineitem_entité_interne_pas_value_object"></a>7. SaleLineItem : entité interne, pas Value Object</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Le <code>SaleLineItem</code> est une <strong>entité interne</strong> de l&#8217;agrégat <code>Sale</code>, pas un Value Object.</p>
+</div>
+<div class="paragraph">
+<p>Pourquoi ? Parce que deux lignes dans la même vente pourraient concerner le même produit au même prix (par exemple si un ajustement est fait).
+L&#8217;identité de la ligne est positionnelle au sein de la vente.</p>
+</div>
+<div class="paragraph">
+<p>Cependant, elle n&#8217;a <strong>aucune existence hors de sa Sale</strong> — on ne peut pas la consulter, la modifier ou la référencer indépendamment.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_relation_avec_stockmovement"><a class="anchor" href="#_relation_avec_stockmovement"></a>8. Relation avec StockMovement</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>La <code>Sale</code> déclenche la création de <code>StockMovement</code>, mais ne les contient pas.</p>
+</div>
+<div class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-72c00f0b3ad357997af6ae50ac45f02739181da3.svg" alt="Diagram">
+</div>
+</div>
+<div class="paragraph">
+<p>Le <code>SaleLineItem</code> dit "4 filtres vendus à 10€".
+Les <code>StockMovement</code> disent "3 sortis du magasin, 1 sorti de la réserve".
+Ce sont deux perspectives complémentaires : commerciale et logistique.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_recettes_journalières"><a class="anchor" href="#_recettes_journalières"></a>9. Recettes journalières</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Les recettes journalières sont une <strong>vue calculée</strong> à partir des ventes :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Filtrer les <code>Sale</code> par <code>occurredAt</code> sur la journée</p>
+</li>
+<li>
+<p>Sommer les <code>totalAmount</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Cette requête est gérée au niveau du Repository ou d&#8217;un Read Model, pas par l&#8217;agrégat.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

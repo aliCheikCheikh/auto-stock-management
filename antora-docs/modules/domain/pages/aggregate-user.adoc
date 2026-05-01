@@ -1,0 +1,77 @@
+= Agrégat User
+:toc: left
+:icons: font
+
+== Rôle
+
+Le `User` représente un utilisateur du système.
+Au départ, il y a deux utilisateurs (le propriétaire et son frère).
+Le modèle est prévu pour évoluer vers le multi-utilisateurs.
+
+== Diagramme
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+
+class User <<Aggregate Root>> {
+  - userId : UserId
+  - name : String
+  - role : UserRole
+  --
+  + rename(newName : String) : void
+  + changeRole(newRole : UserRole) : void
+}
+
+class UserId <<Value Object>> {
+  - value : UUID
+}
+
+enum UserRole <<Value Object>> {
+  OWNER
+  SELLER
+}
+
+User *-- UserId
+User *-- UserRole
+
+@enduml
+----
+
+== Attributs
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `userId`
+| `UserId` (Value Object)
+| Identifiant unique.
+
+| `name`
+| `String`
+| Nom de l'utilisateur.
+
+| `role`
+| `UserRole` (Enum)
+| Rôle dans le système : `OWNER` (propriétaire) ou `SELLER` (vendeur).
+|===
+
+== Invariants
+
+[cols="1,3"]
+|===
+| Invariant | Description
+
+| `name` non vide
+| Un utilisateur doit avoir un nom.
+|===
+
+== Note sur l'authentification
+
+L'authentification (mot de passe, session, etc.) n'est **pas** dans le domaine.
+Elle relève de l'infrastructure (adaptateur d'authentification dans l'architecture hexagonale).
+Le `User` du domaine est un concept métier : "qui a fait cette vente ?", "qui a enregistré ce mouvement ?".

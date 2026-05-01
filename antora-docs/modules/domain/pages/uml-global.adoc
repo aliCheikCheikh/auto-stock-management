@@ -1,0 +1,457 @@
+= Diagramme UML global
+:toc: left
+:icons: font
+
+== Diagramme de classes complet
+
+Ce diagramme présente l'ensemble du modèle de domaine avec tous les agrégats, Value Objects, enums et leurs relations.
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+title Modèle de domaine — Gestion de stock pièces automobiles
+
+' ──────────────────────────────────
+'  AGRÉGAT PRODUCT
+' ──────────────────────────────────
+
+package "Agrégat Product" as pkg_product <<Rectangle>> #E1F5EE {
+
+  class Product <<Aggregate Root>> {
+    - productId : ProductId
+    - name : String
+    - reference : String
+    - categoryId : CategoryId
+    - minimumGlobalThreshold : int
+    - unitPrice : Money
+    --
+    + rename(newName : String) : void
+    + updateReference(newRef : String) : void
+    + changeCategory(categoryId : CategoryId) : void
+    + updatePrice(newPrice : Money) : void
+    + updateThreshold(threshold : int) : void
+    + isGlobalStockBelowThreshold(qty : int) : boolean
+  }
+
+}
+
+' ──────────────────────────────────
+'  AGRÉGAT CATEGORY
+' ──────────────────────────────────
+
+package "Agrégat Category" as pkg_category <<Rectangle>> #F1EFE8 {
+
+  class Category <<Aggregate Root>> {
+    - categoryId : CategoryId
+    - name : String
+    --
+    + rename(newName : String) : void
+  }
+
+}
+
+' ──────────────────────────────────
+'  AGRÉGAT STORAGE LOCATION
+' ──────────────────────────────────
+
+package "Agrégat StorageLocation" as pkg_location <<Rectangle>> #FAECE7 {
+
+  class StorageLocation <<Aggregate Root>> {
+    - locationId : LocationId
+    - shopId : ShopId
+    - type : LocationType
+    - label : String
+    - lowStockIndicator : int
+    - stockLevels : Map<ProductId, StockLevel>
+    --
+    + increaseStock(productId, qty) : void
+    + decreaseStock(productId, qty) : void
+    + getStockLevel(productId) : int
+    + hasEnoughStock(productId, qty) : boolean
+    + isShopFloorLow(productId) : boolean
+  }
+
+  class StockLevel <<Value Object>> {
+    - productId : ProductId
+    - quantity : int
+    --
+    + {static} of(productId, qty) : StockLevel
+    + increase(amount : int) : StockLevel
+    + decrease(amount : int) : StockLevel
+  }
+
+  StorageLocation "1" *-down- "0..*" StockLevel
+
+}
+
+' ──────────────────────────────────
+'  AGRÉGAT STOCK MOVEMENT
+' ──────────────────────────────────
+
+package "Agrégat StockMovement" as pkg_movement <<Rectangle>> #EEEDFE {
+
+  class StockMovement <<Aggregate Root>> {
+    - movementId : MovementId
+    - productId : ProductId
+    - sourceLocationId : LocationId?
+    - destinationLocationId : LocationId?
+    - type : MovementType
+    - quantity : int
+    - performedBy : UserId
+    - occurredAt : DateTime
+    - saleId : SaleId?
+    --
+    + {static} createEntry(productId, destId, qty, userId) : StockMovement
+    + {static} createExit(productId, srcId, qty, userId, saleId) : StockMovement
+    + {static} createTransfer(productId, srcId, destId, qty, userId) : StockMovement
+  }
+
+}
+
+' ──────────────────────────────────
+'  AGRÉGAT SALE
+' ──────────────────────────────────
+
+package "Agrégat Sale" as pkg_sale <<Rectangle>> #E6F1FB {
+
+  class Sale <<Aggregate Root>> {
+    - saleId : SaleId
+    - soldBy : UserId
+    - occurredAt : DateTime
+    - totalAmount : Money
+    - lines : List<SaleLineItem>
+    --
+    + {static} create(sellerId, List<SaleLineRequest>) : Sale
+    + getTotalAmount() : Money
+    + getLines() : List<SaleLineDto>
+  }
+
+  class SaleLineItem <<Entity>> {
+    - productId : ProductId
+    - quantity : int
+    - unitPrice : Money
+    - lineTotal : Money
+    --
+    + calculateLineTotal() : Money
+  }
+
+  Sale "1" *-down- "1..*" SaleLineItem
+
+}
+
+' ──────────────────────────────────
+'  AGRÉGAT SHOP
+' ──────────────────────────────────
+
+package "Agrégat Shop" as pkg_shop <<Rectangle>> #F1EFE8 {
+
+  class Shop <<Aggregate Root>> {
+    - shopId : ShopId
+    - name : String
+    - address : String
+    --
+    + rename(newName : String) : void
+    + updateAddress(addr : String) : void
+  }
+
+}
+
+' ──────────────────────────────────
+'  AGRÉGAT USER
+' ──────────────────────────────────
+
+package "Agrégat User" as pkg_user <<Rectangle>> #F1EFE8 {
+
+  class User <<Aggregate Root>> {
+    - userId : UserId
+    - name : String
+    - role : UserRole
+    --
+    + rename(newName : String) : void
+    + changeRole(role : UserRole) : void
+  }
+
+}
+
+' ──────────────────────────────────
+'  VALUE OBJECTS PARTAGÉS
+' ──────────────────────────────────
+
+package "Value Objects" as pkg_vo <<Rectangle>> #FAEEDA {
+
+  class ProductId <<Value Object>> {
+    - value : UUID
+  }
+
+  class CategoryId <<Value Object>> {
+    - value : UUID
+  }
+
+  class LocationId <<Value Object>> {
+    - value : UUID
+  }
+
+  class MovementId <<Value Object>> {
+    - value : UUID
+  }
+
+  class SaleId <<Value Object>> {
+    - value : UUID
+  }
+
+  class UserId <<Value Object>> {
+    - value : UUID
+  }
+
+  class ShopId <<Value Object>> {
+    - value : UUID
+  }
+
+  class Money <<Value Object>> {
+    - amount : BigDecimal
+    - currency : Currency
+    --
+    + add(other : Money) : Money
+    + multiply(qty : int) : Money
+    + isPositive() : boolean
+  }
+
+  enum MovementType {
+    ENTRY
+    EXIT
+    TRANSFER
+  }
+
+  enum LocationType {
+    SHOP_FLOOR
+    BACKSTOCK
+  }
+
+  enum UserRole {
+    OWNER
+    SELLER
+  }
+
+}
+
+' ──────────────────────────────────
+'  DOMAIN SERVICES
+' ──────────────────────────────────
+
+package "Domain Services" as pkg_services <<Rectangle>> #FCF3CF {
+
+  class StockAllocationService <<Domain Service>> {
+    + allocate(productId, qty, shopId) : List<AllocationResult>
+  }
+
+  class ReceivingService <<Domain Service>> {
+    + receive(entries : List<ReceivingEntry>) : List<StockMovement>
+  }
+
+  class AllocationResult <<Value Object>> {
+    - locationId : LocationId
+    - quantity : int
+  }
+
+  class ReceivingEntry <<Value Object>> {
+    - productId : ProductId
+    - locationId : LocationId
+    - quantity : int
+  }
+
+}
+
+' ──────────────────────────────────
+'  DOMAIN EVENTS
+' ──────────────────────────────────
+
+package "Domain Events" as pkg_events <<Rectangle>> #FADBD8 {
+
+  class LowStockAlert <<Domain Event>> {
+    - productId : ProductId
+    - globalQuantity : int
+    - threshold : int
+    - occurredAt : DateTime
+  }
+
+  class StockReplenished <<Domain Event>> {
+    - productId : ProductId
+    - globalQuantity : int
+    - occurredAt : DateTime
+  }
+
+  class ShopFloorLow <<Domain Event>> {
+    - productId : ProductId
+    - locationId : LocationId
+    - currentQuantity : int
+    - occurredAt : DateTime
+  }
+
+  class SaleCompleted <<Domain Event>> {
+    - saleId : SaleId
+    - totalAmount : Money
+    - occurredAt : DateTime
+  }
+
+  class StockReceived <<Domain Event>> {
+    - productId : ProductId
+    - totalQuantityReceived : int
+    - occurredAt : DateTime
+  }
+
+}
+
+' ──────────────────────────────────
+'  RELATIONS
+' ──────────────────────────────────
+
+Product ..> CategoryId : categoryId
+Product *-- ProductId
+Product *-- Money : unitPrice
+
+Category *-- CategoryId
+
+StorageLocation ..> ShopId : shopId
+StorageLocation *-- LocationId
+StorageLocation *-- LocationType
+StockLevel ..> ProductId : productId
+
+StockMovement *-- MovementId
+StockMovement *-- MovementType
+StockMovement ..> ProductId : productId
+StockMovement ..> LocationId : sourceLocationId\ndestinationLocationId
+StockMovement ..> UserId : performedBy
+StockMovement ..> SaleId : saleId
+
+Sale *-- SaleId
+Sale *-- Money : totalAmount
+Sale ..> UserId : soldBy
+SaleLineItem ..> ProductId : productId
+SaleLineItem *-- Money : unitPrice\nlineTotal
+
+Shop *-- ShopId
+User *-- UserId
+User *-- UserRole
+
+StockAllocationService ..> StorageLocation : consulte
+StockAllocationService ..> AllocationResult : retourne
+ReceivingService ..> StorageLocation : met à jour
+ReceivingService ..> ReceivingEntry : reçoit
+
+@enduml
+----
+
+== Diagramme des relations entre agrégats (simplifié)
+
+Pour une vue d'ensemble rapide des dépendances :
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam componentStyle rectangle
+
+[Product] as P #E1F5EE
+[Category] as C #F1EFE8
+[StorageLocation] as SL #FAECE7
+[StockMovement] as SM #EEEDFE
+[Sale] as SA #E6F1FB
+[Shop] as SH #F1EFE8
+[User] as U #F1EFE8
+
+P ..> C : categoryId
+SL ..> SH : shopId
+SM ..> P : productId
+SM ..> SL : locationId
+SM ..> U : performedBy
+SM ..> SA : saleId
+SA ..> U : soldBy
+SA ..> P : productId\n(via SaleLineItem)
+
+note bottom of SM
+  Point central de traçabilité.
+  Référence presque tous
+  les autres agrégats.
+end note
+
+note bottom of SL
+  Gardien de l'invariant
+  "quantité ≥ 0"
+end note
+@enduml
+----
+
+== Notes d'implémentation
+
+=== Génération des diagrammes
+
+Ces diagrammes PlantUML peuvent être générés automatiquement avec Antora en utilisant l'extension `asciidoctor-kroki` ou `asciidoctor-plantuml`.
+
+.Configuration dans antora-playbook.yml
+[source,yaml]
+----
+asciidoc:
+  extensions:
+    - asciidoctor-kroki
+  attributes:
+    kroki-server-url: https://kroki.io
+    kroki-fetch-diagram: true
+----
+
+=== Organisation des fichiers dans l'architecture hexagonale
+
+[source]
+----
+src/
+├── domain/
+│   ├── model/
+│   │   ├── product/
+│   │   │   ├── Product.java
+│   │   │   ├── ProductId.java
+│   │   │   └── ProductRepository.java        ← Port (interface)
+│   │   ├── stock/
+│   │   │   ├── StorageLocation.java
+│   │   │   ├── LocationId.java
+│   │   │   ├── LocationType.java
+│   │   │   ├── StockLevel.java
+│   │   │   └── StorageLocationRepository.java ← Port
+│   │   ├── movement/
+│   │   │   ├── StockMovement.java
+│   │   │   ├── MovementId.java
+│   │   │   ├── MovementType.java
+│   │   │   └── StockMovementRepository.java   ← Port
+│   │   ├── sale/
+│   │   │   ├── Sale.java
+│   │   │   ├── SaleId.java
+│   │   │   ├── SaleLineItem.java
+│   │   │   └── SaleRepository.java            ← Port
+│   │   ├── category/
+│   │   ├── shop/
+│   │   ├── user/
+│   │   └── shared/
+│   │       └── Money.java
+│   ├── service/
+│   │   ├── StockAllocationService.java
+│   │   └── ReceivingService.java
+│   └── event/
+│       ├── LowStockAlert.java
+│       ├── StockReplenished.java
+│       ├── ShopFloorLow.java
+│       ├── SaleCompleted.java
+│       └── StockReceived.java
+├── application/
+│   ├── SellProductUseCase.java
+│   ├── ReceiveStockUseCase.java
+│   └── TransferStockUseCase.java
+└── infrastructure/
+    ├── persistence/          ← Adapters (implémentent les Ports)
+    ├── web/                  ← API REST
+    └── auth/                 ← Authentification
+----

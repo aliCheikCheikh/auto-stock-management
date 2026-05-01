@@ -1,0 +1,71 @@
+= Agrégat Shop
+:toc: left
+:icons: font
+
+== Rôle
+
+Le `Shop` représente une boutique physique.
+Chaque `StorageLocation` est rattaché à un `Shop`.
+
+Pour l'instant, il n'y a qu'une seule boutique. Mais le modèle est prêt pour le multi-boutiques dès le départ.
+
+== Diagramme
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam classAttributeIconSize 0
+
+class Shop <<Aggregate Root>> {
+  - shopId : ShopId
+  - name : String
+  - address : String
+  --
+  + rename(newName : String) : void
+  + updateAddress(newAddress : String) : void
+}
+
+class ShopId <<Value Object>> {
+  - value : UUID
+}
+
+Shop *-- ShopId
+
+@enduml
+----
+
+== Attributs
+
+[cols="1,1,3"]
+|===
+| Attribut | Type | Description
+
+| `shopId`
+| `ShopId` (Value Object)
+| Identifiant unique de la boutique.
+
+| `name`
+| `String`
+| Nom de la boutique. Ex : "Auto Pièces Dubaï".
+
+| `address`
+| `String`
+| Adresse physique de la boutique.
+|===
+
+== Invariants
+
+[cols="1,3"]
+|===
+| Invariant | Description
+
+| `name` non vide
+| Une boutique doit avoir un nom.
+|===
+
+== Coût d'intégration
+
+L'ajout de `Shop` au modèle coûte un seul attribut : `shopId` sur `StorageLocation`.
+C'est un investissement minime qui évite une migration lourde le jour où le client ouvre une deuxième boutique.

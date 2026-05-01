@@ -1,0 +1,161 @@
+= Flux : Approvisionnement
+:toc: left
+:icons: font
+
+== Contexte
+
+Le propriétaire reçoit de la marchandise (ex : import depuis Dubaï).
+Il décide de la répartition entre le magasin et la réserve.
+
+== Scénario
+
+[quote]
+50 filtres à huile reçus. 15 au magasin, 35 en réserve.
+
+== Diagramme de séquence
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+
+actor Propriétaire as V
+participant "ReceiveStockUseCase" as AS
+participant "ProductRepository" as PR
+participant "ReceivingService" as RS
+participant "StorageLocation\n(Magasin)" as SLM
+participant "StorageLocation\n(Réserve)" as SLR
+participant "StorageLocation\nRepository" as SLR_R
+participant "StockMovement\nRepository" as SMR
+participant "EventPublisher" as EP
+
+V -> AS : execute(ReceiveStockCommand)\n(reference, [(magasin,15), (réserve,35)])
+activate AS
+
+== 1. Résolution / création du produit ==
+
+AS -> PR : findByReference(reference)
+alt produit inconnu
+  AS -> AS : exige newProductInfo
+  AS -> PR : save(new Product(...))
+end
+PR --> AS : product
+
+== 2. Délégation au Domain Service ==
+
+AS -> AS : mappe TargetLocation → ReceivingEntry
+AS -> RS : receive(entries, userId)
+activate RS
+
+loop pour chaque ReceivingEntry
+  RS -> SLR_R : findById(locationId)
+  RS -> SLM : increaseStock(productId, qty)
+  SLM -> SLM : StockLevel += qty
+  RS -> SLR_R : save(location)
+  RS -> RS : StockMovement.createEntry(\n  productId, locId, qty, userId)
+end
+
+RS --> AS : [movement1, movement2]
+deactivate RS
+
+== 3. Persistance des mouvements ==
+
+AS -> SMR : saveAll(movements)
+
+== 4. Événements ==
+
+AS -> AS : events += StockReceived(productId, totalReceived,\n  locationBreakdown, userId)
+AS -> AS : globalStock = sum(findAll().stockLevel(productId))
+alt globalStock > minimumGlobalThreshold
+  AS -> AS : events += StockReplenished(productId, name,\n  globalStock, threshold)
+end
+
+AS -> EP : publish(events)
+
+AS --> V : void
+deactivate AS
+
+@enduml
+----
+
+== Détail des objets créés
+
+=== StockMovement n°1
+
+[cols="1,2"]
+|===
+| Attribut | Valeur
+
+| type | `ENTRY`
+| productId | (filtre à huile)
+| sourceLocationId | `null` (externe)
+| destinationLocationId | Magasin
+| quantity | 15
+| performedBy | Propriétaire
+| saleId | `null`
+|===
+
+=== StockMovement n°2
+
+[cols="1,2"]
+|===
+| Attribut | Valeur
+
+| type | `ENTRY`
+| productId | (filtre à huile)
+| sourceLocationId | `null` (externe)
+| destinationLocationId | Réserve
+| quantity | 35
+| performedBy | Propriétaire
+| saleId | `null`
+|===
+
+== Cas particulier : nouveau produit
+
+Si le produit n'existe pas encore dans le catalogue :
+
+[plantuml]
+----
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+
+actor Vendeur as V
+participant "Application Service" as AS
+participant "Product\nRepository" as PR
+
+V -> AS : recevoir(productInfo, répartition)
+activate AS
+
+AS -> PR : findByReference(ref)
+PR --> AS : null (non trouvé)
+
+AS -> AS : Créer Product(\n  name, reference,\n  categoryId, unitPrice,\n  threshold)
+AS -> PR : save(newProduct)
+
+AS -> AS : Continuer le flux\nd'approvisionnement normal
+
+deactivate AS
+
+@enduml
+----
+
+[IMPORTANT]
+====
+La création du produit et l'enregistrement de l'entrée sont **deux opérations sur deux agrégats différents**.
+Elles sont orchestrées par l'Application Service, pas couplées dans un même agrégat.
+====
+
+== Événements émis
+
+[cols="1,2"]
+|===
+| Événement | Condition
+
+| `StockReceived`
+| Toujours émis après un approvisionnement réussi.
+
+| `StockReplenished`
+| Émis si le stock global repasse au-dessus du `minimumGlobalThreshold`.
+|===

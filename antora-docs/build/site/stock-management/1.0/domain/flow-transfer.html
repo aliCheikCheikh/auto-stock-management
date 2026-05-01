@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Flux : Transfert interne :: Gestion de Stock - Pièces Auto</title>
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="../../..">Gestion de Stock - Pièces Auto</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="stock-management" data-version="1.0">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Vue d&#8217;ensemble</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ubiquitous-language.html">Langage ubiquitaire</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aggregates.html">Agrégats et Aggregate Roots</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-product.html">Product</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-storage-location.html">StorageLocation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-stock-movement.html">StockMovement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-sale.html">Sale</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-category.html">Category</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-shop.html">Shop</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-user.html">User</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="value-objects.html">Value Objects</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-services.html">Domain Services</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-events.html">Événements de domaine</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="business-rules.html">Règles métier et invariants</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Flux métier</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-supply.html">Approvisionnement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-sale.html">Vente</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="flow-transfer.html">Transfert interne</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="uml-global.html">Diagramme UML global</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="api-spec.html">Spécification API REST (OpenAPI)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Gestion de Stock - Pièces Automobiles</span>
+    <span class="version">1.0</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">1.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Gestion de Stock - Pièces Automobiles</a></li>
+    <li>Flux métier</li>
+    <li><a href="flow-transfer.html">Transfert interne</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///Users/Cheikh/ProjectSystemManagementStock/auto-stock-management/antora-docs/./modules/domain/pages/flow-transfer.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Flux : Transfert interne</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_contexte">1. Contexte</a></li>
+<li><a href="#_scénario">2. Scénario</a></li>
+<li><a href="#_diagramme_de_séquence">3. Diagramme de séquence</a></li>
+<li><a href="#_détail_du_mouvement_créé">4. Détail du mouvement créé</a>
+<ul class="sectlevel2">
+<li><a href="#_stockmovement_transfer">4.1. StockMovement (TRANSFER)</a></li>
+</ul>
+</li>
+<li><a href="#_différences_avec_les_autres_flux">5. Différences avec les autres flux</a></li>
+<li><a href="#_cas_derreur">6. Cas d&#8217;erreur</a>
+<ul class="sectlevel2">
+<li><a href="#_stock_insuffisant_dans_la_source">6.1. Stock insuffisant dans la source</a></li>
+<li><a href="#_source_et_destination_identiques">6.2. Source et destination identiques</a></li>
+</ul>
+</li>
+<li><a href="#_événements_émis">7. Événements émis</a></li>
+<li><a href="#_quand_déclencher_un_transfert">8. Quand déclencher un transfert ?</a></li>
+</ul>
+</div>
+<div class="sect1">
+<h2 id="_contexte"><a class="anchor" href="#_contexte"></a>1. Contexte</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Le vendeur constate que le magasin est presque vide pour un produit donné.
+Il prend des unités de la réserve pour remplir le rayon.</p>
+</div>
+<div class="paragraph">
+<p>C&#8217;est un mouvement interne : le stock global ne change pas, seule la répartition entre emplacements est modifiée.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_scénario"><a class="anchor" href="#_scénario"></a>2. Scénario</h2>
+<div class="sectionbody">
+<div class="quoteblock">
+<blockquote>
+Le magasin n&#8217;a plus qu&#8217;un filtre. Le vendeur transfère 10 filtres de la réserve vers le magasin.
+</blockquote>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_diagramme_de_séquence"><a class="anchor" href="#_diagramme_de_séquence"></a>3. Diagramme de séquence</h2>
+<div class="sectionbody">
+<div class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-0dbf84c029ca64836e59d8ad9bba17857a21fe09.svg" alt="Diagram">
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_détail_du_mouvement_créé"><a class="anchor" href="#_détail_du_mouvement_créé"></a>4. Détail du mouvement créé</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_stockmovement_transfer"><a class="anchor" href="#_stockmovement_transfer"></a>4.1. StockMovement (TRANSFER)</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TRANSFER</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">productId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(filtre à huile)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sourceLocationId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Réserve</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">destinationLocationId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Magasin</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">quantity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">performedBy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendeur</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">saleId</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (pas lié à une vente)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_différences_avec_les_autres_flux"><a class="anchor" href="#_différences_avec_les_autres_flux"></a>5. Différences avec les autres flux</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"></th>
+<th class="tableblock halign-left valign-top">Approvisionnement</th>
+<th class="tableblock halign-left valign-top">Vente</th>
+<th class="tableblock halign-left valign-top">Transfert</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Type de mouvement</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ENTRY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXIT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TRANSFER</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (externe)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emplacement(s) interne(s)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emplacement interne</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Destination</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emplacement(s) interne(s)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (client)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emplacement interne</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stock global</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Augmente</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diminue</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Inchangé</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nombre de mouvements</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 par emplacement cible</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 par emplacement source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1 seul</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lien avec Sale</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Oui (<code>saleId</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Décision de répartition</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Utilisateur</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Système (allocation)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Utilisateur</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_cas_derreur"><a class="anchor" href="#_cas_derreur"></a>6. Cas d&#8217;erreur</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_stock_insuffisant_dans_la_source"><a class="anchor" href="#_stock_insuffisant_dans_la_source"></a>6.1. Stock insuffisant dans la source</h3>
+<div class="paragraph">
+<p>Si la réserve n&#8217;a que 5 filtres et qu&#8217;on demande un transfert de 10 :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">StorageLocation.decreaseStock(productId, 10)
+→ InsufficientStockException
+  "Stock insuffisant en réserve pour le produit Filtre à huile.
+   Disponible : 5, demandé : 10"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Le transfert est refusé. Aucun mouvement n&#8217;est créé, aucun stock n&#8217;est modifié.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_source_et_destination_identiques"><a class="anchor" href="#_source_et_destination_identiques"></a>6.2. Source et destination identiques</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">StockMovement.createTransfer(productId, magasinId, magasinId, 10, userId)
+→ InvalidMovementException
+  "La source et la destination d'un transfert doivent être différentes"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Cet invariant est protégé par la factory method <code>createTransfer</code> du <code>StockMovement</code>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_événements_émis"><a class="anchor" href="#_événements_émis"></a>7. Événements émis</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Événement</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ShopFloorLow</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si, après le transfert, le stock de la <strong>source</strong> (si c&#8217;est un <code>SHOP_FLOOR</code>) passe en dessous du <code>lowStockIndicator</code>. Rare dans ce sens, mais le modèle le prévoit.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Un transfert ne déclenche <strong>jamais</strong> de <code>LowStockAlert</code> ni de <code>StockReplenished</code>, puisque le stock global ne change pas.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_quand_déclencher_un_transfert"><a class="anchor" href="#_quand_déclencher_un_transfert"></a>8. Quand déclencher un transfert ?</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Le transfert est une action <strong>manuelle</strong> déclenchée par le vendeur.
+Cependant, le système aide à la décision grâce à l&#8217;événement <code>ShopFloorLow</code> :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">ShopFloorLow émis
+→ Notification sur le tableau de bord :
+  "Filtre à huile : seulement 1 unité en magasin.
+   15 unités disponibles en réserve."
+→ Le vendeur décide de transférer (ou pas)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Le système <strong>suggère</strong>, le vendeur <strong>décide</strong>. C&#8217;est conforme à la réalité opérationnelle de la boutique.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

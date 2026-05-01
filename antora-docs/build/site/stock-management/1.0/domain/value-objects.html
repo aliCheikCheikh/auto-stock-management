@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Value Objects :: Gestion de Stock - Pièces Auto</title>
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="../../..">Gestion de Stock - Pièces Auto</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="stock-management" data-version="1.0">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Vue d&#8217;ensemble</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ubiquitous-language.html">Langage ubiquitaire</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aggregates.html">Agrégats et Aggregate Roots</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-product.html">Product</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-storage-location.html">StorageLocation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-stock-movement.html">StockMovement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-sale.html">Sale</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-category.html">Category</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-shop.html">Shop</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aggregate-user.html">User</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="value-objects.html">Value Objects</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-services.html">Domain Services</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="domain-events.html">Événements de domaine</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="business-rules.html">Règles métier et invariants</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Flux métier</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-supply.html">Approvisionnement</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-sale.html">Vente</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="flow-transfer.html">Transfert interne</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="uml-global.html">Diagramme UML global</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="api-spec.html">Spécification API REST (OpenAPI)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Gestion de Stock - Pièces Automobiles</span>
+    <span class="version">1.0</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Gestion de Stock - Pièces Automobiles</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">1.0</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Gestion de Stock - Pièces Automobiles</a></li>
+    <li><a href="value-objects.html">Value Objects</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///Users/Cheikh/ProjectSystemManagementStock/auto-stock-management/antora-docs/./modules/domain/pages/value-objects.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Value Objects</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_quest_ce_quun_value_object">1. Qu&#8217;est-ce qu&#8217;un Value Object ?</a></li>
+<li><a href="#_diagramme_complet">2. Diagramme complet</a></li>
+<li><a href="#_identifiants_typés">3. Identifiants typés</a>
+<ul class="sectlevel2">
+<li><a href="#_pourquoi">3.1. Pourquoi ?</a></li>
+<li><a href="#_liste_des_identifiants">3.2. Liste des identifiants</a></li>
+</ul>
+</li>
+<li><a href="#_money">4. Money</a>
+<ul class="sectlevel2">
+<li><a href="#_comportements">4.1. Comportements</a></li>
+</ul>
+</li>
+<li><a href="#_stocklevel">5. StockLevel</a></li>
+<li><a href="#_allocationresult">6. AllocationResult</a></li>
+<li><a href="#_receivingentry">7. ReceivingEntry</a></li>
+<li><a href="#_enums">8. Enums</a>
+<ul class="sectlevel2">
+<li><a href="#_movementtype">8.1. MovementType</a></li>
+<li><a href="#_locationtype">8.2. LocationType</a></li>
+<li><a href="#_userrole">8.3. UserRole</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="sect1">
+<h2 id="_quest_ce_quun_value_object"><a class="anchor" href="#_quest_ce_quun_value_object"></a>1. Qu&#8217;est-ce qu&#8217;un Value Object ?</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Un Value Object est un objet du domaine défini par ses attributs, pas par une identité.
+Deux Value Objects sont égaux si tous leurs attributs sont égaux.
+Ils sont <strong>immuables</strong> : toute modification retourne une nouvelle instance.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_diagramme_complet"><a class="anchor" href="#_diagramme_complet"></a>2. Diagramme complet</h2>
+<div class="sectionbody">
+<div class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-eb7a00f1a4b8198943256886ad22a773eb45175c.svg" alt="Diagram">
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_identifiants_typés"><a class="anchor" href="#_identifiants_typés"></a>3. Identifiants typés</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Tous les identifiants sont des Value Objects typés, pas des <code>String</code> ou <code>int</code> nus.</p>
+</div>
+<div class="sect2">
+<h3 id="_pourquoi"><a class="anchor" href="#_pourquoi"></a>3.1. Pourquoi ?</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Sécurité du typage</strong> : impossible de passer accidentellement un <code>ProductId</code> là où un <code>LocationId</code> est attendu. Le compilateur attrape l&#8217;erreur.</p>
+</li>
+<li>
+<p><strong>Lisibilité</strong> : <code>findByProductId(ProductId id)</code> est plus clair que <code>findById(String id)</code>.</p>
+</li>
+<li>
+<p><strong>Encapsulation de la génération</strong> : la stratégie de génération (UUID, séquence, etc.) est cachée dans le Value Object.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_liste_des_identifiants"><a class="anchor" href="#_liste_des_identifiants"></a>3.2. Liste des identifiants</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Identifiant</th>
+<th class="tableblock halign-left valign-top">Utilisé par</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ProductId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Product</code>, <code>StockLevel</code>, <code>StockMovement</code>, <code>SaleLineItem</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CategoryId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Category</code>, <code>Product</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LocationId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StorageLocation</code>, <code>StockMovement</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MovementId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StockMovement</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SaleId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Sale</code>, <code>StockMovement</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UserId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>User</code>, <code>StockMovement</code>, <code>Sale</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ShopId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Shop</code>, <code>StorageLocation</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_money"><a class="anchor" href="#_money"></a>4. Money</h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>amount</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BigDecimal</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Montant. Utiliser <code>BigDecimal</code> (pas <code>double</code>) pour éviter les erreurs d&#8217;arrondi.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>currency</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Currency</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Devise. Permet d&#8217;évoluer vers le multi-devises si nécessaire.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect2">
+<h3 id="_comportements"><a class="anchor" href="#_comportements"></a>4.1. Comportements</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><code>add(other)</code> : additionne deux montants. Lève une exception si les devises diffèrent.</p>
+</li>
+<li>
+<p><code>multiply(quantity)</code> : multiplie le montant par une quantité. Utilisé pour calculer le <code>lineTotal</code> d&#8217;un <code>SaleLineItem</code>.</p>
+</li>
+<li>
+<p><code>isPositive()</code> : vérifie que le montant est strictement positif.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_stocklevel"><a class="anchor" href="#_stocklevel"></a>5. StockLevel</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Voir <a href="aggregate-storage-location.html" class="xref page">StorageLocation</a> pour le contexte complet.</p>
+</div>
+<div class="paragraph">
+<p>Le <code>StockLevel</code> vit exclusivement à l&#8217;intérieur de <code>StorageLocation</code>.
+Il est créé et détruit avec son emplacement parent.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_allocationresult"><a class="anchor" href="#_allocationresult"></a>6. AllocationResult</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Value Object retourné par le <code>StockAllocationService</code>.
+Représente le résultat d&#8217;une allocation : "prendre X unités de cet emplacement".</p>
+</div>
+<div class="paragraph">
+<p>Voir <a href="domain-services.html" class="xref page">Domain Services</a> pour le contexte complet.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>locationId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LocationId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emplacement d&#8217;où les unités seront prélevées.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>quantity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nombre d&#8217;unités à prélever dans cet emplacement. Toujours &gt; 0.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Le <code>StockAllocationService</code> retourne une <code>List&lt;AllocationResult&gt;</code>.
+Par exemple pour une vente de 4 filtres : <code>[(magasin, 3), (réserve, 1)]</code>.</p>
+</div>
+<div class="paragraph">
+<p>L&#8217;Application Service (<code>SellProductUseCase</code>) itère sur cette liste pour :</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Appeler <code>storageLocation.decreaseStock()</code> sur chaque emplacement</p>
+</li>
+<li>
+<p>Créer un <code>StockMovement.createExit()</code> par emplacement</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_receivingentry"><a class="anchor" href="#_receivingentry"></a>7. ReceivingEntry</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Value Object passé en entrée au <code>ReceivingService</code>.
+Représente une instruction de réception : "mettre X unités dans cet emplacement".</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribut</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>productId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ProductId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Produit reçu.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>locationId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LocationId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emplacement où stocker les unités reçues.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>quantity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nombre d&#8217;unités à placer dans cet emplacement. Toujours &gt; 0.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Le vendeur saisit "50 filtres reçus, 15 au magasin, 35 en réserve".
+L&#8217;Application Service transforme ça en deux <code>ReceivingEntry</code> :
+<code>[(filtreId, magasinId, 15), (filtreId, réserveId, 35)]</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_enums"><a class="anchor" href="#_enums"></a>8. Enums</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_movementtype"><a class="anchor" href="#_movementtype"></a>8.1. MovementType</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Signification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ENTRY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Marchandise entrant dans le système (approvisionnement). Source = <code>null</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXIT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Marchandise sortant du système (vente). Destination = <code>null</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TRANSFER</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mouvement interne entre emplacements. Source et destination obligatoires.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_locationtype"><a class="anchor" href="#_locationtype"></a>8.2. LocationType</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Signification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SHOP_FLOOR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zone de vente (magasin). Le vendeur y puise en priorité.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BACKSTOCK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stock arrière (réserve). Réapprovisionnement secondaire.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_userrole"><a class="anchor" href="#_userrole"></a>8.3. UserRole</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Signification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OWNER</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Propriétaire de la boutique. Accès complet.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SELLER</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendeur. Accès opérationnel (ventes, mouvements).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>
