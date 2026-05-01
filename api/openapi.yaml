@@ -1,0 +1,836 @@
+openapi: 3.1.0
+
+info:
+  title: Auto Stock Management API
+  version: 1.0.0
+  summary: Gestion de stock pour boutique de pièces détachées automobiles
+  description: |
+    API REST du système de gestion de stock.
+
+    ## Conventions
+    - **Versioning** : préfixe d'URL `/api/v1`. Toute évolution incompatible = `/api/v2`.
+    - **Casse** : `kebab-case` pour les segments d'URL, `camelCase` pour les champs JSON.
+    - **IDs** : UUID v4 en `string` dans tous les payloads.
+    - **Dates** : `date-time` ISO 8601 UTC (`2026-04-23T10:15:30Z`).
+    - **Monnaie** : objet `Money { amount: string (BigDecimal), currency: ISO-4217 }`.
+      `amount` est transporté en **string** pour éviter la perte de précision JavaScript.
+    - **Erreurs** : RFC 7807 (`application/problem+json`) systématiquement.
+    - **Idempotence** : les endpoints de mutation acceptent un header `Idempotency-Key`
+      (UUID) ; deux requêtes avec la même clé dans une fenêtre de 24h retournent la même
+      réponse sans réexécuter l'opération.
+    - **Pagination** : `?page=0&size=20&sort=field,asc` ; la réponse est enveloppée
+      dans `Page<T>`.
+    - **Auth** : Bearer JWT (tant que l'adaptateur d'authentification n'est pas livré,
+      les endpoints acceptent un header `X-User-Id` en environnement de dev).
+  contact:
+    name: Ali Cheikh — ALMA / Nantes Université
+    email: cheikhalicheikh593@gmail.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.stock.example.com/api/v1
+    description: Production
+  - url: https://staging.api.stock.example.com/api/v1
+    description: Staging
+  - url: http://localhost:8080/api/v1
+    description: Développement local
+
+tags:
+  - name: Stock — Receiving
+    description: Réception de marchandises (entrée de stock).
+  - name: Stock — Sales
+    description: Vente et allocation automatique du stock.
+  - name: Stock — Transfers
+    description: Transfert entre emplacements (backstock → shop floor).
+  - name: Products
+    description: Consultation du catalogue produit.
+  - name: Stock — Read
+    description: Consultation des niveaux de stock.
+  - name: Health
+    description: Liveness / readiness.
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ───────────────────────────────────────────────────────────────
+  # Health
+  # ───────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      operationId: healthCheck
+      summary: Liveness probe.
+      security: []
+      responses:
+        '200':
+          description: Service opérationnel.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  # ───────────────────────────────────────────────────────────────
+  # Receiving — entrée de stock depuis un fournisseur
+  # ───────────────────────────────────────────────────────────────
+  /stock-receipts:
+    post:
+      tags: [Stock — Receiving]
+      operationId: receiveStock
+      summary: Enregistre une réception de marchandises.
+      description: |
+        Déclenche le use case `ReceiveStockUseCase`.
+
+        - Si `productReference` correspond à un produit existant,
+          `newProductInfo` doit être omis.
+        - Sinon `newProductInfo` est obligatoire et le produit est créé à la volée.
+        - `distributions` répartit la quantité reçue entre un ou plusieurs
+          emplacements de stockage ; chaque ligne a `quantity > 0`.
+
+        Publie les événements `StockReceived` et (conditionnellement) `StockReplenished`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveStockRequest'
+            examples:
+              existingProduct:
+                summary: Réception d'un produit existant
+                value:
+                  productReference: BRK-PAD-2017-RENAULT
+                  userId: 6f2a3b8a-1d0e-4d7a-8f3c-2b9c1e4a7d11
+                  distributions:
+                    - locationId: 1b9a1d0c-4c2f-4f8a-9a3f-2e1e7c0d3b01
+                      quantity: 20
+                    - locationId: 2a1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+                      quantity: 30
+              newProduct:
+                summary: Réception avec création du produit
+                value:
+                  productReference: BRK-DISC-2019-PEUGEOT
+                  userId: 6f2a3b8a-1d0e-4d7a-8f3c-2b9c1e4a7d11
+                  newProductInfo:
+                    name: Disque de frein avant 2019 Peugeot 208
+                    reference: BRK-DISC-2019-PEUGEOT
+                    categoryId: 7c1e2d3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f
+                    unitPrice:
+                      amount: "45.90"
+                      currency: EUR
+                    minimumGlobalThreshold: 10
+                  distributions:
+                    - locationId: 1b9a1d0c-4c2f-4f8a-9a3f-2e1e7c0d3b01
+                      quantity: 50
+      responses:
+        '202':
+          description: Réception enregistrée. Les mouvements de stock sont créés et les événements publiés.
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+              description: URL vers le statut de la réception (pour audit futur).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockReceiptAcknowledgement'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ───────────────────────────────────────────────────────────────
+  # Sales — vente et allocation automatique
+  # ───────────────────────────────────────────────────────────────
+  /sales:
+    post:
+      tags: [Stock — Sales]
+      operationId: sellProduct
+      summary: Enregistre une vente et alloue automatiquement le stock.
+      description: |
+        Déclenche le use case `SellProductUseCase`.
+
+        - Le service `StockAllocationService` choisit les emplacements
+          d'où sortir la marchandise (priorité shop floor).
+        - Échoue avec `STOCK_INSUFFICIENT` si la quantité disponible
+          sur l'ensemble des emplacements du shop est insuffisante.
+        - Publie `SaleCompleted`, potentiellement `LowStockAlert` et
+          `ShopFloorLow` si les seuils sont franchis.
+
+        Le body supporte **plusieurs lignes** (multi-produits) pour être
+        évolutif, même si le use case courant ne traite qu'une ligne à la fois.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSaleRequest'
+            examples:
+              singleLine:
+                summary: Vente d'un produit unique
+                value:
+                  sellerId: 6f2a3b8a-1d0e-4d7a-8f3c-2b9c1e4a7d11
+                  shopId: 3c4d5e6f-7a8b-4c9d-8e9f-0a1b2c3d4e5f
+                  lines:
+                    - productId: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+                      quantity: 2
+      responses:
+        '201':
+          description: Vente créée.
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+              description: URL vers la ressource vente créée.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+    get:
+      tags: [Stock — Sales]
+      operationId: listSales
+      summary: Liste paginée des ventes.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: sellerId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: shopId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          description: Date-heure de début (inclus).
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          description: Date-heure de fin (exclus).
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfSale'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /sales/{saleId}:
+    get:
+      tags: [Stock — Sales]
+      operationId: getSale
+      summary: Détail d'une vente.
+      parameters:
+        - $ref: '#/components/parameters/SaleIdPath'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────────────────────────────────────────────
+  # Transfers — backstock → shop floor (ou inverse)
+  # ───────────────────────────────────────────────────────────────
+  /stock-transfers:
+    post:
+      tags: [Stock — Transfers]
+      operationId: transferStock
+      summary: Transfère du stock d'un emplacement vers un autre.
+      description: |
+        Déclenche le use case `TransferStockUseCase`.
+
+        - Les deux emplacements doivent appartenir au même shop.
+        - Échoue avec `STOCK_INSUFFICIENT` si la source n'a pas assez de stock.
+        - Publie un `StockMovement` de type `TRANSFER`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferStockRequest'
+            examples:
+              example:
+                value:
+                  productId: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+                  sourceLocationId: 2a1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+                  destinationLocationId: 1b9a1d0c-4c2f-4f8a-9a3f-2e1e7c0d3b01
+                  quantity: 5
+                  userId: 6f2a3b8a-1d0e-4d7a-8f3c-2b9c1e4a7d11
+      responses:
+        '202':
+          description: Transfert accepté.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockTransferAcknowledgement'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  # ───────────────────────────────────────────────────────────────
+  # Products — lecture seule
+  # ───────────────────────────────────────────────────────────────
+  /products:
+    get:
+      tags: [Products]
+      operationId: listProducts
+      summary: Liste paginée des produits.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: reference
+          in: query
+          description: Filtre exact sur la référence métier.
+          schema: { type: string }
+        - name: categoryId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfProduct'
+
+  /products/{productId}:
+    get:
+      tags: [Products]
+      operationId: getProduct
+      summary: Détail d'un produit.
+      parameters:
+        - $ref: '#/components/parameters/ProductIdPath'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────────────────────────────────────────────
+  # Stock — read models
+  # ───────────────────────────────────────────────────────────────
+  /stock-levels:
+    get:
+      tags: [Stock — Read]
+      operationId: listStockLevels
+      summary: État du stock par produit / emplacement.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - name: productId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: shopId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: locationId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: belowThreshold
+          in: query
+          description: Si `true`, ne retourne que les lignes sous le seuil global.
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfStockLevel'
+
+  /products/{productId}/stock-levels:
+    get:
+      tags: [Stock — Read]
+      operationId: getProductStockLevels
+      summary: Stock d'un produit décliné par emplacement + total global.
+      parameters:
+        - $ref: '#/components/parameters/ProductIdPath'
+        - name: shopId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductStockSummary'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /stock-movements:
+    get:
+      tags: [Stock — Read]
+      operationId: listStockMovements
+      summary: Historique paginé des mouvements de stock.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: productId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: locationId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/MovementType'
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfStockMovement'
+
+# ───────────────────────────────────────────────────────────────
+# Components
+# ───────────────────────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: |
+        UUID client. Garantit qu'une retransmission réseau ne crée pas deux
+        ventes/réceptions/transferts. Fenêtre de rétention : 24h.
+
+    PageParam:
+      name: page
+      in: query
+      description: Numéro de page (base 0).
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+    SizeParam:
+      name: size
+      in: query
+      description: Nombre d'éléments par page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+
+    SortParam:
+      name: sort
+      in: query
+      description: |
+        Tri au format `champ,direction` (ex. `createdAt,desc`).
+        Plusieurs valeurs autorisées ; appliquées dans l'ordre.
+      explode: true
+      schema:
+        type: array
+        items: { type: string }
+
+    ProductIdPath:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    SaleIdPath:
+      name: saleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Requête malformée (validation syntaxique).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: JWT manquant ou invalide.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Authentifié mais rôle insuffisant.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Ressource introuvable.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Conflit d'état (ex. quantité insuffisante, version obsolète).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnprocessableEntity:
+      description: Requête syntaxiquement correcte mais violant une règle métier.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    InternalError:
+      description: Erreur serveur inattendue.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+
+    # ── Primitives ─────────────────────────────────────────────
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+          pattern: '^-?\d+(\.\d{1,4})?$'
+          description: Montant en décimal transporté comme string (BigDecimal).
+          examples: ["45.90", "1299.00"]
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: Code ISO-4217.
+          examples: [EUR, USD]
+
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+        version: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    # ── Enums domaine ─────────────────────────────────────────
+    MovementType:
+      type: string
+      enum: [ENTRY, EXIT, TRANSFER]
+    LocationType:
+      type: string
+      enum: [SHOP_FLOOR, BACKSTOCK]
+    UserRole:
+      type: string
+      enum: [OWNER, SELLER]
+
+    # ── Produit ───────────────────────────────────────────────
+    Product:
+      type: object
+      required: [productId, name, reference, categoryId, unitPrice, minimumGlobalThreshold]
+      properties:
+        productId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        reference: { type: string, minLength: 1, maxLength: 64 }
+        categoryId: { type: string, format: uuid }
+        unitPrice: { $ref: '#/components/schemas/Money' }
+        minimumGlobalThreshold:
+          type: integer
+          minimum: 0
+          description: Seuil d'alerte global (somme sur tous les emplacements).
+
+    ProductInfo:
+      description: Informations pour la création on-the-fly d'un produit lors d'une réception.
+      type: object
+      required: [name, reference, categoryId, unitPrice, minimumGlobalThreshold]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        reference: { type: string, minLength: 1, maxLength: 64 }
+        categoryId: { type: string, format: uuid }
+        unitPrice: { $ref: '#/components/schemas/Money' }
+        minimumGlobalThreshold: { type: integer, minimum: 0 }
+
+    # ── Sale ──────────────────────────────────────────────────
+    CreateSaleRequest:
+      type: object
+      required: [sellerId, shopId, lines]
+      properties:
+        sellerId: { type: string, format: uuid }
+        shopId: { type: string, format: uuid }
+        lines:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/CreateSaleLine' }
+
+    CreateSaleLine:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: string, format: uuid }
+        quantity:
+          type: integer
+          minimum: 1
+
+    SaleResponse:
+      type: object
+      required: [saleId, sellerId, lines, totalAmount, createdAt]
+      properties:
+        saleId: { type: string, format: uuid }
+        sellerId: { type: string, format: uuid }
+        shopId: { type: string, format: uuid }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/SaleLineResponse' }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        createdAt: { type: string, format: date-time }
+
+    SaleLineResponse:
+      type: object
+      required: [productId, quantity, unitPrice, subtotal]
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        quantity: { type: integer, minimum: 1 }
+        unitPrice: { $ref: '#/components/schemas/Money' }
+        subtotal: { $ref: '#/components/schemas/Money' }
+
+    # ── Receiving ─────────────────────────────────────────────
+    ReceiveStockRequest:
+      type: object
+      required: [productReference, userId, distributions]
+      properties:
+        productReference:
+          type: string
+          minLength: 1
+          maxLength: 64
+        newProductInfo:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ProductInfo'
+          description: |
+            Obligatoire si le produit n'existe pas encore, sinon à omettre.
+            Si présent, `newProductInfo.reference` doit égaler `productReference`.
+        userId: { type: string, format: uuid }
+        distributions:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/ReceivingDistribution' }
+
+    ReceivingDistribution:
+      type: object
+      required: [locationId, quantity]
+      properties:
+        locationId: { type: string, format: uuid }
+        quantity: { type: integer, minimum: 1 }
+
+    StockReceiptAcknowledgement:
+      type: object
+      required: [productId, totalReceived, acceptedAt]
+      properties:
+        productId: { type: string, format: uuid }
+        totalReceived: { type: integer, minimum: 1 }
+        acceptedAt: { type: string, format: date-time }
+        movementIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    # ── Transfer ──────────────────────────────────────────────
+    TransferStockRequest:
+      type: object
+      required: [productId, sourceLocationId, destinationLocationId, quantity, userId]
+      properties:
+        productId: { type: string, format: uuid }
+        sourceLocationId: { type: string, format: uuid }
+        destinationLocationId: { type: string, format: uuid }
+        quantity: { type: integer, minimum: 1 }
+        userId: { type: string, format: uuid }
+
+    StockTransferAcknowledgement:
+      type: object
+      required: [movementId, acceptedAt]
+      properties:
+        movementId: { type: string, format: uuid }
+        acceptedAt: { type: string, format: date-time }
+
+    # ── Stock read models ─────────────────────────────────────
+    StockLevel:
+      type: object
+      required: [productId, locationId, quantity]
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        locationId: { type: string, format: uuid }
+        locationName: { type: string }
+        locationType: { $ref: '#/components/schemas/LocationType' }
+        shopId: { type: string, format: uuid }
+        quantity: { type: integer, minimum: 0 }
+
+    ProductStockSummary:
+      type: object
+      required: [productId, globalQuantity, minimumGlobalThreshold, belowGlobalThreshold, byLocation]
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        globalQuantity: { type: integer, minimum: 0 }
+        minimumGlobalThreshold: { type: integer, minimum: 0 }
+        belowGlobalThreshold: { type: boolean }
+        byLocation:
+          type: array
+          items: { $ref: '#/components/schemas/StockLevel' }
+
+    StockMovement:
+      type: object
+      required: [movementId, productId, locationId, type, quantity, executedBy, executedAt]
+      properties:
+        movementId: { type: string, format: uuid }
+        productId: { type: string, format: uuid }
+        locationId: { type: string, format: uuid }
+        destinationLocationId:
+          type: string
+          format: uuid
+          description: Renseigné uniquement pour `type = TRANSFER`.
+        type: { $ref: '#/components/schemas/MovementType' }
+        quantity: { type: integer, minimum: 1 }
+        executedBy: { type: string, format: uuid }
+        executedAt: { type: string, format: date-time }
+        saleId:
+          type: string
+          format: uuid
+          description: Renseigné uniquement pour `type = EXIT` lié à une vente.
+
+    # ── Pagination générique ──────────────────────────────────
+    PageMeta:
+      type: object
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalElements: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+
+    PageOfProduct:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Product' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+
+    PageOfSale:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/SaleResponse' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+
+    PageOfStockLevel:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/StockLevel' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+
+    PageOfStockMovement:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/StockMovement' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+
+    # ── RFC 7807 Problem Details ──────────────────────────────
+    Problem:
+      description: |
+        Représentation d'erreur conforme à RFC 7807.
+        Les champs `code`, `errors` et `traceId` sont des extensions
+        spécifiques à cette API.
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI identifiant le type d'erreur (documentation).
+          examples: ["https://api.stock.example.com/errors/stock-insufficient"]
+        title:
+          type: string
+          description: Résumé court et humain.
+          examples: ["Stock insuffisant"]
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+          description: Explication détaillée pour ce cas précis.
+        instance:
+          type: string
+          format: uri
+          description: URI de l'instance de la ressource concernée.
+        code:
+          type: string
+          description: Code machine stable, pour mapping frontend.
+          examples:
+            - PRODUCT_NOT_FOUND
+            - STOCK_INSUFFICIENT
+            - LOCATION_NOT_FOUND
+            - TRANSFER_CROSS_SHOP
+            - INVALID_MOVEMENT
+            - VALIDATION_FAILED
+        errors:
+          type: array
+          description: Erreurs de validation champ par champ (si pertinent).
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
+              rejectedValue: {}
+        traceId:
+          type: string
+          description: ID de corrélation pour retrouver les logs.
