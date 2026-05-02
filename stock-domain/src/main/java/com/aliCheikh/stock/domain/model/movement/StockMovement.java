@@ -97,11 +97,11 @@ public class StockMovement {
         StockMovement.requiredPositiveQuantity(quantity);
 
         if (destinationLocationId == null) {
-            throw new IllegalArgumentException("destinationLocationId cannot be null");
+            throw new InvalidMovementException(MovementErrorReason.ENTRY_MISSING_DESTINATION, "destinationLocationId cannot be null");
         }
 
         if (sourceLocationId == null) {
-            throw new IllegalArgumentException("sourceLocationId cannot be null");
+            throw new InvalidMovementException(MovementErrorReason.EXIT_MISSING_SOURCE, "sourceLocationId cannot be null");
         }
 
 
