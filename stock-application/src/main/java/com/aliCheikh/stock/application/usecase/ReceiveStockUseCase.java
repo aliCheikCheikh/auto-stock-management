@@ -24,8 +24,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Use Case for receiving stock from an external source (e.g., supplier delivery).
- * Handles both existing products and the creation of new products on-the-fly.
+ * Use case: Receive new stock into the system.
+ *
+ * <p>Handles both existing products and new product catalog entries.
+ * Distributes the received quantities across specified target locations
+ * and records ENTRY movements.
+ *
+ * <p>MUST be invoked within a transactional boundary orchestrated by the infrastructure layer.
  */
 public class ReceiveStockUseCase {
 

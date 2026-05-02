@@ -12,9 +12,12 @@ import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import java.util.Objects;
 
 /**
- * Use Case for transferring stock internally between two storage locations.
- * Modifies the stock levels and generates a TRANSFER movement.
- * Does not emit global stock events as the total stock remains unchanged.
+ * Use case: Transfer stock between two storage locations.
+ *
+ * <p>Decrements stock from the source location and increments it at the
+ * destination location, recording a single TRANSFER movement.
+ *
+ * <p>MUST be invoked within a transactional boundary orchestrated by the infrastructure layer.
  */
 public class TransferStockUseCase {
 

@@ -109,6 +109,8 @@ public class Sale {
     }
 
     public List<SaleLineDto> getLines() {
+        // TODO (Architecture): Recreating this DTO list on every read can impact performance for large collections.
+        // Consider implementing a dedicated Read-Model (CQRS projection) if read scales.
         return this.lines.stream()
                 .map(line -> new SaleLineDto(line.getProductId(), line.getQuantity(), line.getUnitPrice(), line.getLineTotal()))
                 .toList();
