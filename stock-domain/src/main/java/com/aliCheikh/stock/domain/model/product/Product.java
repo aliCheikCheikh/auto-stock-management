@@ -107,4 +107,22 @@ public class Product {
     public Money getUnitPrice() {
         return unitPrice;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Product product = (Product) o;
+        return productId.equals(product.getProductId());
+    }
+
+    @Override
+    public int hashCode() {
+        return productId.hashCode();
+    }
+
 }

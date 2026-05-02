@@ -163,6 +163,25 @@ public class StockMovement {
         return Optional.ofNullable(saleId);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        StockMovement that = (StockMovement) o;
+        return that.movementId.equals(movementId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(movementId);
+    }
+
 
 }
 

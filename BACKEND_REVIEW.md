@@ -596,6 +596,7 @@ notamment), c'est discutable — un label vide est un invariant métier, pas tec
 ---
 
 ### N7. `Sale.SaleLineItem` est une **classe statique imbriquée privée
+
 ** mais sa doc la présente comme une "Entité interne"
 
 Dans `Sale.java:52`, `SaleLineItem` est `private static class`. Pas de souci technique, c'est propre. Mais la doc

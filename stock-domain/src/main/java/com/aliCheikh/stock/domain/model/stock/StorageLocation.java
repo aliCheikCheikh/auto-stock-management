@@ -132,4 +132,21 @@ public class StorageLocation {
     public int getLowStockIndicator() {
         return lowStockIndicator;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        StorageLocation that = (StorageLocation) o;
+        return locationId.equals(that.locationId) && shopId.equals(that.shopId);
+    }
+
+    @Override
+    public int hashCode() {
+        return locationId.hashCode();
+    }
 }
