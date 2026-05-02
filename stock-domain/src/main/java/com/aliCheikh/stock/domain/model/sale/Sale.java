@@ -42,12 +42,17 @@ public class Sale {
         Money totalAmount = internalLines.stream()
                 .map(SaleLineItem::getLineTotal)
                 .reduce(Money::add)
-                .orElseThrow();
+                .orElseThrow(() -> new IllegalStateException("Sale.create invariant violated: lineRequests cannot be empty"));
 
         return new Sale(SaleId.generate(), sellerId, LocalDateTime.now(), totalAmount, internalLines);
     }
 
-    private static class SaleLineItem {
+
+    /**
+     * Internal Value Object, identified positionally by its parent Sale.
+     * It has no independent existence outside the Sale aggregate.
+     */
+    private static final class SaleLineItem {
         private final ProductId productId;
         private final int quantity;
         private final Money unitPrice;

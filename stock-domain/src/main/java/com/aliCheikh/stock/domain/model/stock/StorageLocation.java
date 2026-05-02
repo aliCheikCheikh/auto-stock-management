@@ -4,6 +4,7 @@ import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.ShopFloorLow;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidLowStockIndicatorException;
+import com.aliCheikh.stock.domain.exception.stock.InvalidStorageLocationLabelException;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
 
@@ -33,7 +34,7 @@ public class StorageLocation {
             throw new IllegalArgumentException("locationType cannot be null");
         }
         if (label == null || label.isBlank()) {
-            throw new IllegalArgumentException("label cannot be null");
+            throw new InvalidStorageLocationLabelException(label);
         }
         if (lowStockIndicator < 0) {
             throw new InvalidLowStockIndicatorException(lowStockIndicator);
