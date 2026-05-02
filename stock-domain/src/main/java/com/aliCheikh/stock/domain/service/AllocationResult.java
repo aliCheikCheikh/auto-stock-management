@@ -3,14 +3,14 @@ package com.aliCheikh.stock.domain.service;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 
 import java.util.Objects;
-import java.util.UUID;
 
 public final class AllocationResult {
     private final LocationId locationId;
     private final int quantity;
+
     private AllocationResult(LocationId locationId, int quantity) {
         this.locationId = Objects.requireNonNull(locationId, "locationId cannot be null");
-        if(quantity <= 0) {
+        if (quantity <= 0) {
             throw new IllegalArgumentException("quantity must be greater than 0");
         }
         this.quantity = quantity;
@@ -44,8 +44,6 @@ public final class AllocationResult {
         AllocationResult that = (AllocationResult) o;
         return locationId.equals(that.locationId) && quantity == that.quantity;
     }
-
-
 
 
 }

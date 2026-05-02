@@ -8,7 +8,6 @@ import com.aliCheikh.stock.domain.event.LowStockAlert;
 import com.aliCheikh.stock.domain.event.SaleCompleted;
 import com.aliCheikh.stock.domain.event.ShopFloorLow;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
-import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;

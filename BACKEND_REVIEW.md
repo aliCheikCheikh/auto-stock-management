@@ -7,9 +7,13 @@
 
 ## TL;DR
 
-Le code a une **très bonne ossature** : DDD rigoureux, invariants protégés dans les agrégats, ports bien définis, immuabilité des value objects, events de domaine pullés proprement depuis l'agrégat. La logique métier des trois use cases (SellProduct, ReceiveStock, TransferStock) est correcte dans l'intention.
+Le code a une **très bonne ossature** : DDD rigoureux, invariants protégés dans les agrégats, ports bien définis,
+immuabilité des value objects, events de domaine pullés proprement depuis l'agrégat. La logique métier des trois use
+cases (SellProduct, ReceiveStock, TransferStock) est correcte dans l'intention.
 
-**Mais il y a 6 bugs réels** (violations du contrat `equals/hashCode`, mauvaise abstraction de repository) qui vont te mordre dès que tu brancheras l'infra, et une grosse dizaine de points d'architecture à resserrer avant que le code soit défendable en soutenance ou en revue de code en entreprise.
+**Mais il y a 6 bugs réels** (violations du contrat `equals/hashCode`, mauvaise abstraction de repository) qui vont te
+mordre dès que tu brancheras l'infra, et une grosse dizaine de points d'architecture à resserrer avant que le code soit
+défendable en soutenance ou en revue de code en entreprise.
 
 Je classe en trois niveaux :
 
@@ -25,9 +29,13 @@ Je classe en trois niveaux :
 
 **Fichier :** `stock-domain/src/main/java/com/aliCheikh/stock/domain/model/stock/LocationId.java`
 
-Seul `equals()` est redéfini. `hashCode()` reste celui d'`Object` (identité mémoire) alors qu'`equals()` compare la valeur UUID. **Violation directe du contrat `equals/hashCode`.**
+Seul `equals()` est redéfini. `hashCode()` reste celui d'`Object` (identité mémoire) alors qu'`equals()` compare la
+valeur UUID. **Violation directe du contrat `equals/hashCode`.**
 
-**Pourquoi c'est grave ici spécifiquement :** `LocationId` est utilisé comme **clé de Map** dans l'événement `StockReceived.locationBreakdown` (`Map<LocationId, Integer>`). Deux `LocationId` portant la même UUID auront deux hashCodes différents, donc la Map va créer deux entrées distinctes au lieu d'une. Silencieusement. Ton agrégation est fausse.
+**Pourquoi c'est grave ici spécifiquement :** `LocationId` est utilisé comme **clé de Map** dans l'événement
+`StockReceived.locationBreakdown` (`Map<LocationId, Integer>`). Deux `LocationId` portant la même UUID auront deux
+hashCodes différents, donc la Map va créer deux entrées distinctes au lieu d'une. Silencieusement. Ton agrégation est
+fausse.
 
 **Fix :**
 
@@ -44,9 +52,11 @@ public int hashCode() {
 
 **Fichier :** `stock-domain/src/main/java/com/aliCheikh/stock/domain/model/movement/MovementId.java`
 
-Symétrique du précédent : `hashCode()` est redéfini mais pas `equals()`. Deux `MovementId` avec la même UUID produiront le même hash mais ne seront **pas** égaux (reference equality).
+Symétrique du précédent : `hashCode()` est redéfini mais pas `equals()`. Deux `MovementId` avec la même UUID produiront
+le même hash mais ne seront **pas** égaux (reference equality).
 
-Impact concret : tu peux chercher un mouvement dans un `Set<MovementId>` avec un id reconstruit depuis la DB, `contains()` retournera `false`.
+Impact concret : tu peux chercher un mouvement dans un `Set<MovementId>` avec un id reconstruit depuis la DB,
+`contains()` retournera `false`.
 
 **Fix :**
 
@@ -66,7 +76,8 @@ public boolean equals(Object o) {
 
 **Fichier :** `stock-domain/src/main/java/com/aliCheikh/stock/domain/model/shop/ShopId.java`
 
-Même problème que C1. Pas exploité actuellement comme clé de Map, mais le jour où tu regroupes par shop (`Map<ShopId, List<StorageLocation>>`, typique pour le multi-boutiques que tu as annoncé), bug silencieux.
+Même problème que C1. Pas exploité actuellement comme clé de Map, mais le jour où tu regroupes par shop (
+`Map<ShopId, List<StorageLocation>>`, typique pour le multi-boutiques que tu as annoncé), bug silencieux.
 
 **Fix :** ajouter `hashCode()` comme C1.
 
@@ -100,9 +111,11 @@ Accessoirement : supprime aussi l'import `java.util.UUID` inutilisé.
 
 ### C5. Constructeurs privés des `*Id` sans null-check
 
-**Fichiers :** `SaleId.java`, `UserId.java`, `MovementId.java`, `ShopId.java`, `LocationId.java` (tous sauf `ProductId` et `CategoryId`).
+**Fichiers :** `SaleId.java`, `UserId.java`, `MovementId.java`, `ShopId.java`, `LocationId.java` (tous sauf `ProductId`
+et `CategoryId`).
 
-Le constructeur privé accepte silencieusement `null`. Résultat : `SaleId.of(null)` construit un objet invalide, qui explosera à la première opération `equals`/`toString` par `NullPointerException` — message peu utile, loin de la cause.
+Le constructeur privé accepte silencieusement `null`. Résultat : `SaleId.of(null)` construit un objet invalide, qui
+explosera à la première opération `equals`/`toString` par `NullPointerException` — message peu utile, loin de la cause.
 
 **Fix :** uniformiser sur le pattern déjà présent dans `ProductId` :
 
@@ -122,9 +135,13 @@ private LocationId(UUID value) {
 return Objects.hash(amount.doubleValue(), currency);
 ```
 
-Le commentaire `// Astuce pour le hash de BigDecimal` masque un bug subtil. `equals()` utilise `compareTo` sur `BigDecimal` (donc `10.0` et `10.00` sont égaux), mais `hashCode()` passe par `doubleValue()` : précision perdue au-delà de ~15 chiffres significatifs. Deux `Money` "equals" peuvent produire des hashCode différents dans les cas extrêmes → contrat `equals/hashCode` cassé.
+Le commentaire `// Astuce pour le hash de BigDecimal` masque un bug subtil. `equals()` utilise `compareTo` sur
+`BigDecimal` (donc `10.0` et `10.00` sont égaux), mais `hashCode()` passe par `doubleValue()` : précision perdue au-delà
+de ~15 chiffres significatifs. Deux `Money` "equals" peuvent produire des hashCode différents dans les cas extrêmes →
+contrat `equals/hashCode` cassé.
 
-C'est peu probable pour des prix en euros d'une boutique auto (pas des montants à 18 décimales), mais en entretien technique ou revue de code, ça se voit.
+C'est peu probable pour des prix en euros d'une boutique auto (pas des montants à 18 décimales), mais en entretien
+technique ou revue de code, ça se voit.
 
 **Fix :**
 
@@ -143,15 +160,19 @@ public int hashCode() {
 
 ### I1. `StorageLocationRepository.findById()` ne retourne pas `Optional`
 
-**Fichier :** `stock-domain/src/main/java/com/aliCheikh/stock/domain/model/stock/ports/StorageLocationRepository.java:11`
+**Fichier :**
+`stock-domain/src/main/java/com/aliCheikh/stock/domain/model/stock/ports/StorageLocationRepository.java:11`
 
 ```java
 StorageLocation findById(LocationId locationId);
 ```
 
-Retour non-`Optional` alors que `ProductRepository.findById()` retourne bien `Optional<Product>`. Incohérence de contrat, et surtout : que se passe-t-il si la location n'existe pas ? Contrat non défini → chaque implémentation fera ce qu'elle veut (null, exception, ...).
+Retour non-`Optional` alors que `ProductRepository.findById()` retourne bien `Optional<Product>`. Incohérence de
+contrat, et surtout : que se passe-t-il si la location n'existe pas ? Contrat non défini → chaque implémentation fera ce
+qu'elle veut (null, exception, ...).
 
-Dans `TransferStockUseCase.execute()` et `SellProductUseCase.sell()`, tu appelles `findById()` puis utilises directement l'objet sans check. Si l'infra retourne `null`, NPE.
+Dans `TransferStockUseCase.execute()` et `SellProductUseCase.sell()`, tu appelles `findById()` puis utilises directement
+l'objet sans check. Si l'infra retourne `null`, NPE.
 
 **Fix :** aligner sur `ProductRepository` :
 
@@ -159,7 +180,8 @@ Dans `TransferStockUseCase.execute()` et `SellProductUseCase.sell()`, tu appelle
 Optional<StorageLocation> findById(LocationId locationId);
 ```
 
-…et traiter le `Optional.orElseThrow(() -> new StorageLocationNotFoundException(locationId))` dans les use cases. Ça te force aussi à créer une exception métier propre (qui mappera en 404 au niveau REST).
+…et traiter le `Optional.orElseThrow(() -> new StorageLocationNotFoundException(locationId))` dans les use cases. Ça te
+force aussi à créer une exception métier propre (qui mappera en 404 au niveau REST).
 
 ---
 
@@ -167,14 +189,20 @@ Optional<StorageLocation> findById(LocationId locationId);
 
 **Chemin :** `stock-domain/src/main/java/com/aliCheikh/stock/domain/model/sale/Dto/`
 
-Convention Java : les packages sont tout en minuscules. Le reste du projet respecte ça (`dto/` en application, `event/`, `port/`, `ports/`). Seul ce package casse la règle.
+Convention Java : les packages sont tout en minuscules. Le reste du projet respecte ça (`dto/` en application, `event/`,
+`port/`, `ports/`). Seul ce package casse la règle.
 
-**Plus profondément :** ces classes (`SaleLineDto`, `SaleLineRequest`) ne devraient probablement pas être appelées "DTO". Un DTO est un objet de transfert **entre couches**. `SaleLineRequest` est un **command input pour la factory** `Sale.create()` — il vit dans le domaine et c'est légitime. `SaleLineDto` est une **projection de lecture** de `Sale.getLines()` — c'est un vrai DTO qui pourrait vivre en application.
+**Plus profondément :** ces classes (`SaleLineDto`, `SaleLineRequest`) ne devraient probablement pas être appelées "
+DTO". Un DTO est un objet de transfert **entre couches**. `SaleLineRequest` est un **command input pour la factory**
+`Sale.create()` — il vit dans le domaine et c'est légitime. `SaleLineDto` est une **projection de lecture** de
+`Sale.getLines()` — c'est un vrai DTO qui pourrait vivre en application.
 
 **Fix proposé :**
 
-- Déplacer `SaleLineRequest` directement dans `domain/model/sale/` (pas dans un sous-package), le renommer `NewSaleLineCommand` ou `SaleLineInput` pour clarifier.
-- Déplacer `SaleLineDto` dans `stock-application/src/main/java/com/aliCheikh/stock/application/dto/` (ou dans une future couche `read-model`). Ça retire une dépendance circulaire potentielle entre le domaine et ses "vues".
+- Déplacer `SaleLineRequest` directement dans `domain/model/sale/` (pas dans un sous-package), le renommer
+  `NewSaleLineCommand` ou `SaleLineInput` pour clarifier.
+- Déplacer `SaleLineDto` dans `stock-application/src/main/java/com/aliCheikh/stock/application/dto/` (ou dans une future
+  couche `read-model`). Ça retire une dépendance circulaire potentielle entre le domaine et ses "vues".
 
 Si tu n'as pas le temps : au strict minimum, renomme le dossier en `dto/` (minuscules).
 
@@ -188,7 +216,10 @@ Si tu n'as pas le temps : au strict minimum, renomme le dossier en `dto/` (minus
 public record SellProductCommand(ProductId productId, int quantity, UserId sellerId, ShopId shopId) {}
 ```
 
-Ton agrégat `Sale` est bien conçu pour accepter plusieurs lignes (`Sale.create(sellerId, List<SaleLineRequest>)`), mais la commande applicative ne prend qu'un produit. Résultat : `SellProductUseCase.sell()` construit une vente à une seule ligne, puis la sauvegarde. Une vente = un produit. C'est incohérent avec le modèle métier (un client qui achète filtre + bougies + huile = 3 use cases successifs ? ou 3 ventes distinctes ? la facture sera fausse).
+Ton agrégat `Sale` est bien conçu pour accepter plusieurs lignes (`Sale.create(sellerId, List<SaleLineRequest>)`), mais
+la commande applicative ne prend qu'un produit. Résultat : `SellProductUseCase.sell()` construit une vente à une seule
+ligne, puis la sauvegarde. Une vente = un produit. C'est incohérent avec le modèle métier (un client qui achète filtre +
+bougies + huile = 3 use cases successifs ? ou 3 ventes distinctes ? la facture sera fausse).
 
 **Fix :** remplacer par une commande multi-lignes :
 
@@ -218,9 +249,11 @@ public record SellLineCommand(ProductId productId, int quantity) {
 }
 ```
 
-Et dans `SellProductUseCase.sell()`, boucler sur les lignes pour allouer, décrémenter, créer les `StockMovement`, avant de créer UNE `Sale` agrégeant toutes les lignes.
+Et dans `SellProductUseCase.sell()`, boucler sur les lignes pour allouer, décrémenter, créer les `StockMovement`, avant
+de créer UNE `Sale` agrégeant toutes les lignes.
 
-**C'est l'évolution la plus importante du code**, parce qu'elle change ton contrat d'API aussi. Ma proposition d'OpenAPI en tient compte.
+**C'est l'évolution la plus importante du code**, parce qu'elle change ton contrat d'API aussi. Ma proposition d'OpenAPI
+en tient compte.
 
 ---
 
@@ -234,7 +267,8 @@ return storageLocationRepository.findAll().stream()
         .sum();
 ```
 
-`findAll()` ramène **toutes les storage locations de toutes les boutiques**. Au-delà de la première boutique, ça scanne pour rien. Ne scale pas si multi-boutiques (que tu as explicitement prévu dans l'architecture).
+`findAll()` ramène **toutes les storage locations de toutes les boutiques**. Au-delà de la première boutique, ça scanne
+pour rien. Ne scale pas si multi-boutiques (que tu as explicitement prévu dans l'architecture).
 
 `SellProductUseCase.calculateGlobalStock()` fait bien, lui : `findByShopId(command.shopId())`.
 
@@ -250,7 +284,9 @@ public record ReceiveStockCommand(
 ) { ... }
 ```
 
-**Bonus :** le jour où tu passes en SQL, tu pourras ajouter une méthode dédiée `int sumStockForProduct(ProductId, ShopId)` sur le repository pour éviter de charger tous les agrégats en mémoire juste pour faire une somme — query CQRS.
+**Bonus :** le jour où tu passes en SQL, tu pourras ajouter une méthode dédiée
+`int sumStockForProduct(ProductId, ShopId)` sur le repository pour éviter de charger tous les agrégats en mémoire juste
+pour faire une somme — query CQRS.
 
 ---
 
@@ -258,15 +294,22 @@ public record ReceiveStockCommand(
 
 **Fichiers :** les trois use cases.
 
-`SellProductUseCase.sell()` fait dans l'ordre : save(sale) → pour chaque allocation : save(location) + save(movement). Si `save(movement)` échoue au milieu, tu as une `Sale` enregistrée, une partie des locations décrémentées, et des mouvements partiels. Données incohérentes.
+`SellProductUseCase.sell()` fait dans l'ordre : save(sale) → pour chaque allocation : save(location) + save(movement).
+Si `save(movement)` échoue au milieu, tu as une `Sale` enregistrée, une partie des locations décrémentées, et des
+mouvements partiels. Données incohérentes.
 
-Le domaine ne doit pas connaître les transactions (correct), mais l'**application** doit les démarquer. Deux approches standards :
+Le domaine ne doit pas connaître les transactions (correct), mais l'**application** doit les démarquer. Deux approches
+standards :
 
-**Option A (simple, Spring-friendly) :** laisser l'annotation `@Transactional` arriver quand tu colleras Spring dans `stock-infrastructure`. Le use case reste tel quel, l'intercepteur ouvre/commit/rollback autour de `sell()`.
+**Option A (simple, Spring-friendly) :** laisser l'annotation `@Transactional` arriver quand tu colleras Spring dans
+`stock-infrastructure`. Le use case reste tel quel, l'intercepteur ouvre/commit/rollback autour de `sell()`.
 
-**Option B (plus pur, découplé de Spring) :** introduire un port `TransactionManager` dans `stock-application/port/` avec une méthode `execute(Runnable)`, et envelopper la logique du use case dedans.
+**Option B (plus pur, découplé de Spring) :** introduire un port `TransactionManager` dans `stock-application/port/`
+avec une méthode `execute(Runnable)`, et envelopper la logique du use case dedans.
 
-**Recommandation pour ton contexte :** option A pour aller vite, mais **documente** explicitement dans la Javadoc du use case : `// MUST be invoked within a transactional boundary`. Ça évite les trous si quelqu'un appelle le use case sans passer par le controller Spring.
+**Recommandation pour ton contexte :** option A pour aller vite, mais **documente** explicitement dans la Javadoc du use
+case : `// MUST be invoked within a transactional boundary`. Ça évite les trous si quelqu'un appelle le use case sans
+passer par le controller Spring.
 
 ---
 
@@ -283,7 +326,9 @@ if (sourceLocationId == null) {
 }
 ```
 
-Incohérent : `createEntry()` et `createExit()` utilisent `InvalidMovementException` avec un `MovementErrorReason` typé pour la même classe de problème (source/destination manquant). Un handler REST qui mappe `InvalidMovementException` → 409 Conflict va laisser passer ces deux cas en 500 Internal Error.
+Incohérent : `createEntry()` et `createExit()` utilisent `InvalidMovementException` avec un `MovementErrorReason` typé
+pour la même classe de problème (source/destination manquant). Un handler REST qui mappe `InvalidMovementException` →
+409 Conflict va laisser passer ces deux cas en 500 Internal Error.
 
 **Fix :**
 
@@ -312,7 +357,8 @@ if (sourceLocationId == null) {
 
 **Fichier :** `stock-application/src/main/java/com/aliCheikh/stock/application/dto/ReceiveStockCommand.java`
 
-Les autres commands ont un compact constructor avec guards (`TransferStockCommand` notamment). `ReceiveStockCommand` laisse passer n'importe quoi :
+Les autres commands ont un compact constructor avec guards (`TransferStockCommand` notamment). `ReceiveStockCommand`
+laisse passer n'importe quoi :
 
 - `productReference` vide ou null → `productRepository.findByReference(null)` va exploser loin d'ici
 - `distributions` null ou vide → on passe silencieusement sans rien recevoir
@@ -340,13 +386,15 @@ public ReceiveStockCommand {
 
 ### I8. `SellProductUseCase` re-fetche les storage locations pour calculer le global stock
 
-**Fichier :** `stock-application/src/main/java/com/aliCheikh/stock/application/usecase/SellProductUseCase.java:95 + 122-126`
+**Fichier :**
+`stock-application/src/main/java/com/aliCheikh/stock/application/usecase/SellProductUseCase.java:95 + 122-126`
 
 ```java
 int globalStock = calculateGlobalStock(command); // refait findByShopId
 ```
 
-Après avoir décrémenté les locations et les avoir sauvées, tu refais un `findByShopId` pour refaire la somme. Deux I/O pour une info que tu peux calculer avec ce que tu as en main.
+Après avoir décrémenté les locations et les avoir sauvées, tu refais un `findByShopId` pour refaire la somme. Deux I/O
+pour une info que tu peux calculer avec ce que tu as en main.
 
 **Fix :**
 
@@ -359,7 +407,8 @@ Après avoir décrémenté les locations et les avoir sauvées, tu refais un `fi
 //     .sum();
 ```
 
-À l'échelle d'une petite boutique ça ne change rien, mais c'est le **genre de détail qui fait la différence en revue de code en entreprise** et en entretien.
+À l'échelle d'une petite boutique ça ne change rien, mais c'est le **genre de détail qui fait la différence en revue de
+code en entreprise** et en entretien.
 
 ---
 
@@ -367,7 +416,8 @@ Après avoir décrémenté les locations et les avoir sauvées, tu refais un `fi
 
 **Fichiers :** `stock-domain/pom.xml`, `stock-application/pom.xml`
 
-JUnit 5.11.0, AssertJ 3.26.3, Mockito 5.17.0 sont déclarées module par module. Le jour où Mockito passe en 5.18.0 et où tu upgrades dans un seul module, divergence silencieuse → tests qui ne compilent plus ensemble.
+JUnit 5.11.0, AssertJ 3.26.3, Mockito 5.17.0 sont déclarées module par module. Le jour où Mockito passe en 5.18.0 et où
+tu upgrades dans un seul module, divergence silencieuse → tests qui ne compilent plus ensemble.
 
 **Fix :** centraliser dans le parent POM (`auto-stock-management/pom.xml`) :
 
@@ -419,8 +469,13 @@ public List<DomainEvent> pullEvents() {
 
 Deux points :
 
-1. **Thread-safety :** l'agrégat est manipulé dans un thread unique (transaction), donc OK en l'état, mais si tu pars sur du reactive/parallèle plus tard, la liste `domainEvents` doit être concurrente ou le pull atomique.
-2. **Sémantique d'échec :** si `pullEvents()` est appelé mais que la persistance échoue ensuite, les events sont **perdus**. Le pattern standard (Evans / Vernon) est : on ne pull qu'**après** commit réussi. Ça doit être la règle dans tes use cases. Aujourd'hui dans `SellProductUseCase`, tu pulls avant `save(location)`. Si le save échoue, l'agrégat est gardé en mémoire peut-être, mais les events sont déjà dans la liste `eventsToPublish` → risque de publier des events d'une transaction rollbackée.
+1. **Thread-safety :** l'agrégat est manipulé dans un thread unique (transaction), donc OK en l'état, mais si tu pars
+   sur du reactive/parallèle plus tard, la liste `domainEvents` doit être concurrente ou le pull atomique.
+2. **Sémantique d'échec :** si `pullEvents()` est appelé mais que la persistance échoue ensuite, les events sont *
+   *perdus**. Le pattern standard (Evans / Vernon) est : on ne pull qu'**après** commit réussi. Ça doit être la règle
+   dans tes use cases. Aujourd'hui dans `SellProductUseCase`, tu pulls avant `save(location)`. Si le save échoue,
+   l'agrégat est gardé en mémoire peut-être, mais les events sont déjà dans la liste `eventsToPublish` → risque de
+   publier des events d'une transaction rollbackée.
 
 **Fix pragmatique pour ton scope :**
 
@@ -471,7 +526,8 @@ Nettoyage d'imports à faire dans tout le projet (l'IDE te fera ça en un raccou
 
 ### N3. Lignes vides multiples en fin de fichier
 
-`StockMovement.java` se termine par 5 lignes vides. `StockLevel.java` a 3 blocs de lignes vides internes. Cosmétique, mais c'est du bruit. Active `Reformat Code` IntelliJ en pre-commit.
+`StockMovement.java` se termine par 5 lignes vides. `StockLevel.java` a 3 blocs de lignes vides internes. Cosmétique,
+mais c'est du bruit. Active `Reformat Code` IntelliJ en pre-commit.
 
 ---
 
@@ -479,17 +535,22 @@ Nettoyage d'imports à faire dans tout le projet (l'IDE te fera ça en un raccou
 
 Exemples :
 
-- `SellProductUseCase` : commentaires en anglais, `ReceiveStockUseCase` idem, mais `StockAllocationService` a "Récupérer", "Calcul du stock", "On lance l'exception riche !"
+- `SellProductUseCase` : commentaires en anglais, `ReceiveStockUseCase` idem, mais `StockAllocationService` a "
+  Récupérer", "Calcul du stock", "On lance l'exception riche !"
 - `TransferStockCommand` : `"La quantité à transférer doit être strictement positive"` (FR)
 - Les autres exceptions : messages en anglais
 
-**Reco :** tu es dans un projet portfolio / stage — vise l'anglais partout dans le code (commentaires, messages d'exception, javadoc). Les noms DDD peuvent rester en anglais métier (`Sale`, `Shop`, `ReceivingService`) avec un glossaire français dans la doc (que tu as déjà via `ubiquitous-language.adoc`).
+**Reco :** tu es dans un projet portfolio / stage — vise l'anglais partout dans le code (commentaires, messages
+d'exception, javadoc). Les noms DDD peuvent rester en anglais métier (`Sale`, `Shop`, `ReceivingService`) avec un
+glossaire français dans la doc (que tu as déjà via `ubiquitous-language.adoc`).
 
 ---
 
 ### N5. Pas d'`equals/hashCode` sur les aggregate roots
 
-`Product`, `StorageLocation`, `Shop`, `Category`, `Sale`, `StockMovement`, `User` n'ont pas d'equals/hashCode. La règle DDD : **deux aggregate roots sont égaux ssi leur ID est égal**. Sans ça, deux instances reconstruites depuis la DB ne sont jamais "égales" → pièges dans tests, dans cache, dans deduplication.
+`Product`, `StorageLocation`, `Shop`, `Category`, `Sale`, `StockMovement`, `User` n'ont pas d'equals/hashCode. La règle
+DDD : **deux aggregate roots sont égaux ssi leur ID est égal**. Sans ça, deux instances reconstruites depuis la DB ne
+sont jamais "égales" → pièges dans tests, dans cache, dans deduplication.
 
 **Fix type (pour `Product`) :**
 
@@ -520,19 +581,28 @@ Dans `StorageLocation`, cinq guards utilisent `IllegalArgumentException` brut :
 if (locationId == null) throw new IllegalArgumentException("locationId cannot be null");
 ```
 
-alors que le reste du domaine utilise des exceptions métier typées (`InvalidProductNameException`, `InvalidCategoryNameException`, `InvalidLowStockIndicatorException`). Incohérence.
+alors que le reste du domaine utilise des exceptions métier typées (`InvalidProductNameException`,
+`InvalidCategoryNameException`, `InvalidLowStockIndicatorException`). Incohérence.
 
-**Fix :** soit créer `InvalidStorageLocationException` avec un enum de raison, soit accepter que les null-checks de construction restent techniques. La règle fréquente : **`IllegalArgumentException` pour les contrats techniques** (null), **exception métier typée pour les invariants du domaine** (stock < 0, nom vide, etc.). Ton code applique déjà cette règle pour `lowStockIndicator < 0` → `InvalidLowStockIndicatorException` ✓. Pour les autres (`label` vide notamment), c'est discutable — un label vide est un invariant métier, pas technique.
+**Fix :** soit créer `InvalidStorageLocationException` avec un enum de raison, soit accepter que les null-checks de
+construction restent techniques. La règle fréquente : **`IllegalArgumentException` pour les contrats techniques** (
+null), **exception métier typée pour les invariants du domaine** (stock < 0, nom vide, etc.). Ton code applique déjà
+cette règle pour `lowStockIndicator < 0` → `InvalidLowStockIndicatorException` ✓. Pour les autres (`label` vide
+notamment), c'est discutable — un label vide est un invariant métier, pas technique.
 
-**Reco pragmatique :** garde les null-checks en `IllegalArgumentException`, mais le `label.isBlank()` devrait lever une `InvalidStorageLocationLabelException`.
+**Reco pragmatique :** garde les null-checks en `IllegalArgumentException`, mais le `label.isBlank()` devrait lever une
+`InvalidStorageLocationLabelException`.
 
 ---
 
-### N7. `Sale.SaleLineItem` est une **classe statique imbriquée privée** mais sa doc la présente comme une "Entité interne"
+### N7. `Sale.SaleLineItem` est une **classe statique imbriquée privée
+** mais sa doc la présente comme une "Entité interne"
 
-Dans `Sale.java:52`, `SaleLineItem` est `private static class`. Pas de souci technique, c'est propre. Mais la doc Antora (`aggregate-sale.adoc`) la présente avec `<<Entity>>`.
+Dans `Sale.java:52`, `SaleLineItem` est `private static class`. Pas de souci technique, c'est propre. Mais la doc
+Antora (`aggregate-sale.adoc`) la présente avec `<<Entity>>`.
 
-Debate DDD : est-ce une Entity (a une identité positionnelle dans sa sale) ou un Value Object (comparable par valeur) ? Tes commentaires hésitent. Le code la traite en value object de facto (pas d'id).
+Debate DDD : est-ce une Entity (a une identité positionnelle dans sa sale) ou un Value Object (comparable par valeur) ?
+Tes commentaires hésitent. Le code la traite en value object de facto (pas d'id).
 
 **Reco :** la qualifier explicitement dans le code :
 
@@ -557,7 +627,8 @@ Money totalAmount = internalLines.stream()
         .orElseThrow();
 ```
 
-Techniquement inatteignable (tu as validé que `lineRequests` n'est pas vide juste avant), mais si jamais : message générique `NoSuchElementException`. Ajoute un message défensif :
+Techniquement inatteignable (tu as validé que `lineRequests` n'est pas vide juste avant), mais si jamais : message
+générique `NoSuchElementException`. Ajoute un message défensif :
 
 ```java
 .orElseThrow(() -> new IllegalStateException(
@@ -577,7 +648,9 @@ Money totalAmount = internalLines.stream()
 
 ### N9. Javadoc incomplète
 
-Seul `ReceiveStockUseCase` a une Javadoc de classe. Les autres use cases, les agrégats, les services → rien. Pour un projet portfolio visé stage, Javadoc sur toutes les **classes publiques** et toutes les **méthodes publiques** des agrégats / use cases / ports donne un gros signal de sérieux.
+Seul `ReceiveStockUseCase` a une Javadoc de classe. Les autres use cases, les agrégats, les services → rien. Pour un
+projet portfolio visé stage, Javadoc sur toutes les **classes publiques** et toutes les **méthodes publiques** des
+agrégats / use cases / ports donne un gros signal de sérieux.
 
 Format minimal :
 
@@ -608,7 +681,9 @@ public List<SaleLineDto> getLines() {
 }
 ```
 
-Pour une Sale lue N fois (typique dans un endpoint REST qui boucle sur les ventes du jour), tu refais la projection à chaque appel. Sans impact à ta taille, mais en principe une projection devrait être cachée ou calculée par un read-model externe à l'agrégat.
+Pour une Sale lue N fois (typique dans un endpoint REST qui boucle sur les ventes du jour), tu refais la projection à
+chaque appel. Sans impact à ta taille, mais en principe une projection devrait être cachée ou calculée par un read-model
+externe à l'agrégat.
 
 **Reco :** laisse tel quel, mais note-le comme candidat à un projection/read-model CQRS si perf devient un souci.
 
@@ -616,7 +691,9 @@ Pour une Sale lue N fois (typique dans un endpoint REST qui boucle sur les vente
 
 ### N11. `DomainEvent` n'a pas d'`eventId`
 
-Pour du messaging asynchrone, un event doit pouvoir être dédupliqué, ré-rejoué, tracé. `eventId : UUID` + `eventVersion : int` sont attendus. Pas urgent pour ton scope (sync in-process), mais pour un vrai système prod, c'est incontournable.
+Pour du messaging asynchrone, un event doit pouvoir être dédupliqué, ré-rejoué, tracé. `eventId : UUID` +
+`eventVersion : int` sont attendus. Pas urgent pour ton scope (sync in-process), mais pour un vrai système prod, c'est
+incontournable.
 
 À mentionner dans la doc comme "évolution prévue" si question en soutenance.
 
@@ -624,7 +701,9 @@ Pour du messaging asynchrone, un event doit pouvoir être dédupliqué, ré-rejo
 
 ### N12. Tests use case minimaux
 
-Tu as 3 tests pour 3 use cases, mais la complexité réelle de `SellProductUseCase` (7 étapes, 3 events conditionnels) mérite ~10 tests. Idem `ReceiveStockUseCase` (branche "produit existant" vs "nouveau produit", événement `StockReplenished` conditionnel).
+Tu as 3 tests pour 3 use cases, mais la complexité réelle de `SellProductUseCase` (7 étapes, 3 events conditionnels)
+mérite ~10 tests. Idem `ReceiveStockUseCase` (branche "produit existant" vs "nouveau produit", événement
+`StockReplenished` conditionnel).
 
 **Reco :** pour chaque use case, couvre au minimum :
 
@@ -644,13 +723,16 @@ Tu as 3 tests pour 3 use cases, mais la complexité réelle de `SellProductUseCa
 Normal à ce stade, mais quand tu le rempliras :
 
 - **Un adapter par port domain/app** : `JpaProductRepository implements ProductRepository`, etc.
-- **Mapper domaine ↔ entité JPA séparé** (ne pollue pas les aggregates avec `@Entity` — c'est l'erreur classique qui casse la neutralité du domaine).
+- **Mapper domaine ↔ entité JPA séparé** (ne pollue pas les aggregates avec `@Entity` — c'est l'erreur classique qui
+  casse la neutralité du domaine).
 - **`SpringEventPublisher implements EventPublisher`** en premier rideau, remplaçable par Kafka/RabbitMQ plus tard.
-- **Controllers REST** qui ne font QUE : parser le DTO HTTP → construire le Command → appeler le use case → mapper la réponse.
+- **Controllers REST** qui ne font QUE : parser le DTO HTTP → construire le Command → appeler le use case → mapper la
+  réponse.
 
 ### A2. Pas d'abstraction `AggregateRoot`
 
-Option légère pour uniformiser `pullEvents()` entre `StorageLocation`, `Sale` (si un jour tu lui ajoutes des events), etc. :
+Option légère pour uniformiser `pullEvents()` entre `StorageLocation`, `Sale` (si un jour tu lui ajoutes des events),
+etc. :
 
 ```java
 public abstract class AggregateRoot {
@@ -670,7 +752,8 @@ Bonus pédagogique en soutenance : ça montre que tu connais les patterns DDD cl
 
 ### A3. `EventPublisher` publie une `List<DomainEvent>` d'un coup
 
-OK, mais quand tu brancheras un bus asynchrone, la publication atomique d'une liste de N events n'est pas toujours garantie. Regarde **transactional outbox pattern** si tu veux pousser la doc architecturale.
+OK, mais quand tu brancheras un bus asynchrone, la publication atomique d'une liste de N events n'est pas toujours
+garantie. Regarde **transactional outbox pattern** si tu veux pousser la doc architecturale.
 
 ---
 
@@ -693,7 +776,8 @@ Dans l'ordre de priorité :
 13. ✅ Ajouter equals/hashCode sur aggregate roots (N5) — **30 min**
 14. ✅ Étoffer tests use cases (N12) — **~2h**
 
-Ensuite seulement, attaque `stock-infrastructure/` : Spring Boot, controllers, JPA, et le câblage avec ta nouvelle OpenAPI spec.
+Ensuite seulement, attaque `stock-infrastructure/` : Spring Boot, controllers, JPA, et le câblage avec ta nouvelle
+OpenAPI spec.
 
 ---
 
@@ -701,13 +785,17 @@ Ensuite seulement, attaque `stock-infrastructure/` : Spring Boot, controllers, J
 
 Pour équilibrer, il faut aussi dire que :
 
-- La **séparation domain / application / infrastructure** est respectée à la lettre. Aucune annotation Spring ni JPA ne pollue le domaine.
+- La **séparation domain / application / infrastructure** est respectée à la lettre. Aucune annotation Spring ni JPA ne
+  pollue le domaine.
 - Les **factory methods** pour `StockMovement.createEntry/Exit/Transfer` sont un vrai pattern DDD, pas décoratif.
 - **`StockAllocationService`** avec le fail-fast sur le stock global avant l'allocation location-par-location : propre.
 - **`StorageLocation.pullEvents()`** : pattern event-from-aggregate exécuté correctement (rare à ce stade de formation).
 - **Guard clauses systématiques** dans tous les constructeurs.
-- **Exceptions métier riches en contexte** (`InsufficientStockException` porte `productId`, `available`, `requested`) : ça rend l'observabilité et le mapping REST triviaux.
-- **Tests domaine** (9 fichiers) : c'est déjà un bon socle, bien au-dessus de ce que j'ai vu dans beaucoup de projets de M2.
+- **Exceptions métier riches en contexte** (`InsufficientStockException` porte `productId`, `available`, `requested`) :
+  ça rend l'observabilité et le mapping REST triviaux.
+- **Tests domaine** (9 fichiers) : c'est déjà un bon socle, bien au-dessus de ce que j'ai vu dans beaucoup de projets de
+  M2.
 - **Doc Antora** : structure propre, PlantUML, langage ubiquitaire documenté. Très professionnel.
 
-Le code est sur la bonne voie. Les points critiques ci-dessus sont des bugs de surface (contrats Java) et de la dette d'API applicative (mono vs multi-ligne) — pas des erreurs de conception. L'architecture tient.
+Le code est sur la bonne voie. Les points critiques ci-dessus sont des bugs de surface (contrats Java) et de la dette
+d'API applicative (mono vs multi-ligne) — pas des erreurs de conception. L'architecture tient.

@@ -3,13 +3,11 @@ package com.aliCheikh.stock.domain.model.movement;
 import com.aliCheikh.stock.domain.exception.movement.InvalidMovementException;
 import com.aliCheikh.stock.domain.exception.movement.InvalidQuantityMovementException;
 import com.aliCheikh.stock.domain.exception.movement.MovementErrorReason;
-import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
 import org.junit.jupiter.api.Test;
-
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

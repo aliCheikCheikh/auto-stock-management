@@ -87,21 +87,21 @@ boutique est souvent bruyante, éclairée au néon : **les contrastes comptent**
 
 Ces mots viennent du domaine (Ubiquitous Language). Ne les reformule pas.
 
-| Terme UI (FR) | Concept backend | Notes |
-|---|---|---|
-| Produit | `Product` | Identifié par sa référence (ex. `BRK-PAD-2017-RENAULT`). |
-| Référence | `reference` | Code alphanumérique unique, toujours en mono. |
-| Emplacement | `StorageLocation` | Deux types : **Magasin** (SHOP_FLOOR) / **Réserve** (BACKSTOCK). |
-| Shop / Boutique | `Shop` | Un owner peut avoir plusieurs shops ; filtre global en haut. |
-| Stock global | somme des `StockLevel` d'un produit sur toutes les locations du shop | |
-| Seuil global | `minimumGlobalThreshold` | Déclenche `LowStockAlert`. |
-| Seuil magasin | `lowStockIndicator` sur SHOP_FLOOR | Déclenche `ShopFloorLow`. |
-| Vente | `Sale` | Multi-lignes possible, prix unitaire figé au moment de la vente. |
-| Réception | `ReceiveStock` (use case) | Entrée depuis fournisseur, peut créer un produit à la volée. |
-| Transfert | `TransferStock` (use case) | Backstock → Shop floor (ou inverse), même shop uniquement. |
-| Mouvement | `StockMovement` | Journal d'audit : `ENTRY`, `EXIT`, `TRANSFER`. |
-| Alerte stock bas | `LowStockAlert` | Stock global sous le seuil. |
-| Rayon vide | `ShopFloorLow` | Magasin sous le seuil, réserve peut-être OK. |
+| Terme UI (FR)    | Concept backend                                                      | Notes                                                            |
+|------------------|----------------------------------------------------------------------|------------------------------------------------------------------|
+| Produit          | `Product`                                                            | Identifié par sa référence (ex. `BRK-PAD-2017-RENAULT`).         |
+| Référence        | `reference`                                                          | Code alphanumérique unique, toujours en mono.                    |
+| Emplacement      | `StorageLocation`                                                    | Deux types : **Magasin** (SHOP_FLOOR) / **Réserve** (BACKSTOCK). |
+| Shop / Boutique  | `Shop`                                                               | Un owner peut avoir plusieurs shops ; filtre global en haut.     |
+| Stock global     | somme des `StockLevel` d'un produit sur toutes les locations du shop |                                                                  |
+| Seuil global     | `minimumGlobalThreshold`                                             | Déclenche `LowStockAlert`.                                       |
+| Seuil magasin    | `lowStockIndicator` sur SHOP_FLOOR                                   | Déclenche `ShopFloorLow`.                                        |
+| Vente            | `Sale`                                                               | Multi-lignes possible, prix unitaire figé au moment de la vente. |
+| Réception        | `ReceiveStock` (use case)                                            | Entrée depuis fournisseur, peut créer un produit à la volée.     |
+| Transfert        | `TransferStock` (use case)                                           | Backstock → Shop floor (ou inverse), même shop uniquement.       |
+| Mouvement        | `StockMovement`                                                      | Journal d'audit : `ENTRY`, `EXIT`, `TRANSFER`.                   |
+| Alerte stock bas | `LowStockAlert`                                                      | Stock global sous le seuil.                                      |
+| Rayon vide       | `ShopFloorLow`                                                       | Magasin sous le seuil, réserve peut-être OK.                     |
 
 Monnaie : format `{ amount: "45.90", currency: "EUR" }` — `amount` est une
 string (précision BigDecimal). Affiche toujours avec la devise (jamais juste
@@ -144,6 +144,7 @@ au scan rapide de référence, pas à la saisie).
 #### 7.3 — Dashboard (landing après login)
 
 Variante **OWNER** :
+
 - Bandeau d'alertes : `LowStockAlert` actifs (rouges), `ShopFloorLow`
   actifs (ambre), actionnables d'un clic.
 - Chiffres du jour : ventes réalisées (compte + total €), réceptions reçues,
@@ -154,6 +155,7 @@ Variante **OWNER** :
   12 widgets.
 
 Variante **SELLER** :
+
 - Gros bouton « Nouvelle vente » (raccourci `N`).
 - Mes 10 dernières ventes.
 - Alertes `ShopFloorLow` uniquement (ce que le vendeur peut agir).
@@ -197,12 +199,12 @@ Variante **SELLER** :
 #### 7.7 — Réception de stock (OWNER)
 
 - Formulaire en deux temps explicites :
-  1. **Référence** : saisie. Si produit connu → affiche nom/catégorie en
-     lecture seule. Si inconnu → bloc "Nouveau produit" apparaît
-     (nom, catégorie, prix unitaire, seuil global). La référence saisie
-     devient la référence du produit, non modifiable.
-  2. **Répartition** : liste des emplacements du shop sélectionné, avec
-     champ quantité. Total calculé en live en bas. Minimum 1 ligne > 0.
+    1. **Référence** : saisie. Si produit connu → affiche nom/catégorie en
+       lecture seule. Si inconnu → bloc "Nouveau produit" apparaît
+       (nom, catégorie, prix unitaire, seuil global). La référence saisie
+       devient la référence du produit, non modifiable.
+    2. **Répartition** : liste des emplacements du shop sélectionné, avec
+       champ quantité. Total calculé en live en bas. Minimum 1 ligne > 0.
 - Bouton **Enregistrer la réception** (`⌘+Enter`).
 - Feedback : badge "Produit créé" si création à la volée, toast discret
   "Réception enregistrée · 2 mouvements créés".

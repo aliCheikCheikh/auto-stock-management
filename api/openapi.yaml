@@ -51,7 +51,7 @@ tags:
     description: Liveness / readiness.
 
 security:
-  - bearerAuth: []
+  - bearerAuth: [ ]
 
 paths:
 
@@ -60,10 +60,10 @@ paths:
   # ───────────────────────────────────────────────────────────────
   /health:
     get:
-      tags: [Health]
+      tags: [ Health ]
       operationId: healthCheck
       summary: Liveness probe.
-      security: []
+      security: [ ]
       responses:
         '200':
           description: Service opérationnel.
@@ -77,7 +77,7 @@ paths:
   # ───────────────────────────────────────────────────────────────
   /stock-receipts:
     post:
-      tags: [Stock — Receiving]
+      tags: [ Stock — Receiving ]
       operationId: receiveStock
       summary: Enregistre une réception de marchandises.
       description: |
@@ -148,7 +148,7 @@ paths:
   # ───────────────────────────────────────────────────────────────
   /sales:
     post:
-      tags: [Stock — Sales]
+      tags: [ Stock — Sales ]
       operationId: sellProduct
       summary: Enregistre une vente et alloue automatiquement le stock.
       description: |
@@ -199,7 +199,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
     get:
-      tags: [Stock — Sales]
+      tags: [ Stock — Sales ]
       operationId: listSales
       summary: Liste paginée des ventes.
       parameters:
@@ -232,7 +232,7 @@ paths:
 
   /sales/{saleId}:
     get:
-      tags: [Stock — Sales]
+      tags: [ Stock — Sales ]
       operationId: getSale
       summary: Détail d'une vente.
       parameters:
@@ -251,7 +251,7 @@ paths:
   # ───────────────────────────────────────────────────────────────
   /stock-transfers:
     post:
-      tags: [Stock — Transfers]
+      tags: [ Stock — Transfers ]
       operationId: transferStock
       summary: Transfère du stock d'un emplacement vers un autre.
       description: |
@@ -294,7 +294,7 @@ paths:
   # ───────────────────────────────────────────────────────────────
   /products:
     get:
-      tags: [Products]
+      tags: [ Products ]
       operationId: listProducts
       summary: Liste paginée des produits.
       parameters:
@@ -318,7 +318,7 @@ paths:
 
   /products/{productId}:
     get:
-      tags: [Products]
+      tags: [ Products ]
       operationId: getProduct
       summary: Détail d'un produit.
       parameters:
@@ -337,7 +337,7 @@ paths:
   # ───────────────────────────────────────────────────────────────
   /stock-levels:
     get:
-      tags: [Stock — Read]
+      tags: [ Stock — Read ]
       operationId: listStockLevels
       summary: État du stock par produit / emplacement.
       parameters:
@@ -366,7 +366,7 @@ paths:
 
   /products/{productId}/stock-levels:
     get:
-      tags: [Stock — Read]
+      tags: [ Stock — Read ]
       operationId: getProductStockLevels
       summary: Stock d'un produit décliné par emplacement + total global.
       parameters:
@@ -385,7 +385,7 @@ paths:
 
   /stock-movements:
     get:
-      tags: [Stock — Read]
+      tags: [ Stock — Read ]
       operationId: listStockMovements
       summary: Historique paginé des mouvements de stock.
       parameters:
@@ -527,45 +527,45 @@ components:
     # ── Primitives ─────────────────────────────────────────────
     Money:
       type: object
-      required: [amount, currency]
+      required: [ amount, currency ]
       properties:
         amount:
           type: string
           pattern: '^-?\d+(\.\d{1,4})?$'
           description: Montant en décimal transporté comme string (BigDecimal).
-          examples: ["45.90", "1299.00"]
+          examples: [ "45.90", "1299.00" ]
         currency:
           type: string
           minLength: 3
           maxLength: 3
           description: Code ISO-4217.
-          examples: [EUR, USD]
+          examples: [ EUR, USD ]
 
     HealthStatus:
       type: object
-      required: [status]
+      required: [ status ]
       properties:
         status:
           type: string
-          enum: [UP, DOWN]
+          enum: [ UP, DOWN ]
         version: { type: string }
         timestamp: { type: string, format: date-time }
 
     # ── Enums domaine ─────────────────────────────────────────
     MovementType:
       type: string
-      enum: [ENTRY, EXIT, TRANSFER]
+      enum: [ ENTRY, EXIT, TRANSFER ]
     LocationType:
       type: string
-      enum: [SHOP_FLOOR, BACKSTOCK]
+      enum: [ SHOP_FLOOR, BACKSTOCK ]
     UserRole:
       type: string
-      enum: [OWNER, SELLER]
+      enum: [ OWNER, SELLER ]
 
     # ── Produit ───────────────────────────────────────────────
     Product:
       type: object
-      required: [productId, name, reference, categoryId, unitPrice, minimumGlobalThreshold]
+      required: [ productId, name, reference, categoryId, unitPrice, minimumGlobalThreshold ]
       properties:
         productId: { type: string, format: uuid }
         name: { type: string, minLength: 1, maxLength: 200 }
@@ -580,7 +580,7 @@ components:
     ProductInfo:
       description: Informations pour la création on-the-fly d'un produit lors d'une réception.
       type: object
-      required: [name, reference, categoryId, unitPrice, minimumGlobalThreshold]
+      required: [ name, reference, categoryId, unitPrice, minimumGlobalThreshold ]
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         reference: { type: string, minLength: 1, maxLength: 64 }
@@ -591,7 +591,7 @@ components:
     # ── Sale ──────────────────────────────────────────────────
     CreateSaleRequest:
       type: object
-      required: [sellerId, shopId, lines]
+      required: [ sellerId, shopId, lines ]
       properties:
         sellerId: { type: string, format: uuid }
         shopId: { type: string, format: uuid }
@@ -602,7 +602,7 @@ components:
 
     CreateSaleLine:
       type: object
-      required: [productId, quantity]
+      required: [ productId, quantity ]
       properties:
         productId: { type: string, format: uuid }
         quantity:
@@ -611,7 +611,7 @@ components:
 
     SaleResponse:
       type: object
-      required: [saleId, sellerId, lines, totalAmount, createdAt]
+      required: [ saleId, sellerId, lines, totalAmount, createdAt ]
       properties:
         saleId: { type: string, format: uuid }
         sellerId: { type: string, format: uuid }
@@ -624,7 +624,7 @@ components:
 
     SaleLineResponse:
       type: object
-      required: [productId, quantity, unitPrice, subtotal]
+      required: [ productId, quantity, unitPrice, subtotal ]
       properties:
         productId: { type: string, format: uuid }
         productName: { type: string }
@@ -635,7 +635,7 @@ components:
     # ── Receiving ─────────────────────────────────────────────
     ReceiveStockRequest:
       type: object
-      required: [productReference, userId, distributions]
+      required: [ productReference, userId, distributions ]
       properties:
         productReference:
           type: string
@@ -656,14 +656,14 @@ components:
 
     ReceivingDistribution:
       type: object
-      required: [locationId, quantity]
+      required: [ locationId, quantity ]
       properties:
         locationId: { type: string, format: uuid }
         quantity: { type: integer, minimum: 1 }
 
     StockReceiptAcknowledgement:
       type: object
-      required: [productId, totalReceived, acceptedAt]
+      required: [ productId, totalReceived, acceptedAt ]
       properties:
         productId: { type: string, format: uuid }
         totalReceived: { type: integer, minimum: 1 }
@@ -675,7 +675,7 @@ components:
     # ── Transfer ──────────────────────────────────────────────
     TransferStockRequest:
       type: object
-      required: [productId, sourceLocationId, destinationLocationId, quantity, userId]
+      required: [ productId, sourceLocationId, destinationLocationId, quantity, userId ]
       properties:
         productId: { type: string, format: uuid }
         sourceLocationId: { type: string, format: uuid }
@@ -685,7 +685,7 @@ components:
 
     StockTransferAcknowledgement:
       type: object
-      required: [movementId, acceptedAt]
+      required: [ movementId, acceptedAt ]
       properties:
         movementId: { type: string, format: uuid }
         acceptedAt: { type: string, format: date-time }
@@ -693,7 +693,7 @@ components:
     # ── Stock read models ─────────────────────────────────────
     StockLevel:
       type: object
-      required: [productId, locationId, quantity]
+      required: [ productId, locationId, quantity ]
       properties:
         productId: { type: string, format: uuid }
         productName: { type: string }
@@ -705,7 +705,7 @@ components:
 
     ProductStockSummary:
       type: object
-      required: [productId, globalQuantity, minimumGlobalThreshold, belowGlobalThreshold, byLocation]
+      required: [ productId, globalQuantity, minimumGlobalThreshold, belowGlobalThreshold, byLocation ]
       properties:
         productId: { type: string, format: uuid }
         productName: { type: string }
@@ -718,7 +718,7 @@ components:
 
     StockMovement:
       type: object
-      required: [movementId, productId, locationId, type, quantity, executedBy, executedAt]
+      required: [ movementId, productId, locationId, type, quantity, executedBy, executedAt ]
       properties:
         movementId: { type: string, format: uuid }
         productId: { type: string, format: uuid }
@@ -739,7 +739,7 @@ components:
     # ── Pagination générique ──────────────────────────────────
     PageMeta:
       type: object
-      required: [page, size, totalElements, totalPages]
+      required: [ page, size, totalElements, totalPages ]
       properties:
         page: { type: integer, minimum: 0 }
         size: { type: integer, minimum: 1 }
@@ -748,7 +748,7 @@ components:
 
     PageOfProduct:
       type: object
-      required: [content, page]
+      required: [ content, page ]
       properties:
         content:
           type: array
@@ -757,7 +757,7 @@ components:
 
     PageOfSale:
       type: object
-      required: [content, page]
+      required: [ content, page ]
       properties:
         content:
           type: array
@@ -766,7 +766,7 @@ components:
 
     PageOfStockLevel:
       type: object
-      required: [content, page]
+      required: [ content, page ]
       properties:
         content:
           type: array
@@ -775,7 +775,7 @@ components:
 
     PageOfStockMovement:
       type: object
-      required: [content, page]
+      required: [ content, page ]
       properties:
         content:
           type: array
@@ -789,17 +789,17 @@ components:
         Les champs `code`, `errors` et `traceId` sont des extensions
         spécifiques à cette API.
       type: object
-      required: [type, title, status]
+      required: [ type, title, status ]
       properties:
         type:
           type: string
           format: uri
           description: URI identifiant le type d'erreur (documentation).
-          examples: ["https://api.stock.example.com/errors/stock-insufficient"]
+          examples: [ "https://api.stock.example.com/errors/stock-insufficient" ]
         title:
           type: string
           description: Résumé court et humain.
-          examples: ["Stock insuffisant"]
+          examples: [ "Stock insuffisant" ]
         status:
           type: integer
           minimum: 400
@@ -826,11 +826,11 @@ components:
           description: Erreurs de validation champ par champ (si pertinent).
           items:
             type: object
-            required: [field, message]
+            required: [ field, message ]
             properties:
               field: { type: string }
               message: { type: string }
-              rejectedValue: {}
+              rejectedValue: { }
         traceId:
           type: string
           description: ID de corrélation pour retrouver les logs.

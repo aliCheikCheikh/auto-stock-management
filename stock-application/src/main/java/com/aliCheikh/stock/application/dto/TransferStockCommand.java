@@ -20,7 +20,7 @@ public record TransferStockCommand(
         Objects.requireNonNull(userId, "userId cannot be null");
 
         if (quantity <= 0) {
-            throw new IllegalArgumentException("La quantité à transférer doit être strictement positive");
+            throw new IllegalArgumentException("quantity must be strictly positive");
         }
     }
 }

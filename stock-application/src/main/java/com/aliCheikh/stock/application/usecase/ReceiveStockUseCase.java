@@ -1,6 +1,8 @@
 package com.aliCheikh.stock.application.usecase;
 
+import com.aliCheikh.stock.application.dto.ProductInfo;
 import com.aliCheikh.stock.application.dto.ReceiveStockCommand;
+import com.aliCheikh.stock.application.dto.TargetLocation;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
@@ -16,15 +18,9 @@ import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.service.ReceivingEntry;
 import com.aliCheikh.stock.domain.service.ReceivingService;
-import com.aliCheikh.stock.application.dto.ProductInfo;
-import com.aliCheikh.stock.application.dto.TargetLocation;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -123,7 +119,7 @@ public class ReceiveStockUseCase {
         ));
 
         // b) Conditional event: StockReplenished (Now fully compliant with spec 3.2)
-        int globalStock = calculateGlobalStock(product.getProductId(),command.shopId());
+        int globalStock = calculateGlobalStock(product.getProductId(), command.shopId());
 
         if (globalStock > product.getMinimumGlobalThreshold()) {
             eventsToPublish.add(new StockReplenished(

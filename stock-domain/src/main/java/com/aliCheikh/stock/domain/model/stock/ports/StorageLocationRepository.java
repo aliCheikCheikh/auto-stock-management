@@ -9,8 +9,12 @@ import java.util.Optional;
 
 public interface StorageLocationRepository {
     List<StorageLocation> findByShopId(ShopId shopId);
+
     Optional<StorageLocation> findById(LocationId locationId);
+
     void save(StorageLocation storageLocation);
+
     List<StorageLocation> findAll();
+
     void saveAll(List<StorageLocation> storageLocations);
 }

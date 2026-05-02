@@ -28,24 +28,24 @@ public class StockAllocationService {
             throw new IllegalArgumentException("requestedQuantity must be strictly positive");
         }
 
-        // 2. Récupérer les emplacements
+        // 2. Retrieve storage locations for the specified shop
         List<StorageLocation> locations = repository.findByShopId(shopId);
         if (locations == null || locations.isEmpty()) {
-            // S'il n'y a pas d'emplacements, le stock dispo est de 0
+            // If no locations exist, available stock is effectively 0
             throw new InsufficientStockException(productId, 0, requestedQuantity);
         }
 
-        // 3. Calcul du stock global pour le Fail Fast !
+        // 3. Calculate total available stock for Fail-Fast validation
         int totalAvailableStock = locations.stream()
                 .mapToInt(loc -> loc.getStockLevel(productId))
                 .sum();
 
         if (totalAvailableStock < requestedQuantity) {
-            // On lance l'exception riche !
+            // Throw a domain-specific exception with rich context
             throw new InsufficientStockException(productId, totalAvailableStock, requestedQuantity);
         }
 
-        // 4. On sait maintenant à 100% qu'on a assez de stock. On alloue.
+        // 4. Stock is guaranteed to be sufficient. Proceed with allocation by priority.
         List<StorageLocation> sortedLocations = new ArrayList<>(locations);
         sortedLocations.sort(Comparator.comparing(loc -> loc.getLocationType().getPriority()));
 
@@ -64,11 +64,11 @@ public class StockAllocationService {
             remaining -= allocated;
 
             if (remaining == 0) {
-                break; // Demande satisfaite
+                break; // Allocation fulfilled
             }
         }
 
-        // Plus besoin de la vérification finale (remaining > 0), le Fail Fast nous a garantis le succès.
+        // No final check for (remaining > 0) is needed because the Fail-Fast guarantees success
 
         return allocations;
     }

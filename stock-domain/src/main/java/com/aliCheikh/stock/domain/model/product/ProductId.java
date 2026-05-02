@@ -36,7 +36,6 @@ public final class ProductId {
     }
 
 
-
     @Override
     public String toString() {
         return value.toString();

@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.application.usecase;
 
+import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
@@ -7,7 +8,6 @@ import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
-import com.aliCheikh.stock.application.dto.TransferStockCommand;
 
 import java.util.Objects;
 
@@ -34,8 +34,8 @@ public class TransferStockUseCase {
     public void execute(TransferStockCommand command) {
 
         // 1. Récupération des agrégats
-        StorageLocation source = storageLocationRepository.findById(command.sourceLocationId()).orElseThrow(()-> new StorageNotFoundException(command.sourceLocationId()));
-        StorageLocation destination = storageLocationRepository.findById(command.destinationLocationId()).orElseThrow(()-> new StorageNotFoundException(command.destinationLocationId()));
+        StorageLocation source = storageLocationRepository.findById(command.sourceLocationId()).orElseThrow(() -> new StorageNotFoundException(command.sourceLocationId()));
+        StorageLocation destination = storageLocationRepository.findById(command.destinationLocationId()).orElseThrow(() -> new StorageNotFoundException(command.destinationLocationId()));
 
         // PHASE 1 : Validation (L'invariant est protégé )
         if (!source.hasEnoughStock(command.productId(), command.quantity())) {

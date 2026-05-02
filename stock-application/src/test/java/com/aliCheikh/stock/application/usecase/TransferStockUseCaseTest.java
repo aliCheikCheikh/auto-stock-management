@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.application.usecase;
 
+import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
@@ -8,7 +9,6 @@ import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.model.user.UserId;
-import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
