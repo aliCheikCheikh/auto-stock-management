@@ -11,6 +11,7 @@ import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
+import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.service.ReceivingEntry;
@@ -122,7 +123,7 @@ public class ReceiveStockUseCase {
         ));
 
         // b) Conditional event: StockReplenished (Now fully compliant with spec 3.2)
-        int globalStock = calculateGlobalStock(product.getProductId());
+        int globalStock = calculateGlobalStock(product.getProductId(),command.shopId());
 
         if (globalStock > product.getMinimumGlobalThreshold()) {
             eventsToPublish.add(new StockReplenished(
@@ -140,10 +141,10 @@ public class ReceiveStockUseCase {
     /**
      * Calculates the true global stock by summing up the stock across all locations.
      */
-    private int calculateGlobalStock(ProductId productId) {
+    private int calculateGlobalStock(ProductId productId, ShopId shopId) {
         // Depending on your repository port interface, you might use findAll()
         // or a specific method like findByProductId(productId).
-        return storageLocationRepository.findAll().stream()
+        return storageLocationRepository.findByShopId(shopId).stream()
                 .mapToInt(loc -> loc.getStockLevel(productId))
                 .sum();
     }

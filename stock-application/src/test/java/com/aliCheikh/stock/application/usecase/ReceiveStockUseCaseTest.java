@@ -13,6 +13,7 @@ import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.domain.model.shared.Money;
+import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
@@ -61,10 +62,12 @@ public class ReceiveStockUseCaseTest {
         LocationId shopFloorId = LocationId.generate();
         LocationId backStockId = LocationId.generate();
         String productReference = "REF-123";
+        ShopId shopId = ShopId.generate();
 
         ReceiveStockCommand command = new ReceiveStockCommand(
                 productReference,
                 null, // No product creation for this base test
+                shopId,
                 userId,
                 List.of(
                         new TargetLocation(shopFloorId, 15),
@@ -91,7 +94,7 @@ public class ReceiveStockUseCaseTest {
         StorageLocation mockedBackStock = mock(StorageLocation.class);
         when(mockedBackStock.getStockLevel(productId)).thenReturn(35);
 
-        when(storageLocationRepository.findAll()).thenReturn(List.of(mockedShopFloor, mockedBackStock));
+        when(storageLocationRepository.findByShopId(shopId)).thenReturn(List.of(mockedShopFloor, mockedBackStock));
 
         // WHEN
         receiveStockUseCase.execute(command);
