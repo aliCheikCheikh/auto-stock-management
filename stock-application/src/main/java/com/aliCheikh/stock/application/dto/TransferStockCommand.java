@@ -22,5 +22,9 @@ public record TransferStockCommand(
         if (quantity <= 0) {
             throw new IllegalArgumentException("quantity must be strictly positive");
         }
+
+        if(sourceLocationId.equals(destinationLocationId)) {
+            throw new IllegalArgumentException("sourceLocationId and destinationLocationId cannot be the same");
+        }
     }
 }

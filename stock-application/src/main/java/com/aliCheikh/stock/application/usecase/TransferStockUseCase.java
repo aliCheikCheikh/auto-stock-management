@@ -2,58 +2,62 @@ package com.aliCheikh.stock.application.usecase;
 
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
+import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
+import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferReason;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
+import com.aliCheikh.stock.domain.model.stock.LocationType;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
-/**
- * Use case: Transfer stock between two storage locations.
- *
- * <p>Decrements stock from the source location and increments it at the
- * destination location, recording a single TRANSFER movement.
- *
- * <p>MUST be invoked within a transactional boundary orchestrated by the infrastructure layer.
- */
 public class TransferStockUseCase {
 
     private final StorageLocationRepository storageLocationRepository;
     private final StockMovementRepository stockMovementRepository;
-    private final EventPublisher eventPublisher; // Injecté selon ta spec, même s'il n'émet rien pour le moment.
+    private final EventPublisher eventPublisher;
 
     public TransferStockUseCase(
             StorageLocationRepository storageLocationRepository,
             StockMovementRepository stockMovementRepository,
-            EventPublisher eventPublisher) {
+            EventPublisher eventPublisher
+    ) {
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository);
         this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository);
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
     }
 
     public void execute(TransferStockCommand command) {
+        Objects.requireNonNull(command, "command cannot be null");
 
-        // 1. Récupération des agrégats
-        StorageLocation source = storageLocationRepository.findById(command.sourceLocationId()).orElseThrow(() -> new StorageNotFoundException(command.sourceLocationId()));
-        StorageLocation destination = storageLocationRepository.findById(command.destinationLocationId()).orElseThrow(() -> new StorageNotFoundException(command.destinationLocationId()));
+        StorageLocation source = storageLocationRepository.findById(command.sourceLocationId())
+                .orElseThrow(() -> new StorageNotFoundException(command.sourceLocationId()));
 
-        // PHASE 1 : Validation (L'invariant est protégé )
+        StorageLocation destination = storageLocationRepository.findById(command.destinationLocationId())
+                .orElseThrow(() -> new StorageNotFoundException(command.destinationLocationId()));
+
+        validateTransfer(source, destination);
+
         if (!source.hasEnoughStock(command.productId(), command.quantity())) {
-            throw new InsufficientStockException(command.productId(), source.getStockLevel(command.productId()), command.quantity());
+            throw new InsufficientStockException(
+                    command.productId(),
+                    source.getStockLevel(command.productId()),
+                    command.quantity()
+            );
         }
 
-        // PHASE 2 : Exécution (Modification de l'état en mémoire)
         source.decreaseStock(command.productId(), command.quantity());
         destination.increaseStock(command.productId(), command.quantity());
 
-        // Sauvegarde explicite des modifications
         storageLocationRepository.save(source);
         storageLocationRepository.save(destination);
 
-        // PHASE 3 : Enregistrement (Génération de la trace)
         StockMovement transferMovement = StockMovement.createTransfer(
                 command.productId(),
                 command.sourceLocationId(),
@@ -63,5 +67,24 @@ public class TransferStockUseCase {
         );
 
         stockMovementRepository.save(transferMovement);
+    }
+
+    private void validateTransfer(StorageLocation source, StorageLocation destination) {
+        if (!source.getShopId().equals(destination.getShopId())) {
+            throw new InvalidStockTransferException(
+                    source.getLocationId(),
+                    destination.getLocationId(),
+                    InvalidStockTransferReason.CROSS_SHOP_TRANSFER
+            );
+        }
+
+        if (source.getLocationType() != LocationType.BACKSTOCK
+                || destination.getLocationType() != LocationType.SHOP_FLOOR) {
+            throw new InvalidStockTransferException(
+                    source.getLocationId(),
+                    destination.getLocationId(),
+                    InvalidStockTransferReason.INVALID_TRANSFER_DIRECTION
+            );
+        }
     }
 }
