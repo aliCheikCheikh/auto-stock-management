@@ -29,13 +29,29 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+
+
+
 /**
- * Use case: Sell products to a customer.
+ * Use case for selling one or more products to a customer.
  *
- * <p>Validates the command, allocates stock across shop locations, creates the Sale,
- * records EXIT movements, and emits relevant domain events (SaleCompleted, LowStockAlert, ShopFloorLow).
+ * <p>This use case orchestrates the complete sale workflow: it loads products,
+ * delegates stock allocation to the domain service, creates the sale aggregate,
+ * decreases stock from allocated locations, records EXIT movements, and publishes
+ * sale-related domain events.</p>
  *
- * <p>MUST be invoked within a transactional boundary (orchestrated by the infrastructure layer).
+ * <p>Business rules enforced or coordinated by this use case:</p>
+ * <ul>
+ *     <li>each sold product must exist;</li>
+ *     <li>stock allocation must provide enough stock for every requested line;</li>
+ *     <li>allocated storage locations must belong to the target shop lookup result;</li>
+ *     <li>one {@code EXIT} movement is recorded for each allocated location;</li>
+ *     <li>a {@code SaleCompleted} event is published after the sale is persisted;</li>
+ *     <li>{@code ShopFloorLow} events produced by storage locations are published;</li>
+ *     <li>{@code LowStockAlert} is published when global stock falls below the product threshold.</li>
+ * </ul>
+ *
+ * <p>Transaction management is owned by the infrastructure layer.</p>
  */
 public class SellProductUseCase {
 
@@ -61,6 +77,14 @@ public class SellProductUseCase {
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
+
+    /**
+     * Executes a multi-line sale.
+     *
+     * @param command validated sale request
+     * @throws ProductNotFoundException if one sold product does not exist
+     * @throws StorageNotFoundException if an allocation references a location not loaded for the shop
+     */
     public void sell(SellProductCommand command) {
         List<DomainEvent> eventsToPublish = new ArrayList<>();
         List<SaleLineInput> lineInputs = new ArrayList<>();

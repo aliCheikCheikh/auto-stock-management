@@ -23,14 +23,25 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+
 /**
- * Use case: Receive new stock into the system.
+ * Use case for receiving supplier stock into shop storage locations.
  *
- * <p>Handles both existing products and new product catalog entries.
- * Distributes the received quantities across specified target locations
- * and records ENTRY movements.
+ * <p>This use case supports two receiving flows: receiving stock for an existing
+ * product found by reference, or creating a new catalog product before receiving
+ * its first stock quantities.</p>
  *
- * <p>MUST be invoked within a transactional boundary orchestrated by the infrastructure layer.
+ * <p>Business rules enforced or coordinated by this use case:</p>
+ * <ul>
+ *     <li>an existing product is resolved by business reference;</li>
+ *     <li>a new product is created only when product information is provided;</li>
+ *     <li>received quantities are distributed across requested target locations;</li>
+ *     <li>one {@code ENTRY} movement is recorded for each target location;</li>
+ *     <li>{@code StockReceived} is always published after a successful reception;</li>
+ *     <li>{@code StockReplenished} is published when global stock rises above the product threshold.</li>
+ * </ul>
+ *
+ * <p>Transaction management is owned by the infrastructure layer.</p>
  */
 public class ReceiveStockUseCase {
 
@@ -53,6 +64,13 @@ public class ReceiveStockUseCase {
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
+
+    /**
+     * Executes a stock reception for an existing or newly created product.
+     *
+     * @param command validated stock reception request
+     * @throws ProductNotFoundException if the product reference is unknown and no new product information is provided
+     */
     public void execute(ReceiveStockCommand command) {
         // 1. Resolve or Create the Product
         Product product = resolveProduct(command);
