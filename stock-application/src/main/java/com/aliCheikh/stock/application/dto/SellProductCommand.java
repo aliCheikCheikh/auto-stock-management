@@ -12,7 +12,7 @@ public record SellProductCommand(UserId sellerId, ShopId shopId, List<SellLineCo
         Objects.requireNonNull(shopId, "shopId cannot be null");
         Objects.requireNonNull(lines, "lines cannot be null");
         if (lines.isEmpty()) {
-            throw new IllegalArgumentException("at  least one line is required");
+            throw new IllegalArgumentException("at least one line is required");
         }
     }
 }

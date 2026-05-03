@@ -23,14 +23,8 @@ import com.aliCheikh.stock.domain.service.AllocationResult;
 import com.aliCheikh.stock.domain.service.StockAllocationService;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
-
-
-
 
 /**
  * Use case for selling one or more products to a customer.
@@ -68,7 +62,8 @@ public class SellProductUseCase {
             SaleRepository saleRepository,
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
-            EventPublisher eventPublisher) {
+            EventPublisher eventPublisher
+    ) {
         this.stockAllocationService = Objects.requireNonNull(stockAllocationService, "stockAllocationService cannot be null");
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
         this.saleRepository = Objects.requireNonNull(saleRepository, "saleRepository cannot be null");
@@ -76,7 +71,6 @@ public class SellProductUseCase {
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
-
 
     /**
      * Executes a multi-line sale.
@@ -86,84 +80,59 @@ public class SellProductUseCase {
      * @throws StorageNotFoundException if an allocation references a location not loaded for the shop
      */
     public void sell(SellProductCommand command) {
-        List<DomainEvent> eventsToPublish = new ArrayList<>();
-        List<SaleLineInput> lineInputs = new ArrayList<>();
-        List<PreparedLine> preparedLines = new ArrayList<>();
+        Objects.requireNonNull(command, "command cannot be null");
 
-        // 1. Load all shop locations into memory to avoid N+1 queries during allocation
         List<StorageLocation> shopLocations = storageLocationRepository.findByShopId(command.shopId());
-        Map<LocationId, StorageLocation> locationsCache = shopLocations.stream()
-                .collect(Collectors.toMap(StorageLocation::getLocationId, loc -> loc));
+        Map<LocationId, StorageLocation> locationsById = shopLocations.stream()
+                .collect(Collectors.toMap(StorageLocation::getLocationId, location -> location));
 
-        // 2. PHASE 1: Preparation & Allocation (Fail-fast before any persistence)
-        for (SellLineCommand line : command.lines()) {
-            Product product = productRepository.findById(line.productId())
-                    .orElseThrow(() -> new ProductNotFoundException(line.productId()));
+        List<SaleLineInput> saleLineInputs = new ArrayList<>();
+        List<PreparedLine> preparedLines = prepareLines(command, locationsById, saleLineInputs);
 
-            List<AllocationResult> allocations = stockAllocationService.allocate(
-                    line.productId(), line.quantity(), command.shopId()
-            );
-
-            preparedLines.add(new PreparedLine(product, allocations));
-
-            lineInputs.add(new SaleLineInput(
-                    product.getProductId(),
-                    line.quantity(),
-                    product.getUnitPrice()
-            ));
-        }
-
-        // 3. Create and persist the Sale aggregate FIRST to obtain a valid SaleId
-        Sale sale = Sale.create(command.sellerId(), lineInputs);
-        saleRepository.save(sale);
+        Sale sale = Sale.create(command.sellerId(), saleLineInputs);
 
         List<StockMovement> generatedMovements = new ArrayList<>();
+        Set<StorageLocation> changedLocations = new LinkedHashSet<>();
+        List<DomainEvent> eventsToPublish = new ArrayList<>();
+        Set<ProductId> alertedProducts = new LinkedHashSet<>();
 
-        // 4. PHASE 2: Execution (Mutate state and generate traces)
         for (PreparedLine preparedLine : preparedLines) {
+            Product product = preparedLine.product();
 
-            // a. Apply state changes to locations in memory
             for (AllocationResult allocation : preparedLine.allocations()) {
-                StorageLocation location = locationsCache.get(allocation.getLocationId());
-                if (location == null) {
-                    throw new StorageNotFoundException(allocation.getLocationId());
-                }
+                StorageLocation location = locationsById.get(allocation.getLocationId());
 
-                // Delegate state mutation to the Aggregate
-                location.decreaseStock(preparedLine.product().getProductId(), allocation.getQuantity());
+                location.decreaseStock(product.getProductId(), allocation.getQuantity());
+                changedLocations.add(location);
 
-                // Pull operational events (e.g., ShopFloorLow)
-                eventsToPublish.addAll(location.pullEvents());
-
-                // Generate traceability movement linking to the created Sale
-                StockMovement movement = StockMovement.createExit(
-                        preparedLine.product().getProductId(),
+                generatedMovements.add(StockMovement.createExit(
+                        product.getProductId(),
                         location.getLocationId(),
                         allocation.getQuantity(),
                         command.sellerId(),
                         sale.getSaleId()
-                );
-                generatedMovements.add(movement);
+                ));
             }
 
-            // b. Evaluate Global Stock Strategy for alerts
-            int globalStock = calculateGlobalStock(shopLocations, preparedLine.product().getProductId());
-            if (globalStock < preparedLine.product().getMinimumGlobalThreshold()) {
+            int globalStock = calculateGlobalStock(shopLocations, product.getProductId());
+            if (globalStock < product.getMinimumGlobalThreshold()
+                    && alertedProducts.add(product.getProductId())) {
                 eventsToPublish.add(new LowStockAlert(
-                        preparedLine.product().getProductId(),
-                        preparedLine.product().getName(),
+                        product.getProductId(),
+                        product.getName(),
                         globalStock,
-                        preparedLine.product().getMinimumGlobalThreshold(),
+                        product.getMinimumGlobalThreshold(),
                         LocalDateTime.now()
                 ));
             }
         }
 
-        // 5. Batch persistence for high performance
-        storageLocationRepository.saveAll(shopLocations);
+        saleRepository.save(sale);
+        storageLocationRepository.saveAll(new ArrayList<>(changedLocations));
         stockMovementRepository.saveAll(generatedMovements);
 
-        // 6. Generate final workflow event
+        changedLocations.forEach(location -> eventsToPublish.addAll(location.pullEvents()));
+
         eventsToPublish.add(new SaleCompleted(
                 sale.getSaleId(),
                 sale.getTotalAmount(),
@@ -172,23 +141,57 @@ public class SellProductUseCase {
                 LocalDateTime.now()
         ));
 
-        // 7. Publish all accumulated domain events
         eventPublisher.publish(eventsToPublish);
     }
 
-    /**
-     * Calculates the true global stock for a product across the entire shop.
-     * Uses the full list of shop locations to ensure accuracy, regardless of which locations were allocated.
-     */
+    private List<PreparedLine> prepareLines(
+            SellProductCommand command,
+            Map<LocationId, StorageLocation> locationsById,
+            List<SaleLineInput> saleLineInputs
+    ) {
+        List<PreparedLine> preparedLines = new ArrayList<>();
+
+        for (SellLineCommand line : command.lines()) {
+            Product product = productRepository.findById(line.productId())
+                    .orElseThrow(() -> new ProductNotFoundException(line.productId()));
+
+            List<AllocationResult> allocations = stockAllocationService.allocate(
+                    line.productId(),
+                    line.quantity(),
+                    command.shopId()
+            );
+
+            validateAllocatedLocationsExist(allocations, locationsById);
+
+            saleLineInputs.add(new SaleLineInput(
+                    product.getProductId(),
+                    line.quantity(),
+                    product.getUnitPrice()
+            ));
+
+            preparedLines.add(new PreparedLine(product, allocations));
+        }
+
+        return preparedLines;
+    }
+
+    private void validateAllocatedLocationsExist(
+            List<AllocationResult> allocations,
+            Map<LocationId, StorageLocation> locationsById
+    ) {
+        for (AllocationResult allocation : allocations) {
+            if (!locationsById.containsKey(allocation.getLocationId())) {
+                throw new StorageNotFoundException(allocation.getLocationId());
+            }
+        }
+    }
+
     private int calculateGlobalStock(List<StorageLocation> shopLocations, ProductId productId) {
         return shopLocations.stream()
-                .mapToInt(loc -> loc.getStockLevel(productId))
+                .mapToInt(location -> location.getStockLevel(productId))
                 .sum();
     }
 
-    /**
-     * Internal structure to safely carry prepared data between Phase 1 (Validation) and Phase 2 (Execution).
-     */
     private record PreparedLine(Product product, List<AllocationResult> allocations) {
     }
 }
