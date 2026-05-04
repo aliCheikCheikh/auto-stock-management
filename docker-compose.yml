@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: auto-stock-postgres
+    environment:
+      POSTGRES_DB: auto_stock_management
+      POSTGRES_USER: auto_stock_user
+      POSTGRES_PASSWORD: auto_stock_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - auto_stock_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auto_stock_user -d auto_stock_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  auto_stock_postgres_data:
