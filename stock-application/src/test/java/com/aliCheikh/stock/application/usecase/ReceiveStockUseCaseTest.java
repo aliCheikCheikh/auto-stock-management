@@ -1,11 +1,13 @@
 package com.aliCheikh.stock.application.usecase;
 
+import com.aliCheikh.stock.application.dto.ProductInfo;
 import com.aliCheikh.stock.application.dto.ReceiveStockCommand;
 import com.aliCheikh.stock.application.dto.TargetLocation;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
+import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
@@ -18,10 +20,12 @@ import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.model.user.UserId;
+import com.aliCheikh.stock.domain.service.ReceivingEntry;
 import com.aliCheikh.stock.domain.service.ReceivingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 import java.math.BigDecimal;
 import java.util.Currency;
@@ -29,44 +33,111 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-public class ReceiveStockUseCaseTest {
+class ReceiveStockUseCaseTest {
 
     private ProductRepository productRepository;
     private ReceivingService receivingService;
     private StockMovementRepository stockMovementRepository;
-    private StorageLocationRepository storageLocationRepository; // NEW
+    private StorageLocationRepository storageLocationRepository;
     private EventPublisher eventPublisher;
 
     private ReceiveStockUseCase receiveStockUseCase;
 
+    private ProductId productId;
+    private ShopId shopId;
+    private UserId userId;
+    private LocationId shopFloorId;
+    private LocationId backStockId;
+    private String productReference;
+    private Product product;
+    private ReceiveStockCommand command;
+
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         productRepository = mock(ProductRepository.class);
         receivingService = mock(ReceivingService.class);
         stockMovementRepository = mock(StockMovementRepository.class);
-        storageLocationRepository = mock(StorageLocationRepository.class); // NEW
+        storageLocationRepository = mock(StorageLocationRepository.class);
         eventPublisher = mock(EventPublisher.class);
 
         receiveStockUseCase = new ReceiveStockUseCase(
-                productRepository, receivingService, stockMovementRepository, storageLocationRepository, eventPublisher
+                productRepository,
+                receivingService,
+                stockMovementRepository,
+                storageLocationRepository,
+                eventPublisher
+        );
+
+        productId = ProductId.generate();
+        shopId = ShopId.generate();
+        userId = UserId.generate();
+        shopFloorId = LocationId.generate();
+        backStockId = LocationId.generate();
+        productReference = "REF-123";
+
+        product = product(productId, "Oil Filter", productReference, 40, "10.00");
+
+        command = new ReceiveStockCommand(
+                productReference,
+                null,
+                shopId,
+                userId,
+                List.of(
+                        new TargetLocation(shopFloorId, 15),
+                        new TargetLocation(backStockId, 35)
+                )
         );
     }
 
     @Test
-    public void should_orchestrate_stock_reception_and_publish_events() {
-        // GIVEN
-        ProductId productId = ProductId.generate();
-        UserId userId = UserId.generate();
-        LocationId shopFloorId = LocationId.generate();
-        LocationId backStockId = LocationId.generate();
-        String productReference = "REF-123";
-        ShopId shopId = ShopId.generate();
+    void should_receive_stock_for_existing_product_and_publish_stock_received() {
+        List<StockMovement> generatedMovements = generatedMovements();
 
-        ReceiveStockCommand command = new ReceiveStockCommand(
+        when(productRepository.findByReference(productReference)).thenReturn(Optional.of(product));
+        when(receivingService.receive(anyList(), eq(userId))).thenReturn(generatedMovements);
+        givenGlobalStock(productId, 15, 35);
+
+        receiveStockUseCase.execute(command);
+
+        verify(productRepository, never()).save(any(Product.class));
+        verify(stockMovementRepository).saveAll(generatedMovements);
+
+        List<ReceivingEntry> receivingEntries = captureReceivingEntries();
+        assertThat(receivingEntries).hasSize(2);
+        assertThat(receivingEntries).containsExactly(
+                ReceivingEntry.of(productId, shopFloorId, 15),
+                ReceivingEntry.of(productId, backStockId, 35)
+        );
+
+        List<DomainEvent> events = capturePublishedEvents();
+        StockReceived stockReceived = findEvent(events, StockReceived.class);
+
+        assertThat(stockReceived.productId()).isEqualTo(productId);
+        assertThat(stockReceived.totalQuantityReceived()).isEqualTo(50);
+        assertThat(stockReceived.receivedBy()).isEqualTo(userId);
+        assertThat(stockReceived.locationBreakdown())
+                .containsEntry(shopFloorId, 15)
+                .containsEntry(backStockId, 35);
+    }
+
+    @Test
+    void should_create_product_when_reference_is_unknown_and_product_info_is_provided() {
+        ProductInfo newProductInfo = new ProductInfo(
+                "Oil Filter",
                 productReference,
-                null, // No product creation for this base test
+                CategoryId.generate(),
+                Money.create(new BigDecimal("10.00"), Currency.getInstance("EUR")),
+                40
+        );
+
+        ReceiveStockCommand newProductCommand = new ReceiveStockCommand(
+                productReference,
+                newProductInfo,
                 shopId,
                 userId,
                 List.of(
@@ -75,63 +146,154 @@ public class ReceiveStockUseCaseTest {
                 )
         );
 
-        // A product with a global alert threshold of 40
-        Product product = new Product(productId, "Oil Filter", productReference, CategoryId.generate(), 40, Money.create(BigDecimal.TEN, Currency.getInstance("EUR")));
+        List<StockMovement> generatedMovements = generatedMovements();
 
-        // Movements generated by ReceivingService
-        List<StockMovement> expectedMovements = List.of(
-                mock(StockMovement.class), mock(StockMovement.class)
+        when(productRepository.findByReference(productReference)).thenReturn(Optional.empty());
+        when(receivingService.receive(anyList(), eq(userId))).thenReturn(generatedMovements);
+
+        receiveStockUseCase.execute(newProductCommand);
+
+        Product savedProduct = captureSavedProduct();
+        assertThat(savedProduct.getName()).isEqualTo("Oil Filter");
+        assertThat(savedProduct.getReference()).isEqualTo(productReference);
+        assertThat(savedProduct.getMinimumGlobalThreshold()).isEqualTo(40);
+
+        verify(stockMovementRepository).saveAll(generatedMovements);
+
+        List<ReceivingEntry> receivingEntries = captureReceivingEntries();
+        assertThat(receivingEntries).containsExactly(
+                ReceivingEntry.of(savedProduct.getProductId(), shopFloorId, 15),
+                ReceivingEntry.of(savedProduct.getProductId(), backStockId, 35)
         );
 
-        // Mock Product lookup
-        when(productRepository.findByReference(productReference)).thenReturn(Optional.of(product));
-        when(receivingService.receive(anyList(), eq(userId))).thenReturn(expectedMovements);
-
-        // Mock StorageLocations to simulate actual global stock calculation (15 + 35 = 50 > 40 threshold)
-        StorageLocation mockedShopFloor = mock(StorageLocation.class);
-        when(mockedShopFloor.getStockLevel(productId)).thenReturn(15);
-
-        StorageLocation mockedBackStock = mock(StorageLocation.class);
-        when(mockedBackStock.getStockLevel(productId)).thenReturn(35);
-
-        when(storageLocationRepository.findByShopId(shopId)).thenReturn(List.of(mockedShopFloor, mockedBackStock));
-
-        // WHEN
-        receiveStockUseCase.execute(command);
-
-        // THEN
-        // 1. Verify movements were saved
-        verify(stockMovementRepository, times(1)).saveAll(expectedMovements);
-
-        // 2. Capture and verify published events
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<DomainEvent>> eventCaptor = ArgumentCaptor.forClass(List.class);
-        verify(eventPublisher, times(1)).publish(eventCaptor.capture());
-
-        List<DomainEvent> publishedEvents = eventCaptor.getValue();
-        assertThat(publishedEvents).hasSize(2);
-
-        // --- Verify First Event (StockReceived) ---
-        DomainEvent firstEvent = publishedEvents.get(0);
-        assertThat(firstEvent).isInstanceOf(StockReceived.class);
-        StockReceived receivedEvent = (StockReceived) firstEvent;
-
-        assertThat(receivedEvent.productId()).isEqualTo(productId);
-        assertThat(receivedEvent.totalQuantityReceived()).isEqualTo(50); // 15 + 35
-        assertThat(receivedEvent.receivedBy()).isEqualTo(userId);
-        assertThat(receivedEvent.locationBreakdown())
-                .containsEntry(shopFloorId, 15)
-                .containsEntry(backStockId, 35);
-
-        // --- Verify Second Event (StockReplenished) ---
-        DomainEvent secondEvent = publishedEvents.get(1);
-        assertThat(secondEvent).isInstanceOf(StockReplenished.class);
-        StockReplenished replenishedEvent = (StockReplenished) secondEvent;
-
-        assertThat(replenishedEvent.productId()).isEqualTo(productId);
-        assertThat(replenishedEvent.productName()).isEqualTo("Oil Filter");
-        assertThat(replenishedEvent.globalQuantity()).isEqualTo(50); // Actual stock from mocked repositories
-        assertThat(replenishedEvent.threshold()).isEqualTo(40);
+        List<DomainEvent> events = capturePublishedEvents();
+        StockReceived stockReceived = findEvent(events, StockReceived.class);
+        assertThat(stockReceived.productId()).isEqualTo(savedProduct.getProductId());
     }
 
+    @Test
+    void should_reject_reception_when_product_is_unknown_and_no_product_info_is_provided() {
+        when(productRepository.findByReference(productReference)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> receiveStockUseCase.execute(command))
+                .isInstanceOf(ProductNotFoundException.class);
+
+        verifyNoInteractions(receivingService);
+        verify(stockMovementRepository, never()).saveAll(anyList());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void should_publish_stock_replenished_when_global_stock_is_above_threshold() {
+        List<StockMovement> generatedMovements = generatedMovements();
+
+        when(productRepository.findByReference(productReference)).thenReturn(Optional.of(product));
+        when(receivingService.receive(anyList(), eq(userId))).thenReturn(generatedMovements);
+        givenGlobalStock(productId, 15, 35);
+
+        receiveStockUseCase.execute(command);
+
+        List<DomainEvent> events = capturePublishedEvents();
+
+        StockReplenished replenished = findEvent(events, StockReplenished.class);
+        assertThat(replenished.productId()).isEqualTo(productId);
+        assertThat(replenished.productName()).isEqualTo("Oil Filter");
+        assertThat(replenished.globalQuantity()).isEqualTo(50);
+        assertThat(replenished.threshold()).isEqualTo(40);
+    }
+
+    @Test
+    void should_not_publish_stock_replenished_when_global_stock_is_at_threshold() {
+        Product thresholdProduct = product(productId, "Oil Filter", productReference, 50, "10.00");
+        List<StockMovement> generatedMovements = generatedMovements();
+
+        when(productRepository.findByReference(productReference)).thenReturn(Optional.of(thresholdProduct));
+        when(receivingService.receive(anyList(), eq(userId))).thenReturn(generatedMovements);
+        givenGlobalStock(productId, 15, 35);
+
+        receiveStockUseCase.execute(command);
+
+        List<DomainEvent> events = capturePublishedEvents();
+
+        assertThat(events).anyMatch(StockReceived.class::isInstance);
+        assertThat(events).noneMatch(StockReplenished.class::isInstance);
+    }
+
+    @Test
+    void should_save_generated_movements_before_publishing_events() {
+        List<StockMovement> generatedMovements = generatedMovements();
+
+        when(productRepository.findByReference(productReference)).thenReturn(Optional.of(product));
+        when(receivingService.receive(anyList(), eq(userId))).thenReturn(generatedMovements);
+        givenGlobalStock(productId, 15, 35);
+
+        receiveStockUseCase.execute(command);
+
+        InOrder inOrder = inOrder(stockMovementRepository, eventPublisher);
+        inOrder.verify(stockMovementRepository).saveAll(generatedMovements);
+        inOrder.verify(eventPublisher).publish(anyList());
+    }
+
+    private Product product(
+            ProductId productId,
+            String name,
+            String reference,
+            int minimumGlobalThreshold,
+            String price
+    ) {
+        return new Product(
+                productId,
+                name,
+                reference,
+                CategoryId.generate(),
+                minimumGlobalThreshold,
+                Money.create(new BigDecimal(price), Currency.getInstance("EUR"))
+        );
+    }
+
+    private List<StockMovement> generatedMovements() {
+        return List.of(mock(StockMovement.class), mock(StockMovement.class));
+    }
+
+    private void givenGlobalStock(ProductId productId, int firstLocationQuantity, int secondLocationQuantity) {
+        StorageLocation firstLocation = mock(StorageLocation.class);
+        when(firstLocation.getStockLevel(productId)).thenReturn(firstLocationQuantity);
+
+        StorageLocation secondLocation = mock(StorageLocation.class);
+        when(secondLocation.getStockLevel(productId)).thenReturn(secondLocationQuantity);
+
+        when(storageLocationRepository.findByShopId(shopId))
+                .thenReturn(List.of(firstLocation, secondLocation));
+    }
+
+    private List<ReceivingEntry> captureReceivingEntries() {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ReceivingEntry>> entriesCaptor = ArgumentCaptor.forClass(List.class);
+
+        verify(receivingService).receive(entriesCaptor.capture(), eq(userId));
+        return entriesCaptor.getValue();
+    }
+
+    private Product captureSavedProduct() {
+        ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
+
+        verify(productRepository).save(productCaptor.capture());
+        return productCaptor.getValue();
+    }
+
+    private List<DomainEvent> capturePublishedEvents() {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<DomainEvent>> eventCaptor = ArgumentCaptor.forClass(List.class);
+
+        verify(eventPublisher).publish(eventCaptor.capture());
+        return eventCaptor.getValue();
+    }
+
+    private <T extends DomainEvent> T findEvent(List<DomainEvent> events, Class<T> eventType) {
+        return events.stream()
+                .filter(eventType::isInstance)
+                .map(eventType::cast)
+                .findFirst()
+                .orElseThrow();
+    }
 }
