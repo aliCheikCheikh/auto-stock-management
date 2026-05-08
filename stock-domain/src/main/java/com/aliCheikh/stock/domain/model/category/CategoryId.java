@@ -18,6 +18,10 @@ public final class CategoryId {
         return new CategoryId(value);
     }
 
+    public UUID getValue() {
+        return value;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

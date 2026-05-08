@@ -21,6 +21,10 @@ public final class ProductId {
         return new ProductId(value);
     }
 
+    public UUID getValue() {
+        return value;
+    }
+
 
     @Override
     public boolean equals(Object o) {
