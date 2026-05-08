@@ -134,6 +134,35 @@ public class StorageLocation {
         return lowStockIndicator;
     }
 
+    public String getLabel() {
+        return label;
+    }
+
+    public Map<ProductId, StockLevel> getStockLevels() {
+        return Map.copyOf(stockLevels);
+    }
+
+    public static StorageLocation rehydrate(
+            LocationId locationId,
+            ShopId shopId,
+            LocationType locationType,
+            String label,
+            int lowStockIndicator,
+            Map<ProductId, StockLevel> stockLevels
+    ) {
+        StorageLocation location = new StorageLocation(
+                locationId,
+                shopId,
+                locationType,
+                label,
+                lowStockIndicator
+        );
+
+        location.stockLevels.putAll(Objects.requireNonNull(stockLevels, "stockLevels cannot be null"));
+        return location;
+    }
+
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

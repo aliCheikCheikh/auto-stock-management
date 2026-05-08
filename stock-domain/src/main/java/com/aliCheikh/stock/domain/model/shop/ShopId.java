@@ -19,6 +19,10 @@ public final class ShopId {
         return new ShopId(value);
     }
 
+    public UUID getValue() {
+        return value;
+    }
+
     @Override
     public String toString() {
         return value.toString();
