@@ -1,0 +1,2 @@
+ALTER TABLE storage_location
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

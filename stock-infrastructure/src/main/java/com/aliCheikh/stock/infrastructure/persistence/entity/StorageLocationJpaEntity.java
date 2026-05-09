@@ -1,7 +1,17 @@
 package com.aliCheikh.stock.infrastructure.persistence.entity;
 
 import com.aliCheikh.stock.domain.model.stock.LocationType;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -36,6 +46,10 @@ public class StorageLocationJpaEntity {
             fetch = FetchType.LAZY
     )
     private Set<StockLevelJpaEntity> stockLevels = new HashSet<>();
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     protected StorageLocationJpaEntity() {
     }
@@ -92,4 +106,9 @@ public class StorageLocationJpaEntity {
     public Set<StockLevelJpaEntity> getStockLevels() {
         return stockLevels;
     }
+
+    public Long getVersion() {
+        return version;
+    }
+
 }
