@@ -116,6 +116,53 @@ public class Sale {
                 .toList();
     }
 
+    public static Sale rehydrate(
+            SaleId saleId,
+            UserId soldBy,
+            LocalDateTime occurredAt,
+            Money totalAmount,
+            List<SaleLineDto> lines
+    ) {
+        Objects.requireNonNull(saleId, "saleId cannot be null");
+        Objects.requireNonNull(soldBy, "soldBy cannot be null");
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
+        Objects.requireNonNull(totalAmount, "totalAmount cannot be null");
+        Objects.requireNonNull(lines, "lines cannot be null");
+
+        if (lines.isEmpty()) {
+            throw new InvalidSaleException(soldBy, "A sale must contain at least one line item");
+        }
+
+        List<SaleLineItem> internalLines = lines.stream()
+                .map(line -> new SaleLineItem(
+                        line.productId(),
+                        line.quantity(),
+                        line.unitPrice()
+                ))
+                .toList();
+
+        Money recalculatedTotal = internalLines.stream()
+                .map(SaleLineItem::getLineTotal)
+                .reduce(Money::add)
+                .orElseThrow(() -> new IllegalStateException("Sale.rehydrate invariant violated: lines cannot be empty"));
+
+        if (!recalculatedTotal.equals(totalAmount)) {
+            throw new InvalidSaleException(
+                    soldBy,
+                    "Persisted sale total does not match sale lines total"
+            );
+        }
+
+        return new Sale(
+                saleId,
+                soldBy,
+                occurredAt,
+                totalAmount,
+                internalLines
+        );
+    }
+
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

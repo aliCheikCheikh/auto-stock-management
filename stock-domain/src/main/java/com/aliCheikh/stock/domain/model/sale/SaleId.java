@@ -20,6 +20,10 @@ public final class SaleId {
         return new SaleId(value);
     }
 
+    public UUID getValue() {
+        return value;
+    }
+
     @Override
     public int hashCode() {
         return value.hashCode();

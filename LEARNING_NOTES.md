@@ -368,6 +368,129 @@ _(à remplir)_
 
 ---
 
+## Compétences à acquérir / consolider — calendrier d'application
+
+Liste des compétences à intégrer au projet, classées par urgence et accrochées explicitement à un chantier ou une phase.
+
+**Règle d'or : chaque compétence doit être exercée en contexte, jamais étudiée à part.** Lire un bouquin Spring Security
+dans le métro sans avoir de code à protéger, c'est du temps perdu. Câbler `JwtAuthenticationFilter` au chantier 6 sur le
+vrai backend, c'est un apprentissage qui reste. Ce calendrier n'est pas un programme de cours, c'est une feuille de route
+pour brancher chaque compétence à un moment où elle sert pour de vrai.
+
+### 🔴 Urgentes — sur le projet stock
+
+**1. Jira + Agile/Scrum**
+À mettre en place **dès maintenant (chantier 0)** et à utiliser pour TOUS les chantiers. Découper chaque chantier en
+sprints d'une à deux semaines, chaque tâche du `BACKEND_REVIEW.md` et de la roadmap devient un ticket Jira avec critères
+d'acceptation. C'est ce qui permet de répondre en entretien : "j'ai mené ce projet en sprints de deux semaines, voici mon
+board avec les épics par chantier." Sans Jira, la même réalité passe pour de l'amateurisme. Coût de mise en place
+(gratuit, 30 minutes) dérisoire face au bénéfice CV.
+
+**2. Spring Security + JWT**
+À appliquer pleinement au **chantier 6**. Mais commencer à lire la doc Spring Security dès le **chantier 4** (controllers
+REST), parce que la filter chain et le mécanisme d'authentification doivent être compris *avant* d'avoir des endpoints à
+protéger.
+
+**3. Tests d'intégration**
+Le **chantier 10** y est dédié, mais ne pas attendre. Dès le **chantier 3 (JPA)**, écrire un premier test d'intégration
+avec Testcontainers sur un repository — c'est le moment où le code touche pour la première fois à une vraie DB, c'est le
+moment de tester pour de vrai.
+
+**4. Git avancé**
+Cross-cutting, **dès maintenant**. Utiliser systématiquement : branches feature par chantier, commits atomiques avec
+messages conformes (Conventional Commits), rebase interactif pour nettoyer avant merge, tags annotés pour les fins de
+chantier. Apprendre `git bisect` la première fois qu'on chasse un bug introduit dans la semaine — c'est le bon moment.
+
+### 🟠 Importantes — fil rouge des chantiers backend
+
+**5. Docker**
+Premier contact au **chantier 1** (Postgres en Docker Compose pour le dev). Maîtrise approfondie au **chantier 11**
+(multi-stage Dockerfile pour l'app, compose prod, healthchecks, volumes). Ne pas attendre le 11 pour comprendre les
+concepts — il faut être à l'aise avec image vs container, layer caching, ports, volumes, dès le 1.
+
+**6. GitHub Actions + SonarQube**
+À installer **dès le chantier 1** sur une CI minimale (build + tests Maven). Étendre progressivement : ajouter SonarCloud
+(gratuit) au **chantier 3** quand le code commence à croître, ajouter un job Docker au **chantier 11**. Pas un chantier
+dédié — un fil rouge qui s'étoffe au fil des chantiers.
+
+**7. SQL avancé**
+Exercé dès le **chantier 2** (modélisation, contraintes, index) et surtout au **chantier 3** (analyse des requêtes
+générées par Hibernate, `EXPLAIN ANALYZE` pour traquer les N+1, index sur les colonnes filtrées). C'est l'occasion idéale
+parce que JPA cache le SQL — mais il faut le voir, le lire, le comprendre.
+
+**8. API Monitoring (Spring Actuator)**
+Chantier dédié : **chantier 9**. Mais brancher `/actuator/health` *minimalement* dès le **chantier 1** : c'est trivial à
+activer et ça donne tout de suite un endpoint pour vérifier que l'app tourne en local sans appeler les vrais endpoints.
+
+### 🟡 Utiles — fin de projet et préparation entretiens
+
+**9. Architecture défendable à l'oral**
+À exercer en continu, mais à *travailler explicitement* à partir du **chantier 5-6**, quand il y aura assez de matière à
+présenter. Concrètement : à la fin de chaque chantier, écrire un paragraphe qui répond à "qu'est-ce que j'ai construit,
+pourquoi ces choix, quel autre choix aurais-je pu faire ?". C'est la préparation aux entretiens et soutenances, déposée
+semaine après semaine plutôt qu'écrite en panique la veille.
+
+**10. Notions cloud**
+Quand le **chantier 11** sera fini (app conteneurisée, déployable), envisager un déploiement test sur AWS ou GCP — pas
+pour le faire tourner réellement chez le client, mais pour comprendre les concepts (instance, security group, RDS,
+secrets manager). Ça transforme "j'ai dockerisé" en "je comprends comment on déploie pour de vrai".
+
+**11. Microservices — comprendre le concept et quand l'appliquer**
+Étude *concept et trade-offs*, pas pratique sur ce projet (le projet est volontairement monolithique modulaire, c'est le
+bon choix pour son scope). Lire Sam Newman, comprendre les patterns (saga, event sourcing, service mesh), et savoir
+répondre en entretien à "pourquoi vous n'avez pas fait du microservice ?" — la bonne réponse n'est jamais "parce que je
+savais pas faire", c'est toujours "parce que pour un magasin, le coût opérationnel d'un déploiement microservices ne se
+justifie pas, et qu'avec mon archi hexagonale je peux extraire un service plus tard si le besoin se présente."
+
+### 🟢 Différenciantes — après la livraison V1 et projets parallèles
+
+**12. NoSQL / MongoDB**
+Hors projet stock. Soit comme exercice indépendant, soit — **bien plus parlant en entretien** — comme deuxième
+implémentation du port `ProductRepository` pour démontrer concrètement l'intérêt de l'archi hexagonale : un seul port,
+deux adaptateurs (`JpaProductRepository` et `MongoProductRepository`), zéro changement dans le métier. Cette démo seule
+peut faire la différence sur un poste senior.
+
+**13. React.js**
+Hors projet (le front est en Angular). Soit comme deuxième front sur un endpoint isolé du back stock (dashboard de
+stats), soit projet séparé. Utile pour les offres qui exigent React.
+
+**14. Communication technique**
+Pas de chantier dédié, mais à exercer chaque fois qu'on écrit un README, un commentaire de PR, une explication dans
+`LEARNING_NOTES.md`. Travailler la concision : une page lue par un dev senior en 90 secondes vaut mieux qu'un essai de
+cinq pages que personne ne lira.
+
+**15. Lecture de code legacy**
+Hors projet stock (le nôtre est neuf). Exercice à faire en parallèle : lire le code source d'un projet open-source connu
+(Spring Boot lui-même est un excellent terrain : choisir un module, comprendre la filter chain, retracer un bean). Cette
+compétence est la plus sous-estimée et la plus demandée en CDI.
+
+**16. .NET / C# (pour Eurofins IT)**
+Hors projet, ciblé entreprise. À démarrer si on vise spécifiquement Eurofins (ou autre boîte .NET). Apprendre les
+fondamentaux (LINQ, async/await, ASP.NET Core) suffit pour la plupart des entretiens — pas besoin de redéployer un projet
+complet en C#. Faire le mapping mental : la quasi-totalité de ce qu'on apprend en Spring se transpose en ASP.NET Core
+(DI, MVC, Entity Framework ≈ JPA).
+
+### Synthèse — à quel chantier ouvrir quoi
+
+| Chantier              | Compétences à activer / consolider                                                  |
+|-----------------------|-------------------------------------------------------------------------------------|
+| 0 (en cours)          | 1. Jira · 4. Git avancé                                                             |
+| 1 (bootstrap Spring)  | 5. Docker · 6. GitHub Actions · 8. Actuator (minimal)                               |
+| 2 (DB + Flyway)       | 7. SQL avancé (modélisation)                                                        |
+| 3 (JPA)               | 3. Tests d'intégration (Testcontainers) · 7. SQL avancé (perf) · 6. SonarCloud      |
+| 4 (controllers REST)  | 2. Spring Security (lecture doc)                                                    |
+| 5–6 (erreurs + sécu)  | 2. Spring Security + JWT (plein) · 9. Archi défendable (début)                      |
+| 9 (observabilité)     | 8. Actuator (plein)                                                                 |
+| 10 (tests intégration)| 3. Tests d'intégration (plein)                                                      |
+| 11 (Docker prod)      | 5. Docker (plein) · 10. Cloud · 6. CI Docker                                        |
+| après projet          | 11. Microservices · 12. NoSQL · 13. React · 15. Legacy · 16. .NET                   |
+| en continu            | 4. Git · 14. Communication technique · 9. Archi défendable                          |
+
+**Notes au fil de l'eau :**
+_(à remplir au fil de l'acquisition)_
+
+---
+
 ## Concepts maîtrisés (à compléter au fil du projet)
 
 _Liste qu'on remplit ensemble à chaque concept réellement compris (pas juste lu). Sert de matériel pour les entretiens :
