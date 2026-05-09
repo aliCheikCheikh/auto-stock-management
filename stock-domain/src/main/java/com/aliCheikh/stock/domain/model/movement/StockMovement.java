@@ -127,6 +127,116 @@ public class StockMovement {
         }
     }
 
+    public static StockMovement rehydrate(
+            MovementId movementId,
+            ProductId productId,
+            LocationId sourceLocationId,
+            LocationId destinationLocationId,
+            MovementType movementType,
+            int quantity,
+            UserId performedBy,
+            LocalDateTime occurredAt,
+            SaleId saleId
+    ) {
+        Objects.requireNonNull(movementId, "movementId cannot be null");
+        Objects.requireNonNull(productId, "productId cannot be null");
+        Objects.requireNonNull(movementType, "movementType cannot be null");
+        Objects.requireNonNull(performedBy, "performedBy cannot be null");
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
+        requiredPositiveQuantity(quantity);
+
+        validateMovementShape(movementType, sourceLocationId, destinationLocationId, saleId);
+
+        return new StockMovement(
+                movementId,
+                productId,
+                sourceLocationId,
+                destinationLocationId,
+                movementType,
+                quantity,
+                performedBy,
+                occurredAt,
+                saleId
+        );
+    }
+
+    private static void validateMovementShape(
+            MovementType movementType,
+            LocationId sourceLocationId,
+            LocationId destinationLocationId,
+            SaleId saleId
+    ) {
+        switch (movementType) {
+            case ENTRY -> {
+                if (sourceLocationId != null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.ENTRY_MISSING_DESTINATION,
+                            "entry movement cannot have a sourceLocationId"
+                    );
+                }
+                if (destinationLocationId == null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.ENTRY_MISSING_DESTINATION,
+                            "entry movement must have a destinationLocationId"
+                    );
+                }
+                if (saleId != null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.ENTRY_MISSING_DESTINATION,
+                            "entry movement cannot be linked to a sale"
+                    );
+                }
+            }
+            case EXIT -> {
+                if (sourceLocationId == null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.EXIT_MISSING_SOURCE,
+                            "exit movement must have a sourceLocationId"
+                    );
+                }
+                if (destinationLocationId != null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.EXIT_MISSING_SOURCE,
+                            "exit movement cannot have a destinationLocationId"
+                    );
+                }
+                if (saleId == null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.EXIT_MISSING_SOURCE,
+                            "exit movement must be linked to a sale"
+                    );
+                }
+            }
+            case TRANSFER -> {
+                if (sourceLocationId == null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.EXIT_MISSING_SOURCE,
+                            "transfer movement must have a sourceLocationId"
+                    );
+                }
+                if (destinationLocationId == null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.ENTRY_MISSING_DESTINATION,
+                            "transfer movement must have a destinationLocationId"
+                    );
+                }
+                if (sourceLocationId.equals(destinationLocationId)) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.TRANSFER_SAME_SOURCE_DESTINATION,
+                            "sourceLocationId and destinationLocationId cannot be the same"
+                    );
+                }
+                if (saleId != null) {
+                    throw new InvalidMovementException(
+                            MovementErrorReason.TRANSFER_SAME_SOURCE_DESTINATION,
+                            "transfer movement cannot be linked to a sale"
+                    );
+                }
+            }
+        }
+    }
+
+
     public MovementId getMovementId() {
         return movementId;
     }

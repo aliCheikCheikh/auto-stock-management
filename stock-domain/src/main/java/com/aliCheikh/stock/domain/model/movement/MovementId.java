@@ -19,6 +19,10 @@ public final class MovementId {
         return new MovementId(UUID.randomUUID());
     }
 
+    public UUID getValue() {
+        return value;
+    }
+
     @Override
     public String toString() {
         return value.toString();
