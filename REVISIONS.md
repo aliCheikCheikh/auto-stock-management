@@ -716,4 +716,311 @@ curl -i http://localhost:8080/api/v1/products/<uuid>
 
 ---
 
+## Glossaire des termes techniques
+
+Définitions courtes pour fixer le vocabulaire. Consultable rapidement le matin.
+
+**Adapter** — implémentation concrète d'un port. Dans `infrastructure/`,
+`ProductJpaRepositoryAdapter` implémente `ProductRepository` (port du domaine).
+L'adapter "adapte" une technologie externe (JPA) à l'interface attendue par le domaine.
+
+**Agrégat** — cluster d'objets domaine traité comme une unité de cohérence
+transactionnelle. Exemple : `Sale` contient ses `SaleLineItem`. Modifications passent
+par la racine (`Sale`), jamais directement sur les enfants. Concept DDD central.
+
+**Annotation** — étiquette Java lisible à l'exécution. Spring scanne les annotations
+pour décider quoi faire des classes (créer un bean, mapper une route, etc.). Voir
+distinction stéréotype vs configuration.
+
+**ApplicationContext** — registre interne de Spring où sont stockés tous les beans
+créés au démarrage. Le "conteneur IoC". On peut le voir comme une grosse Map dont
+les clés sont les types (et noms) des beans.
+
+**Bean** — instance de classe gérée par Spring (créée, stockée dans
+l'ApplicationContext, injectable). Différent d'une annotation.
+
+**BOM (Bill of Materials)** — POM Maven spécial qui ne contient que des
+`<dependencyManagement>`. Importé pour centraliser les versions cohérentes d'un
+écosystème (ex. `spring-boot-dependencies`).
+
+**Bytecode** — code compilé Java (fichiers `.class`) exécuté par la JVM. Pas du code
+machine, c'est intermédiaire.
+
+**CQRS (Command Query Responsibility Segregation)** — pattern qui sépare les
+écritures (Command) des lectures (Query). Pragmatique chez nous : commandes via use
+cases, lectures simples directement au repository.
+
+**DDL / DML** — DDL (Data Definition Language) = SQL qui modifie le schéma : CREATE,
+ALTER, DROP. DML (Data Manipulation Language) = SQL qui modifie les données : INSERT,
+UPDATE, DELETE. Flyway gère le DDL, pas le DML.
+
+**DispatcherServlet** — servlet central de Spring MVC qui reçoit toutes les requêtes
+HTTP et les route vers le bon controller. Le "chef d'orchestre".
+
+**DTO (Data Transfer Object)** — objet plat sans logique, utilisé pour transporter
+des données entre couches. Chez nous : DTOs Request / Response côté HTTP. Pas à
+confondre avec les Command applicatifs ou les agrégats domaine.
+
+**Embedded server** — serveur web (Tomcat, Jetty, Undertow) inclus dans le jar
+applicatif. Spring Boot embarque Tomcat par défaut. Plus besoin de déployer dans un
+serveur externe.
+
+**Factory method** — méthode statique qui crée et retourne une instance d'une classe,
+souvent en remplaçant le constructeur public. Permet de nommer le mode de
+construction (`Money.of(...)`, `ProductId.of(...)`).
+
+**Flyway** — outil de migration de base de données. Versionne le schéma SQL via des
+fichiers `V<n>__description.sql` exécutés dans l'ordre. Une migration appliquée n'est
+plus jamais modifiée.
+
+**Hexagonale (architecture)** — architecture où le domaine est au centre, les
+adapters (web, persistance, etc.) sont en périphérie, et les dépendances vont
+toujours **vers** le domaine. Aussi appelée "ports and adapters".
+
+**Idempotency** — propriété d'une opération qui produit le même résultat si elle est
+exécutée plusieurs fois. Critique pour les retries HTTP (pattern Idempotency-Key).
+
+**Inversion de dépendance (DIP)** — principe SOLID. Une classe haute (controller) ne
+dépend pas d'une classe basse (adapter JPA), mais d'une abstraction (port). Permet de
+remplacer l'implémentation sans toucher au consommateur.
+
+**JPA (Jakarta Persistence API)** — spécification Java pour le mapping objet-relationnel.
+Hibernate est l'implémentation la plus utilisée. Annotations principales : `@Entity`,
+`@Id`, `@Column`, `@OneToMany`, `@ManyToOne`, `@Version`.
+
+**JSONPath** — mini-langage de requête sur du JSON. Syntaxe `$.field.subfield[0]`.
+Utilisé dans MockMvc avec `jsonPath("$.status").value("UP")`.
+
+**MockBean** — annotation Spring Test qui remplace un bean du contexte par un mock
+Mockito. Essentiel dans les `@WebMvcTest` pour mocker les dépendances absentes du
+slice.
+
+**MockMvc** — outil Spring Test qui simule des requêtes HTTP en mémoire, sans ouvrir
+de port. Fluent API : `mockMvc.perform(get(...)).andExpect(status().isOk())`.
+
+**N+1 (problème)** — anti-pattern JPA : on charge une liste de N entités, puis pour
+chaque entité on fait une requête supplémentaire (total N+1 requêtes). Symptôme :
+lenteur soudaine en prod. Solution : `@EntityGraph`, `JOIN FETCH`.
+
+**Optional** — type Java qui enveloppe une valeur potentiellement absente.
+Préférable au retour `null` quand l'absence est attendue. API riche : `map`, `filter`,
+`orElseThrow`.
+
+**POJO (Plain Old Java Object)** — objet Java sans dépendance à un framework. Pas
+d'annotations Spring/JPA/Jackson. Le domaine doit être 100 % POJO.
+
+**Port / adapter** — port = interface définie dans le domaine (ex.
+`ProductRepository`). Adapter = implémentation dans l'infrastructure
+(ex. `ProductJpaRepositoryAdapter`).
+
+**Pull Request (PR)** — proposition de merger une branche dans une autre, ouverte
+sur GitHub/GitLab. Permet la revue de code avant intégration. Standard entreprise.
+
+**Réflexion (Java Reflection API)** — capacité d'un programme Java à inspecter ses
+propres classes à l'exécution : lister les méthodes, lire les champs, invoquer
+dynamiquement. Utilisée par Jackson, Spring, JPA.
+
+**Record** — type Java introduit en Java 14, déclaré en une ligne. Immutable, le
+compilateur génère constructeur, accesseurs, `equals`, `hashCode`, `toString`. Idéal
+pour les DTOs.
+
+**REST (Representational State Transfer)** — style d'architecture pour les API web.
+Principes : ressources identifiées par URL, verbes HTTP standards (GET, POST, PUT,
+DELETE), sans état côté serveur, format de représentation négocié (JSON).
+
+**Slice test** — test qui ne charge qu'une tranche fine du contexte Spring (ex.
+`@WebMvcTest` pour la couche web, `@DataJpaTest` pour JPA). Rapide et isolé.
+
+**Starter** — dépendance Maven agrégée fournie par Spring Boot qui tire un ensemble
+cohérent de bibliothèques. Ex. `spring-boot-starter-web` = web + Jackson + Tomcat.
+
+**Stéréotype (annotation)** — annotation qui crée un bean Spring : `@Component`,
+`@Service`, `@Repository`, `@RestController`, `@Configuration`. Toutes héritent de
+`@Component`.
+
+**Testcontainers** — bibliothèque Java qui lance des containers Docker éphémères
+(Postgres, Redis, Kafka, etc.) pour les tests d'intégration. Plus fidèle qu'un H2
+en mémoire.
+
+**Tomcat** — serveur web Java open source. Embarqué par défaut dans Spring Boot
+(starter-tomcat). Écoute sur le port 8080 en dev.
+
+**Use case / Command** — use case = service applicatif qui orchestre une opération
+métier (`SellProductUseCase`). Command = objet d'entrée d'un use case
+(`SellProductCommand`), contient les paramètres d'invocation.
+
+---
+
+## Patterns Java idiomatiques rencontrés
+
+**Record** — déclaration concise d'un type immutable. Une ligne au lieu de 30. Le
+compilateur génère tout. À utiliser pour les DTOs, value objects, Commands.
+
+**Compact constructor** — bloc d'init qui s'exécute à chaque construction d'un record.
+Permet d'ajouter des guards (`Objects.requireNonNull`, `if/throw`). À utiliser sur les
+Commands et value objects, pas sur les DTOs Response.
+
+**Optional** — retour qui exprime l'absence possible. À utiliser en retour, jamais
+comme paramètre ni comme champ (recommandation Effective Java item 55).
+
+**Stream / map / filter** — transformation fonctionnelle de collections. Préférer aux
+boucles `for` quand on transforme ou filtre. Exemple :
+
+```java
+List<ProductResponse> responses = products.stream()
+        .map(ProductWebMapper::toResponse)
+        .toList();
+```
+
+**Utility class** — classe qui n'expose que des méthodes statiques. Pattern :
+- classe `final` (interdit l'extension)
+- constructeur `private` (interdit l'instanciation)
+- toutes les méthodes `public static`
+
+**Static import** — importer une méthode statique pour l'utiliser sans préfixer le
+nom de classe. Utile pour les DSL fluent (`get(...)`, `status()`, `assertThat(...)`).
+
+**Method reference** — raccourci pour les lambdas. `ProductWebMapper::toResponse` est
+équivalent à `product -> ProductWebMapper.toResponse(product)`. Plus lisible.
+
+---
+
+## Self-quiz quotidien
+
+Questions à se poser sans regarder les réponses. Si on bute, on relit la section
+correspondante. Objectif : réussir à toutes répondre en moins de 10 minutes.
+
+1. Quelles sont les étapes du cycle d'une requête HTTP dans Spring (de Tomcat au JSON
+   de réponse) ?
+2. Quelle est la différence entre `@Component` et `@RequestMapping` en termes de
+   création de bean ?
+3. Pourquoi un `@RestController` oublié donne-t-il un 404 silencieux plutôt qu'une
+   erreur au démarrage ?
+4. Donner les 3 raisons de préférer `Optional<T>` à un retour `T` ou `null`.
+5. Donner les 3 raisons d'utiliser un DTO HTTP plutôt que de retourner l'objet métier.
+6. Pourquoi un montant monétaire doit-il être transporté en string et pas en number
+   dans un JSON ?
+7. Différence concrète entre `@WebMvcTest` et `@SpringBootTest` : ce qui est chargé,
+   la vitesse, l'usage.
+8. Donner les 3 raisons d'utiliser l'injection par constructeur plutôt que par champ.
+9. Pourquoi le flag `-parameters` du compilateur Maven est-il nécessaire avec Spring,
+   et comment se passe le binding sans lui ?
+10. Pourquoi, dans l'archi hexagonale, le sens des dépendances est-il toujours
+    `infrastructure → domaine` ?
+11. Quand utilise-t-on `ResponseEntity<T>` plutôt qu'un retour direct depuis un
+    controller ?
+12. Différence entre `git commit --amend` et `git rebase -i HEAD~N`.
+13. Pourquoi `mvn spring-boot:run` à la racine du projet échoue-t-il sur un projet
+    multi-module ?
+14. Pourquoi ne jamais rebase un commit déjà pushé sur une branche partagée ?
+15. Donner 3 exemples de Conventional Commit conformes (type + scope + description).
+16. Comment Jackson sérialise-t-il un record sans aucune annotation ? Quelle
+    mécanique Java permet cela ?
+17. Quelle annotation pose-t-on sur le repository pour qu'il soit mocké automatiquement
+    dans un `@WebMvcTest`, et pourquoi est-elle nécessaire ?
+18. Pourquoi ne met-on pas de données de seed dans Flyway ?
+19. Que fait `mvn -pl stock-infrastructure -am spring-boot:run` (décompose `-pl` et
+    `-am`) ?
+20. Pourquoi utilise-t-on `BigDecimal.toPlainString()` et pas `BigDecimal.toString()`
+    pour sérialiser un montant ?
+
+---
+
+## Ressources externes recommandées
+
+À explorer progressivement, pas à dévorer d'un coup.
+
+**Documentation officielle (référence)**
+
+- *Spring Boot Reference* — `docs.spring.io/spring-boot/docs/current/reference/html/`
+  Section "Web" pour les controllers, "Data" pour JPA, "Testing" pour les slice tests.
+- *PostgreSQL Documentation* — `postgresql.org/docs/current/` — la plus complète au
+  monde sur un SGBD, parfaite pour creuser les types, contraintes, EXPLAIN.
+- *Docker Documentation* — `docs.docker.com/` — pour Compose, multi-stage,
+  health checks.
+
+**Livres (à lire dans l'ordre, pas tous d'un coup)**
+
+- *Effective Java* (Joshua Bloch) — la bible Java moderne. Items 55 (Optional), 17
+  (immutabilité), 50 (defensive copies) sont à connaître par cœur.
+- *Refactoring* (Martin Fowler) — pour développer le sens du code review et de
+  l'amélioration continue.
+- *Implementing Domain-Driven Design* (Vaughn Vernon) — pour creuser DDD. Long, dense,
+  à lire après stabilisation du projet.
+- *The Pragmatic Programmer* (Hunt & Thomas) — pour le mindset général de dev senior.
+
+**Sites / référentiels**
+
+- *Conventional Commits* — `conventionalcommits.org` — spec courte, à lire 1 fois.
+- *Keep a Changelog* — `keepachangelog.com` — format de CHANGELOG, complément naturel
+  de Conventional Commits.
+- *Twelve-Factor App* — `12factor.net` — bonnes pratiques de config et déploiement.
+
+**Chaînes YouTube de qualité (en anglais)**
+
+- *Java Brains* (Koushik Kothagal) — Spring Boot pédagogique.
+- *Marco Codes* — astuces Java/Spring courtes et claires.
+- *Hussein Nasser* — bases de données, perf, architecture serveur.
+
+---
+
+## À anticiper pour les prochains tickets
+
+Concepts qu'on va rencontrer bientôt — survol rapide pour ne pas être surpris.
+
+**Ticket 4.3 et au-delà — Bean Validation**
+
+Annotations `@Valid`, `@NotNull`, `@NotBlank`, `@Positive`, `@Size`, `@Min`, `@Max`
+posées sur les champs d'un DTO Request. Spring les vérifie automatiquement à la
+désérialisation. Violation → 400 Bad Request avec détail des champs en erreur.
+
+**Chantier 5 — ProblemDetail RFC 7807**
+
+Standard pour le format des erreurs HTTP. Spring Boot 3 a une classe `ProblemDetail`
+qui matche le RFC. On la retournera depuis un `@RestControllerAdvice` global qui
+attrape les exceptions domaine et les transforme en réponses HTTP propres.
+
+**Chantier 5 — `@RestControllerAdvice` + `@ExceptionHandler`**
+
+Mécanisme Spring pour centraliser la gestion des exceptions. Une seule classe
+annotée `@RestControllerAdvice` peut intercepter toutes les exceptions levées par les
+controllers et les mapper en réponses HTTP standardisées.
+
+**Pagination Spring**
+
+Pour les endpoints de liste (`GET /products`, `GET /stock-movements`), Spring fournit
+`Pageable` et `Page<T>`. Paramètres URL `?page=0&size=20&sort=createdAt,desc`. On
+créera un wrapper `PageOfProduct` pour ne pas exposer la structure `Page<T>` de Spring
+directement (qui n'est pas idéale en JSON public).
+
+**Chantier 6 — Spring Security + JWT**
+
+Filter chain Spring Security, génération/validation de JWT, endpoints `/auth/login`,
+`/auth/refresh`, `/auth/logout`. Token stockage côté front en cookie httpOnly (jamais
+localStorage à cause du XSS).
+
+**Chantier 7 — Idempotency-Key**
+
+Filter qui intercepte les POST de mutation. Table `idempotency_key` avec TTL 24h.
+Permet aux clients de retry sans risquer de doubler une vente.
+
+**Chantier 8 — Domain events**
+
+`ApplicationEventPublisher` Spring (synchrone, in-process, transactionnel). Annotation
+`@TransactionalEventListener(phase = AFTER_COMMIT)` pour ne publier qu'après commit.
+
+**Chantier 9 — Spring Actuator**
+
+Endpoints `/actuator/health`, `/actuator/info`, `/actuator/metrics`. Distinct de
+notre `/api/v1/health` applicatif : Actuator est pour l'ops (Kubernetes, Docker,
+Prometheus).
+
+**Chantier 10 — Testcontainers**
+
+Lance une vraie Postgres jetable en Docker pendant les tests d'intégration. Plus
+fidèle qu'un H2 in-memory. Annotation `@Testcontainers` + `@DynamicPropertySource`
+pour brancher Spring sur le container.
+
+---
+
 _Fichier à enrichir à chaque ticket terminé. Relire chaque matin 10 minutes, reformuler à voix haute._

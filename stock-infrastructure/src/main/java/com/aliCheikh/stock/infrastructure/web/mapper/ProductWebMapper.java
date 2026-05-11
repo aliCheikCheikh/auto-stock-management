@@ -15,12 +15,12 @@ public final class ProductWebMapper {
         return new ProductResponse(product.getProductId().getValue(),
                 product.getName(),
                 product.getReference(),
-                product.getCategoryId().getValue(), MoneyToResponse(product.getUnitPrice()), product.getMinimumGlobalThreshold());
+                product.getCategoryId().getValue(), moneyToResponse(product.getUnitPrice()), product.getMinimumGlobalThreshold());
 
     }
 
 
-    private static MoneyResponse MoneyToResponse(Money money) {
+    private static MoneyResponse moneyToResponse(Money money) {
         return new MoneyResponse(money.getAmount().toPlainString()
                 , money.getCurrency().getCurrencyCode());
     }
