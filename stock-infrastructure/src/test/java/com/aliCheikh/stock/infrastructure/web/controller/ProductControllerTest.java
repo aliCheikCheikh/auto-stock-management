@@ -141,6 +141,14 @@ public class ProductControllerTest {
                 .andExpect(jsonPath("$.page.totalPages").value(2));
     }
 
+    @Test
+    void should_return_400_when_page_is_negative() throws Exception {
+        mockMvc.perform(get("/api/v1/products")
+                .param("page", "-1").param("size", "20"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(productRepository);
+    }
+
     private Product sampleProduct(int index) {
         UUID productId = UUID.fromString(String.format("00000000-0000-0000-0000-%012d", index));
         UUID categoryId = UUID.fromString("22222222-2222-2222-2222-222222222222");
