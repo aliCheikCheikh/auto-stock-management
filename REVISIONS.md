@@ -575,6 +575,287 @@ Court, descriptif, anglais, kebab-case. Pas de préfixe utilisateur.
 
 ---
 
+### Ticket 4.3 — `GET /api/v1/products` paginé (terminé)
+
+#### 1. La pagination — concept et raisons
+
+Sans pagination, un endpoint de liste retournerait **toutes** les ressources d'un coup. À
+l'échelle d'un magasin avec 5 000 produits, c'est 5 MB de JSON par requête, plusieurs
+secondes de latence réseau, et un client navigateur ou mobile qui rame ou crashe. La
+pagination découpe la collection en pages successives, le client demande seulement ce
+dont il a besoin (et navigue page par page si nécessaire).
+
+Deux conventions principales coexistent :
+
+- **Offset-based** (`?offset=20&limit=10`) : SQL natif. Simple à implémenter, mais devient
+  lent et incohérent quand la table grandit ou quand des insertions ont lieu pendant la
+  navigation.
+- **Page-based** (`?page=1&size=10`) : convention REST classique. Dérivée de l'offset-based
+  (`offset = page * size`). C'est ce qu'on a choisi pour ce projet.
+- **Cursor-based** (`?after=<token>`) : pour des collections très grandes ou en mutation
+  rapide (feed Twitter, logs). On y reviendra plus tard pour `/stock-movements`.
+
+#### 2. `@RequestParam` vs `@PathVariable`
+
+Les deux annotations existent côte à côte, mais elles lisent **deux endroits différents** de
+l'URL :
+
+- `@PathVariable` lit un **segment de chemin** (entre slashes). URL `/api/v1/products/{id}`
+  → le `id` fait partie du chemin lui-même.
+- `@RequestParam` lit un **paramètre de query string** (après le `?`). URL
+  `/api/v1/products?page=0&size=20` → les `page` et `size` sont après le point d'interrogation.
+
+Côté code :
+
+```java
+@GetMapping("/{productId}")
+public ResponseEntity<ProductResponse> getOne(@PathVariable UUID productId) { ... }
+
+@GetMapping
+public ResponseEntity<PageOfProductResponse> getAll(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+) { ... }
+```
+
+#### 3. `defaultValue` pour des params optionnels
+
+Sans `defaultValue`, un `@RequestParam` est **obligatoire** par défaut. Si le client n'envoie
+pas le param, Spring renvoie 400. Avec `defaultValue = "..."`, le param devient optionnel et
+Spring substitue la valeur fournie quand le client ne l'envoie pas.
+
+Subtilité importante : `defaultValue` est **toujours une string**, même pour un `int`. C'est
+cohérent avec HTTP — tout dans l'URL est texte. Spring fait la conversion vers le type Java
+après. Si tu mets `defaultValue = "abc"` sur un `int`, l'app refuse de démarrer (Spring teste
+les conversions au boot).
+
+#### 4. Wrapper DTO custom vs `Page<T>` de Spring Data
+
+`JpaRepository.findAll(Pageable)` retourne un `Page<T>` qui contient le contenu + des
+métadonnées. Si on sérialise ce `Page<T>` direct en JSON, Jackson produit quelque chose
+comme :
+
+```json
+{
+  "content": [...],
+  "pageable": { "sort": {...}, "offset": 0, "pageNumber": 0, ... },
+  "totalElements": 25,
+  "totalPages": 2,
+  "last": false,
+  "size": 20,
+  "number": 0,
+  "first": true,
+  "numberOfElements": 20,
+  "empty": false
+}
+```
+
+Verbeux, redondant (`size` vs `pageable.pageSize`, `number` vs `pageable.pageNumber`), et
+expose la structure interne Spring Data au client. Si demain on change de stack persistance,
+le contrat HTTP casse.
+
+On crée donc **nos propres DTOs** alignés sur le contrat OpenAPI :
+
+```java
+public record PageOfProductResponse(
+        List<ProductResponse> content,
+        PageMetaResponse page
+) { }
+
+public record PageMetaResponse(
+        int page,
+        int size,
+        long totalElements,
+        int totalPages
+) { }
+```
+
+JSON résultat : minimal, prévisible, indépendant de Spring Data.
+
+#### 5. Port domaine — décision `page/size` vs `offset/limit`
+
+Vrai débat architectural. Le port domaine peut être nommé selon le vocabulaire pur SQL
+(`offset/limit`) ou selon la convention REST (`page/size`).
+
+- **`offset/limit`** : agnostique de l'API exposée, vocabulaire SQL universel. Plus pur
+  d'un point de vue hexagonal.
+- **`page/size`** : cohérent avec l'API REST et avec Spring Data. L'adapter JPA fait
+  trivialement `PageRequest.of(page, size)` sans calcul.
+
+**Choix pour ce projet : `page/size`**. Pragmatisme : pas d'arithmétique dans l'adapter,
+pas de risque d'erreur quand `offset` n'est pas un multiple de `limit`, cohérence avec la
+convention HTTP. Le port reste 100% POJO (pas de type Spring), donc le couplage est purement
+nominal.
+
+Argument à défendre en entretien : *"Le port utilise `page/size` par pragmatisme, cohérent
+avec la convention HTTP. L'alternative `offset/limit` serait plus pure (vocabulaire SQL)
+mais ajouterait du calcul dans l'adapter sans bénéfice pratique."*
+
+#### 6. Bean Validation côté HTTP — `@Validated` et le piège du 500
+
+Bean Validation est la spec Java standard (`jakarta.validation`) qui déclare des contraintes
+sur des champs ou paramètres via annotations. Hibernate Validator est l'implémentation par
+défaut (incluse dans `spring-boot-starter-web`).
+
+Pour valider des query params, deux annotations s'empilent :
+
+```java
+@RestController
+@RequestMapping("/api/v1/products")
+@Validated                                                  // ← Spring, niveau classe
+public class ProductController {
+
+    @GetMapping
+    public ResponseEntity<PageOfProductResponse> getAllProducts(
+            @RequestParam @Min(0) int page,                  // ← Jakarta, sur le param
+            @RequestParam @Min(1) @Max(200) int size
+    ) { ... }
+}
+```
+
+`@Validated` (Spring) au niveau classe **active** la validation des paramètres de méthode.
+Sans elle, les annotations `@Min`/`@Max` posées sur les paramètres sont **silencieusement
+ignorées**.
+
+**Piège majeur à connaître par cœur** : différence entre `@Valid` et `@Validated`.
+
+- `@Valid` (Jakarta) sur un `@RequestBody` → violation lève `MethodArgumentNotValidException`
+  → mappée automatiquement par Spring en **400**.
+- `@Validated` (Spring) sur les paramètres → violation lève `ConstraintViolationException`
+  → mappée par Spring en **500 par défaut**. Il faut un handler explicite pour ramener à 400.
+
+C'est une asymétrie historique de Spring que tout backend Java doit connaître. Sans gérer,
+ton endpoint répond 500 sur une erreur client — comportement incorrect (5xx = bug serveur,
+4xx = erreur client).
+
+#### 7. `@ExceptionHandler` local pour mapper une exception en réponse
+
+Solution la plus simple pour ramener `ConstraintViolationException` à 400, dans le controller
+lui-même :
+
+```java
+@ExceptionHandler(ConstraintViolationException.class)
+public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
+    return ResponseEntity.badRequest().build();
+}
+```
+
+Spring intercepte les exceptions levées par les méthodes du controller, cherche un
+`@ExceptionHandler` matchant le type d'exception, et utilise sa valeur de retour comme
+réponse HTTP.
+
+C'est un **handler local** (limité à ce controller). Au Chantier 5, on remplacera par un
+`@RestControllerAdvice` global qui couvre toute l'app et utilise `ProblemDetail` RFC 7807
+pour des réponses d'erreur structurées.
+
+#### 8. Pagination math — calcul de `totalPages`
+
+Formule simple :
+
+```java
+int totalPages = (int) Math.ceil((double) totalElements / size);
+```
+
+Piège classique à éviter : utiliser `content.size()` au lieu de `totalElements`.
+`content.size()` est le nombre d'éléments **dans la page courante** (jamais > `size`).
+`totalElements` est le nombre **total** d'éléments dans la collection. Pour calculer le
+nombre de pages, c'est `totalElements` qu'il faut, sinon le résultat dépend de la page
+demandée — absurde.
+
+Cas particulier : si `totalElements == 0`, `Math.ceil(0.0 / size) == 0`. Donc `totalPages == 0`.
+C'est cohérent avec une collection vide : zéro page.
+
+#### 9. TDD discipline complète — appliquée sur ce ticket
+
+Premier ticket où on a fait du TDD strict de bout en bout. Cycle :
+
+1. **Red** : écrire un test qui échoue (compile pas ou exécution rouge).
+2. **Green** : écrire le minimum de code de production pour faire passer le test.
+3. **Refactor** : améliorer le code en gardant le test au vert.
+4. **Commit** : capture du cycle.
+
+Règles intégrées sur ce ticket :
+
+- Un seul test par cycle. Test trop ambitieux → cycle trop long → on découpe.
+- Le test pilote la signature des méthodes du domaine et la forme du JSON exposé.
+- **Prédiction TDD** avant chaque test : *"ce test va passer ou échouer ?"*. Construit
+  l'intuition sur son propre code.
+- Commit après chaque cycle vert (et pas à la fin) — sinon on accumule et on doit faire du
+  `git add -p` pour reconstituer l'atomicité.
+
+Bénéfice constaté : sur 6 cycles, **3 tests sont passés du premier coup** parce que le code
+de prod du cycle précédent les couvrait déjà. Ces "tests gratuits" sont des régression tests
+acquis sans effort.
+
+#### 10. Test data avec `IntStream` + helper method
+
+Quand un test a besoin de plusieurs entités (20, 100, etc.), on évite la liste hardcodée.
+Pattern utilisé :
+
+```java
+private Product sampleProduct(int index) {
+    UUID productId = UUID.fromString(String.format("00000000-0000-0000-0000-%012d", index));
+    return new Product(
+            ProductId.of(productId),
+            "Product " + index,
+            "REF-" + String.format("%03d", index),
+            CategoryId.of(...),
+            10,
+            Money.create(new BigDecimal("45.90"), Currency.getInstance("EUR"))
+    );
+}
+
+// Utilisation
+List<Product> twentyProducts = IntStream.range(0, 20)
+        .mapToObj(this::sampleProduct)
+        .toList();
+```
+
+UUID prédictibles via `String.format("%012d", index)` : pratique si un jour il faut asserter
+sur un UUID précis. Helper privé : factorise sans dépendre d'un framework de test data
+externe.
+
+À retenir : pour des tests plus complexes, on évoluera vers un **Test Data Builder** dédié
+(pattern `aProduct().withName(...).build()`) ou un **Object Mother**.
+
+#### 11. `.param(...)` de MockMvc pour les query params
+
+Deux syntaxes possibles pour ajouter des query params dans un test :
+
+```java
+mockMvc.perform(get("/api/v1/products?page=1&size=10"))             // concaténation
+mockMvc.perform(get("/api/v1/products")
+        .param("page", "1")
+        .param("size", "10"))                                       // .param() — préféré
+```
+
+Les deux marchent, mais `.param(...)` est plus lisible et extensible (5+ params restent
+lisibles). Valeurs toujours en string (HTTP est du texte).
+
+#### 12. Commits atomiques avec `git add -p`
+
+Quand on accumule plusieurs modifications dans le même fichier (typiquement plusieurs tests
+ou tests + code de prod) avant de commit, `git add -p` permet de stager **morceau par
+morceau** (hunk par hunk) :
+
+```bash
+git add -p <fichier>
+# Pour chaque hunk affiché, répondre :
+#   y → stager
+#   n → ne pas stager
+#   s → split (diviser le hunk en plus petits)
+#   e → edit (modifier manuellement)
+#   q → quitter
+```
+
+Permet de reconstituer des commits atomiques après-coup. Outil de rattrapage quand on a
+oublié de commit après chaque cycle TDD.
+
+Discipline préférée : commit immédiatement après chaque cycle vert, pour ne pas avoir à
+faire du `git add -p` à la fin.
+
+---
+
 ## Pièges récurrents à éviter (compilation)
 
 - **`@RestController` oublié** → 404 silencieux. Pas d'erreur démarrage.
