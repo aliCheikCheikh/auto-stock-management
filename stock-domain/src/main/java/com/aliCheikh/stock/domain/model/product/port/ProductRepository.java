@@ -3,6 +3,7 @@ package com.aliCheikh.stock.domain.model.product.port;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepository {
@@ -11,4 +12,8 @@ public interface ProductRepository {
     Optional<Product> findByReference(String reference);
 
     void save(Product product);
+
+    List<Product> findAll(int page, int size);
+
+    long count();
 }

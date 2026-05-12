@@ -16,10 +16,13 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.util.Currency;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -72,5 +75,108 @@ public class ProductControllerTest {
     void should_return_400_when_product_id_is_not_uuid() throws Exception {
         mockMvc.perform(get("/api/v1/products/not-uuid")).andExpect(status().isBadRequest());
         verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    void should_return_empty_page_when_no_products() throws Exception {
+        given(productRepository.findAll(0, 20)).willReturn(List.of());
+        given(productRepository.count()).willReturn(0L);
+        mockMvc.perform(get("/api/v1/products"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page.page").value(0))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").value(0))
+                .andExpect(jsonPath("$.page.totalPages").value(0));
+    }
+
+
+    @Test
+    void should_return_first_page_of_20_when_25_products_exist() throws Exception {
+        List<Product> twentyProducts = IntStream.rangeClosed(1, 20).mapToObj(this::sampleProduct).toList();
+        given(productRepository.findAll(0, 20)).willReturn(twentyProducts);
+        given(productRepository.count()).willReturn(25L);
+        mockMvc.perform(get("/api/v1/products"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(20))
+                .andExpect(jsonPath("$.page.page").value(0))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").value(25))
+                .andExpect(jsonPath("$.page.totalPages").value(2));
+    }
+
+    @Test
+    void should_apply_custom_page_and_size() throws Exception {
+        List<Product> tenProducts = IntStream.rangeClosed(1, 10).mapToObj(this::sampleProduct).toList();
+        given(productRepository.findAll(1, 10)).willReturn(tenProducts);
+        given(productRepository.count()).willReturn(25L);
+        mockMvc.perform(get("/api/v1/products").param("page", "1").param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(10))
+                .andExpect(jsonPath("$.page.page").value(1))
+                .andExpect(jsonPath("$.page.size").value(10))
+                .andExpect(jsonPath("$.page.totalElements").value(25))
+                .andExpect(jsonPath("$.page.totalPages").value(3));
+    }
+
+    @Test
+    void should_return_an_empty_content_when_page_is_out_of_range() throws Exception {
+        given(productRepository.findAll(99, 20)).willReturn(List.of());
+        given(productRepository.count()).willReturn(25L);
+        mockMvc.perform(get("/api/v1/products")
+                        .param("page", "99")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page.page").value(99))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").value(25))
+                .andExpect(jsonPath("$.page.totalPages").value(2));
+    }
+
+    @Test
+    void should_return_400_when_page_is_negative() throws Exception {
+        mockMvc.perform(get("/api/v1/products")
+                .param("page", "-1").param("size", "20"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    void should_return_400_when_size_exceeds_maximum() throws Exception {
+        mockMvc.perform(get("/api/v1/products")
+                .param("page", "10")
+                .param("size", "500"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    void should_return_400_when_size_is_zero() throws Exception {
+        mockMvc.perform(get("/api/v1/products")
+                .param("page", "0")
+                .param("size", "0"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(productRepository);
+    }
+
+    private Product sampleProduct(int index) {
+        UUID productId = UUID.fromString(String.format("00000000-0000-0000-0000-%012d", index));
+        UUID categoryId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        return new Product(
+                ProductId.of(productId),
+                "Product " + index,
+                "REF-" + String.format("%03d", index),
+                CategoryId.of(categoryId),
+                10,
+                Money.create(new BigDecimal("45.90"), Currency.getInstance("EUR"))
+        );
     }
 }

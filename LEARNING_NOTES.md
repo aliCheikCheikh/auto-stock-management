@@ -194,7 +194,44 @@ sont distincts des agrégats domaine). Trois couches de types — apprendre pour
 - Sérialiser des dates sans timezone explicite.
 
 **Notes au fil de l'eau :**
-_(à remplir)_
+
+**Ticket 4.1 — GET /health (terminé)**
+
+- Premier endpoint Spring MVC concret. Mécanique DispatcherServlet comprise et défendable.
+- Décisions design : préfixe `/api/v1` au niveau classe (pas context-path), enum Java pour
+  `status`, `Instant` pour `timestamp`.
+- Slice test `@WebMvcTest` + MockMvc + JSONPath.
+- Piège retenu : `@RestController` oublié → 404 silencieux, pas d'erreur démarrage.
+
+**Ticket 4.2 — GET /products/{productId} (terminé)**
+
+- Premier endpoint de lecture avec mapping domaine → DTO. CQRS pragmatique : le controller
+  dépend directement du port `ProductRepository`, pas de use case pour les lectures simples.
+- Concepts ancrés : `@PathVariable`, `ResponseEntity<T>`, `Optional` + pattern fonctionnel
+  `.map().orElseGet()`, utility class pattern (`final` + constructeur privé), flag
+  `-parameters` du compilateur Maven, distinction bean Spring vs annotation de configuration.
+- Migration `@MockBean` → `@MockitoBean` (déprécié depuis Spring Boot 3.4).
+- Piège retenu : `category` au lieu de `categoryId` dans le DTO — divergence silencieuse au
+  contrat OpenAPI. Argument fort en faveur des tests `jsonPath` stricts.
+
+**Ticket 4.3 — GET /products paginé (terminé)**
+
+- Premier endpoint de liste, pose la convention de pagination pour tous les futurs endpoints
+  de collection.
+- Approche **TDD complète** : 6 cycles Red-Green-Refactor, un test par scénario d'acceptation,
+  commits atomiques par cycle.
+- Décisions design : port domaine en `page/size` (cohérent REST + adapter trivial), wrapper
+  DTOs custom (`PageOfProductResponse`, `PageMetaResponse`) plutôt que `Page<T>` de Spring
+  Data — contrat propre indépendant du framework.
+- Mapping `Product → ProductResponse` réutilisé via method reference pour éviter la
+  duplication (DRY).
+- Validation des query params via `@Validated` au niveau classe + `@Min/@Max` sur les
+  paramètres + `@ExceptionHandler` local pour mapper en 400.
+- Pièges retenus :
+  - `ConstraintViolationException` retournée en 500 par défaut (pas 400 comme `@Valid` sur
+    `@RequestBody`). Handler explicite requis.
+  - Calcul de `totalPages` doit utiliser `totalElements`, pas `content.size()`.
+  - `count()` retourne `long`, alignement de type dans tous les DTOs/mappers.
 
 ---
 
