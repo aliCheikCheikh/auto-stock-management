@@ -149,6 +149,15 @@ public class ProductControllerTest {
         verifyNoInteractions(productRepository);
     }
 
+    @Test
+    void should_return_400_when_size_exceeds_maximum() throws Exception {
+        mockMvc.perform(get("/api/v1/products")
+                .param("page", "10")
+                .param("size", "500"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(productRepository);
+    }
+
     private Product sampleProduct(int index) {
         UUID productId = UUID.fromString(String.format("00000000-0000-0000-0000-%012d", index));
         UUID categoryId = UUID.fromString("22222222-2222-2222-2222-222222222222");
