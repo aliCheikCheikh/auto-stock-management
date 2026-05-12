@@ -95,8 +95,8 @@ public class ProductControllerTest {
 
     @Test
     void should_return_first_page_of_20_when_25_products_exist() throws Exception {
-        List<Product> twentyProducts = IntStream.rangeClosed(1,20).mapToObj(this::sampleProduct).toList();
-        given(productRepository.findAll(0,20)).willReturn(twentyProducts);
+        List<Product> twentyProducts = IntStream.rangeClosed(1, 20).mapToObj(this::sampleProduct).toList();
+        given(productRepository.findAll(0, 20)).willReturn(twentyProducts);
         given(productRepository.count()).willReturn(25L);
         mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk())
@@ -110,8 +110,8 @@ public class ProductControllerTest {
 
     @Test
     void should_apply_custom_page_and_size() throws Exception {
-        List<Product> tenProducts = IntStream.rangeClosed(1,10).mapToObj(this::sampleProduct).toList();
-        given(productRepository.findAll(1,10)).willReturn(tenProducts);
+        List<Product> tenProducts = IntStream.rangeClosed(1, 10).mapToObj(this::sampleProduct).toList();
+        given(productRepository.findAll(1, 10)).willReturn(tenProducts);
         given(productRepository.count()).willReturn(25L);
         mockMvc.perform(get("/api/v1/products").param("page", "1").param("size", "10"))
                 .andExpect(status().isOk())
@@ -122,6 +122,23 @@ public class ProductControllerTest {
                 .andExpect(jsonPath("$.page.size").value(10))
                 .andExpect(jsonPath("$.page.totalElements").value(25))
                 .andExpect(jsonPath("$.page.totalPages").value(3));
+    }
+
+    @Test
+    void should_return_an_empty_content_when_page_is_out_of_range() throws Exception {
+        given(productRepository.findAll(99, 20)).willReturn(List.of());
+        given(productRepository.count()).willReturn(25L);
+        mockMvc.perform(get("/api/v1/products")
+                        .param("page", "99")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page.page").value(99))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").value(25))
+                .andExpect(jsonPath("$.page.totalPages").value(2));
     }
 
     private Product sampleProduct(int index) {
