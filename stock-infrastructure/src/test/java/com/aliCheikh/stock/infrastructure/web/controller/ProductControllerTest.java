@@ -79,7 +79,7 @@ public class ProductControllerTest {
 
     @Test
     void should_return_empty_page_when_no_products() throws Exception {
-        given(productRepository.findAll(0,20)).willReturn(List.of());
+        given(productRepository.findAll(0, 20)).willReturn(List.of());
         given(productRepository.count()).willReturn(0L);
         mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk())
