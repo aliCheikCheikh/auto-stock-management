@@ -16,10 +16,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.util.Currency;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -72,5 +74,20 @@ public class ProductControllerTest {
     void should_return_400_when_product_id_is_not_uuid() throws Exception {
         mockMvc.perform(get("/api/v1/products/not-uuid")).andExpect(status().isBadRequest());
         verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    void should_return_empty_page_when_no_products() throws Exception {
+        given(productRepository.findAll(0,20)).willReturn(List.of());
+        given(productRepository.count()).willReturn(0L);
+        mockMvc.perform(get("/api/v1/products"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page.page").value(0))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").value(0))
+                .andExpect(jsonPath("$.page.totalPages").value(0));
     }
 }
