@@ -5,8 +5,10 @@ import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.infrastructure.persistence.mapper.ProductJpaMapper;
 import com.aliCheikh.stock.infrastructure.persistence.repository.ProductJpaRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -32,6 +34,7 @@ public class ProductJpaRepositoryAdapter implements ProductRepository {
                 .map(productJpaMapper::toDomain);
     }
 
+
     @Override
     public Optional<Product> findByReference(String reference) {
         Objects.requireNonNull(reference, "reference cannot be null");
@@ -49,5 +52,19 @@ public class ProductJpaRepositoryAdapter implements ProductRepository {
         Objects.requireNonNull(product, "product cannot be null");
 
         productJpaRepository.save(productJpaMapper.toEntity(product));
+    }
+
+    @Override
+    public List<Product> findAll(int page, int size) {
+        return productJpaRepository.findAll(PageRequest.of(page, size))
+                .getContent()
+                .stream()
+                .map(productJpaMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long count() {
+        return productJpaRepository.count();
     }
 }
