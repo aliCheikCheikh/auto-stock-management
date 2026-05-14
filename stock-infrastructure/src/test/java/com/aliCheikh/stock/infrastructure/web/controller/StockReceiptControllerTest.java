@@ -110,7 +110,7 @@ class StockReceiptControllerTest {
     }
 
     @Test
-    void should_return_400_when_body_is_not_json() throws Exception {
+    void should_return_400_when_product_reference_is_blank() throws Exception {
         mockMvc.perform(post("/api/v1/stock-receipts")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -126,6 +126,21 @@ class StockReceiptControllerTest {
                                   ]
                                 }
                         """.formatted(shopId, userId, locationId))).andExpect(status().isBadRequest());
+        verifyNoInteractions(receiveStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_distributions_is_empty() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-receipts").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                         "productReference": "REF-001",
+                         "shopId": "%s",
+                         "userId": "%s",
+                         "distributions": [
+                                ]
+                                }
+                        """.formatted(shopId,userId))).andExpect(status().isBadRequest());
         verifyNoInteractions(receiveStockUseCase);
     }
 
