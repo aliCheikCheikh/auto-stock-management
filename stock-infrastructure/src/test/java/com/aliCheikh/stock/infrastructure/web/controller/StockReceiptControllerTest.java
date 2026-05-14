@@ -140,7 +140,26 @@ class StockReceiptControllerTest {
                          "distributions": [
                                 ]
                                 }
-                        """.formatted(shopId,userId))).andExpect(status().isBadRequest());
+                        """.formatted(shopId, userId))).andExpect(status().isBadRequest());
+        verifyNoInteractions(receiveStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_distribution_quantity_is_not_positive() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-receipts").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                         "productReference": "REF-001",
+                         "shopId": "%s",
+                         "userId": "%s",
+                         "distributions": [
+                                   {
+                                      "locationId": "%s",
+                                      "quantity": 0
+                                    }
+                                ]
+                                }
+                        """.formatted(shopId, userId,locationId))).andExpect(status().isBadRequest());
         verifyNoInteractions(receiveStockUseCase);
     }
 
