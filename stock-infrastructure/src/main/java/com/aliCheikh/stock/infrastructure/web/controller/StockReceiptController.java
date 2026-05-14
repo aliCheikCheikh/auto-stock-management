@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.usecase.ReceiveStockUseCase;
 import com.aliCheikh.stock.infrastructure.web.dto.ReceiveStockRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.StockReceiptAcknowledgementResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.ReceiveStockWebMapper;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,7 +24,7 @@ public class StockReceiptController {
     }
 
     @PostMapping
-    public ResponseEntity<StockReceiptAcknowledgementResponse> receiveStock(@RequestBody ReceiveStockRequest request) {
+    public ResponseEntity<StockReceiptAcknowledgementResponse> receiveStock(@Valid @RequestBody ReceiveStockRequest request) {
         ReceiveStockCommand command = ReceiveStockWebMapper.toCommand(request);
         ReceiveStockResult result = receiveStockUseCase.execute(command);
         StockReceiptAcknowledgementResponse response = ReceiveStockWebMapper.toResponse(result);

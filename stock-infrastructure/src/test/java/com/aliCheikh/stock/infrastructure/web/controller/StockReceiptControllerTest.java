@@ -8,6 +8,7 @@ import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,16 +37,27 @@ class StockReceiptControllerTest {
 
     @MockitoBean
     private ReceiveStockUseCase receiveStockUseCase;
+    private UUID shopId;
+    private UUID userId;
+    private UUID productId;
+    private UUID locationId;
+    private UUID movementId;
+    private Instant acceptedAt;
+    private String productReference;
+
+    @BeforeEach
+    void setUp() {
+        productReference = "REF-001";
+        shopId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        userId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        locationId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        productId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+        movementId = UUID.fromString("55555555-5555-5555-5555-555555555555");
+        acceptedAt = Instant.parse("2026-05-14T12:00:00Z");
+    }
 
     @Test
     void should_accept_stock_receipt_for_existing_product() throws Exception {
-        String productReference = "REF-001";
-        UUID shopId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        UUID userId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        UUID locationId = UUID.fromString("33333333-3333-3333-3333-333333333333");
-        UUID productId = UUID.fromString("44444444-4444-4444-4444-444444444444");
-        UUID movementId = UUID.fromString("55555555-5555-5555-5555-555555555555");
-        Instant acceptedAt = Instant.parse("2026-05-14T12:00:00Z");
 
         given(receiveStockUseCase.execute(any(ReceiveStockCommand.class)))
                 .willReturn(new ReceiveStockResult(
@@ -94,6 +106,26 @@ class StockReceiptControllerTest {
     void should_return_400_when_body_is_empty() throws Exception {
         mockMvc.perform(post("/api/v1/stock-receipts").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
+        verifyNoInteractions(receiveStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_body_is_not_json() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-receipts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                         "productReference": "",
+                         "shopId": "%s",
+                         "userId": "%s",
+                         "distributions": [
+                                    {
+                                      "locationId": "%s",
+                                      "quantity": 50
+                                    }
+                                  ]
+                                }
+                        """.formatted(shopId, userId, locationId))).andExpect(status().isBadRequest());
         verifyNoInteractions(receiveStockUseCase);
     }
 
