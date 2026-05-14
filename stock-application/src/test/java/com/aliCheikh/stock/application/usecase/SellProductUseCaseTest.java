@@ -2,6 +2,7 @@ package com.aliCheikh.stock.application.usecase;
 
 import com.aliCheikh.stock.application.dto.SellLineCommand;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
+import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.LowStockAlert;
@@ -93,7 +94,7 @@ class SellProductUseCaseTest {
         givenShopLocations(location);
         givenAllocation(productId, 4, location, 4);
 
-        sellProductUseCase.sell(command);
+        SellProductResult result = sellProductUseCase.sell(command);
 
         assertThat(location.getStockLevel(productId)).isEqualTo(6);
 
@@ -119,6 +120,7 @@ class SellProductUseCaseTest {
         assertThat(events).noneMatch(ShopFloorLow.class::isInstance);
 
         assertPersistenceHappensBeforePublication();
+        assertSellProductResult(result, savedSale);
     }
 
     @Test
@@ -141,13 +143,14 @@ class SellProductUseCaseTest {
         givenAllocation(productId, 2, location, 2);
         givenAllocation(secondProductId, 5, location, 5);
 
-        sellProductUseCase.sell(command);
+        SellProductResult result = sellProductUseCase.sell(command);
 
         assertThat(location.getStockLevel(productId)).isEqualTo(8);
         assertThat(location.getStockLevel(secondProductId)).isEqualTo(5);
 
         Sale savedSale = captureSavedSale();
         assertThat(savedSale.getLines()).hasSize(2);
+        assertSellProductResult(result, savedSale);
 
         List<StockMovement> movements = captureSavedMovements();
         assertThat(movements).hasSize(2);
@@ -376,6 +379,15 @@ class SellProductUseCaseTest {
         assertThat(movement.getSourceLocationId()).isPresent().contains(expectedSourceLocationId);
         assertThat(movement.getDestinationLocationId()).isEmpty();
         assertThat(movement.getSaleId()).isPresent().contains(savedSale.getSaleId());
+    }
+
+    private void assertSellProductResult(SellProductResult result, Sale savedSale) {
+        assertThat(result.saleId()).isEqualTo(savedSale.getSaleId());
+        assertThat(result.sellerId()).isEqualTo(savedSale.getSoldBy());
+        assertThat(result.lines()).containsExactlyElementsOf(savedSale.getLines());
+        assertThat(result.totalAmount().getAmount()).isEqualByComparingTo(savedSale.getTotalAmount().getAmount());
+        assertThat(result.totalAmount().getCurrency()).isEqualTo(savedSale.getTotalAmount().getCurrency());
+        assertThat(result.createdAt()).isEqualTo(savedSale.getOccurredAt());
     }
 
     private void assertPersistenceHappensBeforePublication() {
