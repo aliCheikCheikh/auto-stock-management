@@ -20,7 +20,9 @@ public final class ProductWebMapper {
         return new ProductResponse(product.getProductId().getValue(),
                 product.getName(),
                 product.getReference(),
-                product.getCategoryId().getValue(), moneyToResponse(product.getUnitPrice()), product.getMinimumGlobalThreshold());
+                product.getCategoryId().getValue(),
+                moneyToResponse(product.getUnitPrice()),
+                product.getMinimumGlobalThreshold());
 
     }
 
