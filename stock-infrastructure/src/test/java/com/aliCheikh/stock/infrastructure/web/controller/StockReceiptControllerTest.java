@@ -3,6 +3,7 @@ package com.aliCheikh.stock.infrastructure.web.controller;
 import com.aliCheikh.stock.application.dto.ReceiveStockCommand;
 import com.aliCheikh.stock.application.dto.ReceiveStockResult;
 import com.aliCheikh.stock.application.usecase.ReceiveStockUseCase;
+import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
@@ -17,7 +18,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,6 +45,7 @@ class StockReceiptControllerTest {
     private UUID productId;
     private UUID locationId;
     private UUID movementId;
+    private UUID categoryId;
     private Instant acceptedAt;
     private String productReference;
 
@@ -53,6 +57,7 @@ class StockReceiptControllerTest {
         locationId = UUID.fromString("33333333-3333-3333-3333-333333333333");
         productId = UUID.fromString("44444444-4444-4444-4444-444444444444");
         movementId = UUID.fromString("55555555-5555-5555-5555-555555555555");
+        categoryId = UUID.fromString("66666666-6666-6666-6666-666666666666");
         acceptedAt = Instant.parse("2026-05-14T12:00:00Z");
     }
 
@@ -159,8 +164,64 @@ class StockReceiptControllerTest {
                                     }
                                 ]
                                 }
-                        """.formatted(shopId, userId,locationId))).andExpect(status().isBadRequest());
+                        """.formatted(shopId, userId, locationId))).andExpect(status().isBadRequest());
         verifyNoInteractions(receiveStockUseCase);
     }
+
+    @Test
+    void should_accept_stock_receipt_with_new_product_info() throws Exception {
+        given(receiveStockUseCase.execute(any(ReceiveStockCommand.class)))
+                .willReturn(new ReceiveStockResult(
+                        ProductId.of(productId),
+                        50,
+                        List.of(MovementId.of(movementId)),
+                        acceptedAt
+                ));
+
+        mockMvc.perform(post("/api/v1/stock-receipts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "productReference": "REF-001",
+                                  "newProductInfo": {
+                                    "name": "Oil Filter",
+                                    "reference": "REF-001",
+                                    "categoryId": "%s",
+                                    "unitPrice": {
+                                      "amount": "10.00",
+                                      "currency": "EUR"
+                                    },
+                                    "minimumGlobalThreshold": 20
+                                  },
+                                  "shopId": "%s",
+                                  "userId": "%s",
+                                  "distributions": [
+                                    {
+                                      "locationId": "%s",
+                                      "quantity": 50
+                                    }
+                                  ]
+                                }
+                                """.formatted(categoryId, shopId, userId, locationId)))
+                .andExpect(status().isAccepted())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.productId").value(productId.toString()))
+                .andExpect(jsonPath("$.totalReceived").value(50))
+                .andExpect(jsonPath("$.acceptedAt").value(acceptedAt.toString()))
+                .andExpect(jsonPath("$.movementIds[0]").value(movementId.toString()));
+
+        ArgumentCaptor<ReceiveStockCommand> commandCaptor = ArgumentCaptor.forClass(ReceiveStockCommand.class);
+        verify(receiveStockUseCase).execute(commandCaptor.capture());
+
+        ReceiveStockCommand command = commandCaptor.getValue();
+        assertThat(command.newProductInfo()).isNotNull();
+        assertThat(command.newProductInfo().name()).isEqualTo("Oil Filter");
+        assertThat(command.newProductInfo().reference()).isEqualTo("REF-001");
+        assertThat(command.newProductInfo().categoryId()).isEqualTo(CategoryId.of(categoryId));
+        assertThat(command.newProductInfo().minimumGlobalThreshold()).isEqualTo(20);
+        assertThat(command.newProductInfo().unitPrice().getAmount()).isEqualByComparingTo(new BigDecimal("10.00"));
+        assertThat(command.newProductInfo().unitPrice().getCurrency()).isEqualTo(Currency.getInstance("EUR"));
+    }
+
 
 }
