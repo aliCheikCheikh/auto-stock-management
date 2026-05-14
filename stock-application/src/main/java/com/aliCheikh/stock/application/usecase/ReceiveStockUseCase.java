@@ -2,12 +2,14 @@ package com.aliCheikh.stock.application.usecase;
 
 import com.aliCheikh.stock.application.dto.ProductInfo;
 import com.aliCheikh.stock.application.dto.ReceiveStockCommand;
+import com.aliCheikh.stock.application.dto.ReceiveStockResult;
 import com.aliCheikh.stock.application.dto.TargetLocation;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
+import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.Product;
@@ -19,6 +21,7 @@ import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.service.ReceivingEntry;
 import com.aliCheikh.stock.domain.service.ReceivingService;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +52,7 @@ public class ReceiveStockUseCase {
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
-    public void execute(ReceiveStockCommand command) {
+    public ReceiveStockResult execute(ReceiveStockCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
 
         Product product = resolveProduct(command);
@@ -59,6 +62,21 @@ public class ReceiveStockUseCase {
         stockMovementRepository.saveAll(movements);
 
         publishEvents(command, product);
+
+        int totalReceived = command.distributions().stream()
+                .mapToInt(TargetLocation::quantity)
+                .sum();
+        List<MovementId> movementIds = movements.stream()
+                .map(StockMovement::getMovementId)
+                .toList();
+        Instant acceptedAt = Instant.now();
+
+        return new ReceiveStockResult(
+                product.getProductId(),
+                totalReceived,
+                movementIds,
+                acceptedAt
+        );
     }
 
     private Product resolveProduct(ReceiveStockCommand command) {

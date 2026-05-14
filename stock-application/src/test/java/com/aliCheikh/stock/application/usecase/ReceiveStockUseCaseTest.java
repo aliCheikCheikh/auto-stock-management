@@ -2,6 +2,7 @@ package com.aliCheikh.stock.application.usecase;
 
 import com.aliCheikh.stock.application.dto.ProductInfo;
 import com.aliCheikh.stock.application.dto.ReceiveStockCommand;
+import com.aliCheikh.stock.application.dto.ReceiveStockResult;
 import com.aliCheikh.stock.application.dto.TargetLocation;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.event.DomainEvent;
@@ -9,6 +10,7 @@ import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
+import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.Product;
@@ -28,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
@@ -96,13 +99,17 @@ class ReceiveStockUseCaseTest {
 
     @Test
     void should_receive_stock_for_existing_product_and_publish_stock_received() {
-        List<StockMovement> generatedMovements = generatedMovements();
+        MovementId firstMovementId = MovementId.generate();
+        MovementId secondMovementId = MovementId.generate();
+        List<StockMovement> generatedMovements = generatedMovements(firstMovementId, secondMovementId);
 
         when(productRepository.findByReference(productReference)).thenReturn(Optional.of(product));
         when(receivingService.receive(anyList(), eq(userId))).thenReturn(generatedMovements);
         givenGlobalStock(productId, 15, 35);
 
-        receiveStockUseCase.execute(command);
+        Instant before = Instant.now();
+        ReceiveStockResult result = receiveStockUseCase.execute(command);
+        Instant after = Instant.now();
 
         verify(productRepository, never()).save(any(Product.class));
         verify(stockMovementRepository).saveAll(generatedMovements);
@@ -123,6 +130,7 @@ class ReceiveStockUseCaseTest {
         assertThat(stockReceived.locationBreakdown())
                 .containsEntry(shopFloorId, 15)
                 .containsEntry(backStockId, 35);
+        assertReceiveStockResult(result, productId, before, after, firstMovementId, secondMovementId);
     }
 
     @Test
@@ -146,12 +154,16 @@ class ReceiveStockUseCaseTest {
                 )
         );
 
-        List<StockMovement> generatedMovements = generatedMovements();
+        MovementId firstMovementId = MovementId.generate();
+        MovementId secondMovementId = MovementId.generate();
+        List<StockMovement> generatedMovements = generatedMovements(firstMovementId, secondMovementId);
 
         when(productRepository.findByReference(productReference)).thenReturn(Optional.empty());
         when(receivingService.receive(anyList(), eq(userId))).thenReturn(generatedMovements);
 
-        receiveStockUseCase.execute(newProductCommand);
+        Instant before = Instant.now();
+        ReceiveStockResult result = receiveStockUseCase.execute(newProductCommand);
+        Instant after = Instant.now();
 
         Product savedProduct = captureSavedProduct();
         assertThat(savedProduct.getName()).isEqualTo("Oil Filter");
@@ -169,6 +181,7 @@ class ReceiveStockUseCaseTest {
         List<DomainEvent> events = capturePublishedEvents();
         StockReceived stockReceived = findEvent(events, StockReceived.class);
         assertThat(stockReceived.productId()).isEqualTo(savedProduct.getProductId());
+        assertReceiveStockResult(result, savedProduct.getProductId(), before, after, firstMovementId, secondMovementId);
     }
 
     @Test
@@ -253,6 +266,26 @@ class ReceiveStockUseCaseTest {
 
     private List<StockMovement> generatedMovements() {
         return List.of(mock(StockMovement.class), mock(StockMovement.class));
+    }
+
+    private List<StockMovement> generatedMovements(MovementId firstMovementId, MovementId secondMovementId) {
+        List<StockMovement> generatedMovements = generatedMovements();
+        when(generatedMovements.get(0).getMovementId()).thenReturn(firstMovementId);
+        when(generatedMovements.get(1).getMovementId()).thenReturn(secondMovementId);
+        return generatedMovements;
+    }
+
+    private void assertReceiveStockResult(
+            ReceiveStockResult result,
+            ProductId expectedProductId,
+            Instant before,
+            Instant after,
+            MovementId... expectedMovementIds
+    ) {
+        assertThat(result.productId()).isEqualTo(expectedProductId);
+        assertThat(result.totalReceived()).isEqualTo(50);
+        assertThat(result.movementIds()).containsExactly(expectedMovementIds);
+        assertThat(result.acceptedAt()).isBetween(before, after);
     }
 
     private void givenGlobalStock(ProductId productId, int firstLocationQuantity, int secondLocationQuantity) {
