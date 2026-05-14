@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -88,4 +89,12 @@ class StockReceiptControllerTest {
         assertThat(command.distributions().get(0).locationId()).isEqualTo(LocationId.of(locationId));
         assertThat(command.distributions().get(0).quantity()).isEqualTo(50);
     }
+
+    @Test
+    void should_return_400_when_body_is_empty() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-receipts").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(receiveStockUseCase);
+    }
+
 }
