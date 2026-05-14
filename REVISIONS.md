@@ -867,6 +867,19 @@ faire du `git add -p` à la fin.
 - **Direct push sur `main`** → pas de revue, pas de PR, casse les normes entreprise.
 - **`@PathVariable` sans `-parameters`** → IllegalArgumentException sur le binding.
 - **Test avec `@SpringBootTest` quand `@WebMvcTest` suffit** → tests lents et fragiles.
+- **`@Validated` oublié sur la classe** → annotations `@Min`/`@Max` posées sur les query
+  params **silencieusement ignorées**. La validation ne s'exécute pas, aucune erreur, faux
+  sentiment de sécurité.
+- **`ConstraintViolationException` non handlée** → Spring renvoie 500 par défaut pour les
+  violations de Bean Validation sur les query params, alors qu'on attend 400. Asymétrie avec
+  `@Valid` sur `@RequestBody` qui donne 400 automatiquement.
+- **Calcul de `totalPages` avec `content.size()`** au lieu de `totalElements` → résultat
+  dépend de la page demandée, totalement absurde. Toujours utiliser `totalElements`.
+- **Confondre `@Valid` (Jakarta) et `@Validated` (Spring)** → ils ne valident pas les
+  mêmes choses. `@Valid` sur un `@RequestBody`, `@Validated` au niveau classe pour les
+  query params.
+- **Exposer `Page<T>` de Spring Data en JSON** → fuite de la structure interne au client,
+  champs redondants, contrat couplé au framework.
 
 ---
 
@@ -994,6 +1007,46 @@ curl -i http://localhost:8080/api/v1/products/<uuid>
 > centimes. Toutes les API financières sérieuses, comme Stripe ou les banques,
 > transportent en string. Côté serveur, on garde BigDecimal pour la précision, et le
 > mapper appelle `.toPlainString()` au moment de construire le DTO."
+
+### Bean Validation côté HTTP — `@Valid` vs `@Validated`
+
+> "Pour valider les inputs HTTP, Spring offre deux mécanismes. `@Valid` (Jakarta) sur un
+> `@RequestBody` valide les champs d'un objet désérialisé ; une violation lève
+> `MethodArgumentNotValidException` que Spring mappe automatiquement en 400. `@Validated`
+> (Spring) au niveau classe active la validation des paramètres de méthode — query params,
+> path variables — quand on pose `@Min`/`@Max`/etc. dessus. **Piège** : une violation lève
+> `ConstraintViolationException` que Spring renvoie en 500 par défaut. Il faut un
+> `@ExceptionHandler` explicite pour ramener à 400. C'est une asymétrie historique de
+> Spring qu'il faut connaître."
+
+### Pagination — convention et calcul
+
+> "Notre API expose une pagination page-based avec query params `page` et `size`, valeurs
+> par défaut 0 et 20, bornes 0 et 200 pour size. Le port domaine utilise la même
+> nomenclature pour cohérence et simplicité d'adapter. Le wrapper DTO `PageOfProductResponse`
+> contient le `content` et les métadonnées (`page`, `size`, `totalElements`, `totalPages`).
+> `totalPages` se calcule par `ceil(totalElements / size)`, jamais par `content.size() / size`
+> qui dépendrait de la page courante. On évite d'exposer `Page<T>` de Spring Data
+> directement parce que sa structure est verbeuse, redondante et couplée au framework."
+
+### TDD discipline complète
+
+> "Sur ce ticket de pagination, j'ai appliqué le TDD strict : six cycles Red-Green-Refactor,
+> un test par scénario d'acceptation, un commit par cycle vert. Trois des six tests sont
+> passés du premier coup parce que le code de production écrit pour les cycles précédents
+> les couvrait déjà — autant de régression tests gagnés sans effort. Cette discipline
+> garantit que chaque ligne de code de production est motivée par un test, donc couverte
+> par définition, et que `main` reste toujours dans un état cohérent."
+
+### Wrapper DTO de pagination vs `Page<T>` Spring
+
+> "On ne sérialise jamais directement le `Page<T>` de Spring Data en JSON. Deux raisons.
+> D'abord, sa structure est verbeuse et redondante — `pageable.pageSize` vs `size`,
+> `number` vs `pageable.pageNumber`. Ensuite, exposer Spring Data dans le contrat HTTP
+> couple le contrat au framework de persistance — si demain on change de stack, le contrat
+> casse. On définit donc nos propres DTOs `PageOfProductResponse` et `PageMetaResponse`
+> alignés sur le schéma OpenAPI. Le mapper fait la traduction, le contrat reste indépendant
+> et propre."
 
 ---
 
@@ -1130,6 +1183,48 @@ en mémoire.
 métier (`SellProductUseCase`). Command = objet d'entrée d'un use case
 (`SellProductCommand`), contient les paramètres d'invocation.
 
+**Bean Validation** — spécification Java standard (`jakarta.validation`) pour la
+validation déclarative. Annotations : `@NotNull`, `@NotBlank`, `@Min`, `@Max`, `@Size`,
+`@Pattern`, `@Email`, etc. Implémentation par défaut : Hibernate Validator (inclus dans
+`spring-boot-starter-web`).
+
+**`@Validated`** (Spring) — annotation au niveau classe qui **active** la validation des
+paramètres de méthode (query params, path variables). Différente de `@Valid` (Jakarta) qui
+s'utilise sur un `@RequestBody` pour valider un objet complet.
+
+**`@ExceptionHandler`** — annotation Spring qui désigne une méthode comme handler d'une
+exception spécifique. Posée dans un controller (handler local à ce controller) ou dans
+une classe annotée `@RestControllerAdvice` (handler global à toute l'application).
+
+**`ConstraintViolationException`** — exception Jakarta levée quand `@Validated` détecte
+qu'une contrainte (`@Min`, `@Max`, etc.) est violée sur un paramètre. **Piège** : Spring la
+mappe en 500 par défaut, il faut un `@ExceptionHandler` pour ramener à 400.
+
+**`MethodArgumentNotValidException`** — exception Spring levée quand `@Valid` détecte
+qu'une contrainte est violée sur un `@RequestBody`. Spring la mappe **automatiquement**
+en 400. Asymétrie historique avec `ConstraintViolationException`.
+
+**Hibernate Validator** — implémentation par défaut de Bean Validation. Inclus
+automatiquement dans `spring-boot-starter-web`. Ne pas confondre avec Hibernate ORM
+(la couche de persistance), aucun lien.
+
+**`Pageable` / `Page<T>`** — interfaces Spring Data pour la pagination. `Pageable`
+représente une demande de page (numéro + taille + tri). `Page<T>` représente une page
+de résultat (contenu + métadonnées). À **ne pas exposer** directement dans une API
+publique — créer un wrapper DTO custom.
+
+**`PageRequest`** — implémentation concrète de `Pageable` la plus courante. Construite
+via `PageRequest.of(page, size)` ou `PageRequest.of(page, size, sort)`.
+
+**`@MockitoBean`** — annotation Spring Test (depuis Spring Boot 3.4 / Spring Framework
+6.2) qui remplace un bean du contexte par un mock Mockito. Standard moderne. Remplace
+`@MockBean` (déprécié, sera supprimé). Import :
+`org.springframework.test.context.bean.override.mockito.MockitoBean`.
+
+**Hunk** (Git) — bloc de modifications contiguës dans un diff. Git divise les changements
+d'un fichier en hunks pour les afficher et permettre le staging granulaire via
+`git add -p`.
+
 ---
 
 ## Patterns Java idiomatiques rencontrés
@@ -1204,6 +1299,25 @@ correspondante. Objectif : réussir à toutes répondre en moins de 10 minutes.
     `-am`) ?
 20. Pourquoi utilise-t-on `BigDecimal.toPlainString()` et pas `BigDecimal.toString()`
     pour sérialiser un montant ?
+21. Quelle différence entre `@Valid` (Jakarta) et `@Validated` (Spring) ? Quand utiliser
+    lequel ?
+22. Pourquoi `ConstraintViolationException` est-elle renvoyée en 500 par défaut alors que
+    `MethodArgumentNotValidException` est renvoyée en 400 automatiquement ? Comment
+    corriger ?
+23. Que se passe-t-il si on pose `@Min(0)` sur un `@RequestParam` mais qu'on oublie
+    `@Validated` au niveau classe ?
+24. Donner la formule exacte de `totalPages` à partir de `totalElements` et `size`. Quel
+    piège classique faut-il éviter ?
+25. Pourquoi `count()` retourne-t-il `long` et pas `int` ?
+26. Pourquoi ne pas exposer directement `Page<T>` de Spring Data en JSON dans une API
+    publique ? Donner deux raisons.
+27. Différence entre `@PathVariable` et `@RequestParam` : où chacun lit-il sa valeur ?
+28. À quoi sert `defaultValue` sur `@RequestParam` ? Pourquoi est-il toujours une string,
+    même pour un `int` ?
+29. Cycle TDD : Red → Green → Refactor → ?
+30. À quoi sert `git add -p` et dans quelle situation typique l'utilise-t-on ?
+31. Pourquoi a-t-on choisi `page/size` plutôt que `offset/limit` pour la signature du port
+    domaine ? Quelle est l'alternative défendable ?
 
 ---
 
