@@ -856,6 +856,178 @@ faire du `git add -p` à la fin.
 
 ---
 
+### Ticket 4.5 — `POST /api/v1/sales` (terminé)
+
+#### 1. Lire OpenAPI avec les `$ref`
+
+Dans OpenAPI, le bloc de l'endpoint ne contient pas toujours le détail complet du body ou
+de la réponse. Il pointe souvent vers un schéma réutilisable :
+
+```yaml
+schema:
+  $ref: '#/components/schemas/SaleResponse'
+```
+
+Ça veut dire : *"va lire `components.schemas.SaleResponse` plus bas dans le fichier"*.
+Méthode de lecture :
+
+1. Lire `paths./sales.post` pour connaître le verbe, le chemin, les statuts et les refs.
+2. Lire `CreateSaleRequest` pour déduire le DTO HTTP de requête.
+3. Lire `CreateSaleLine` pour déduire le DTO imbriqué.
+4. Lire `SaleResponse` pour déduire le DTO HTTP de réponse.
+5. Lire `SaleLineResponse` pour déduire chaque ligne de réponse.
+
+Conclusion du contrat :
+
+- request : `sellerId`, `shopId`, `lines[]` avec `productId` et `quantity` ;
+- response : `saleId`, `sellerId`, `lines`, `totalAmount`, `createdAt` ;
+- ligne de response : `productId`, `quantity`, `unitPrice`, `subtotal`.
+
+#### 2. Pourquoi `SellProductUseCase` retourne `SellProductResult`
+
+Comme pour la réception de stock, le controller ne peut pas construire une réponse HTTP
+complète si le use case retourne `void`.
+
+Pour `POST /sales`, la réponse OpenAPI demande au minimum :
+
+- l'ID de la vente ;
+- le vendeur ;
+- les lignes vendues ;
+- le total ;
+- la date de création.
+
+Ces informations existent dans l'objet domaine `Sale`, créé par le use case. Le controller
+ne doit pas aller les chercher dans un repository ni reconstruire une vente lui-même.
+Solution : faire retourner un DTO applicatif :
+
+```java
+public record SellProductResult(
+        SaleId saleId,
+        UserId sellerId,
+        List<SaleLineDto> lines,
+        Money totalAmount,
+        LocalDateTime createdAt
+) {
+}
+```
+
+Le result applicatif peut utiliser des types domaine (`SaleId`, `UserId`, `Money`) parce
+qu'il reste dans la couche application. Le DTO HTTP convertira ensuite vers des types
+standards (`UUID`, `String`, `int`, etc.).
+
+#### 3. `createdAt` : utiliser le timestamp métier, pas `now()`
+
+Erreur tentante : faire `LocalDateTime.now()` ou `Instant.now()` au moment de construire
+`SellProductResult`.
+
+Ce serait moins correct, car on créerait un second timestamp :
+
+```text
+sale.getOccurredAt()       -> moment métier où la vente a été créée
+LocalDateTime.now() après  -> moment technique où on construit le result
+```
+
+La réponse HTTP doit refléter la vente créée, donc :
+
+```java
+result.createdAt() == savedSale.getOccurredAt()
+```
+
+À retenir : si l'objet domaine possède déjà le timestamp métier, le result doit le réutiliser.
+On n'invente pas un nouveau temps dans le use case.
+
+#### 4. `LocalDateTime.toString()` vs JSON Jackson
+
+Dans un test, on a vu :
+
+```text
+expected: 2026-05-15T10:30
+actual:   2026-05-15T10:30:00
+```
+
+Raison : `LocalDateTime.toString()` peut omettre les secondes quand elles valent zéro, alors
+que Jackson sérialise le JSON avec les secondes.
+
+Pour un test déterministe, on fixe la date :
+
+```java
+createdAt = LocalDateTime.of(2026, 5, 15, 10, 30);
+```
+
+Et on assert le JSON réellement produit :
+
+```java
+jsonPath("$.createdAt").value("2026-05-15T10:30:00")
+```
+
+Ne pas utiliser `LocalDateTime.now()` dans un test de controller : la valeur bouge, donc le
+test devient fragile.
+
+#### 5. `201 Created` vs `202 Accepted`
+
+`POST /sales` retourne `201 Created` parce qu'une ressource vente est créée immédiatement.
+L'OpenAPI annonce même un header `Location` vers la ressource créée.
+
+`POST /stock-receipts` retournait `202 Accepted` parce que le contrat disait que la réception
+était acceptée et que les mouvements étaient créés, sans ressource receipt consultable.
+
+Règle simple :
+
+- `201 Created` : la ressource principale est créée maintenant (`Sale`) ;
+- `202 Accepted` : la requête est acceptée, souvent avec une logique plus asynchrone ou sans
+  ressource directement exposée.
+
+#### 6. `lineTotal` domaine -> `subtotal` HTTP
+
+Le domaine utilise `SaleLineDto.lineTotal()`. L'OpenAPI expose le champ JSON `subtotal`.
+
+Le DTO HTTP doit suivre OpenAPI, pas le vocabulaire interne du domaine :
+
+```text
+SaleLineDto.lineTotal() -> SaleLineResponse.subtotal()
+```
+
+Le mapper web absorbe cette différence de vocabulaire. C'est exactement son rôle :
+traduire entre modèle applicatif/domaine et contrat HTTP public.
+
+#### 7. Validation du body de vente
+
+Validations ajoutées par cycles TDD :
+
+- body vide -> 400 via `@RequestBody` ;
+- `sellerId` absent -> 400 via `@Valid` + `@NotNull` ;
+- `lines` vide -> 400 via `@NotEmpty` ;
+- `quantity <= 0` -> 400 via `@Positive` sur la ligne ;
+- validation imbriquée -> `@Valid` sur la liste `lines`.
+
+Différence importante :
+
+- `@NotNull` sur une liste vérifie seulement que la liste n'est pas `null` ;
+- `@NotEmpty` vérifie que la liste n'est pas `null` **et** contient au moins un élément ;
+- `@Valid` sur la liste permet de descendre dans chaque ligne pour vérifier `@Positive`.
+
+#### 8. Test multi-lignes
+
+Le cycle multi-lignes n'ajoute pas forcément de code si le mapper utilise déjà :
+
+```java
+request.lines().stream()
+        .map(SaleWebMapper::toLineCommand)
+        .toList()
+```
+
+Mais le test reste utile : il protège contre une régression où le mapper ne traiterait que
+la première ligne.
+
+Le test vérifie deux choses :
+
+- la réponse contient bien `lines[0]` et `lines[1]` ;
+- la `SellProductCommand` capturée contient bien deux `SellLineCommand`.
+
+À retenir : un test qui passe directement peut être un bon test de non-régression.
+
+---
+
 ## Pièges récurrents à éviter (compilation)
 
 - **`@RestController` oublié** → 404 silencieux. Pas d'erreur démarrage.
@@ -880,6 +1052,15 @@ faire du `git add -p` à la fin.
   query params.
 - **Exposer `Page<T>` de Spring Data en JSON** → fuite de la structure interne au client,
   champs redondants, contrat couplé au framework.
+- **Utiliser `now()` dans un test de controller** → date non déterministe. Préférer une date
+  fixe (`LocalDateTime.of(...)`) et asserter le JSON exact.
+- **Retourner `202 Accepted` par réflexe sur un POST** → lire OpenAPI. Pour `POST /sales`,
+  le contrat demande `201 Created`.
+- **Mapper `lineTotal` en JSON `lineTotal`** → le contrat OpenAPI attend `subtotal`.
+- **Oublier `@Valid` sur `lines`** → `@Positive` sur `quantity` ne descend pas dans les
+  objets imbriqués.
+- **Tester `lines` vide avec un autre champ invalide** → le test passe pour la mauvaise
+  raison. Garder les autres champs valides pour isoler le cas testé.
 
 ---
 
@@ -1047,6 +1228,36 @@ curl -i http://localhost:8080/api/v1/products/<uuid>
 > casse. On définit donc nos propres DTOs `PageOfProductResponse` et `PageMetaResponse`
 > alignés sur le schéma OpenAPI. Le mapper fait la traduction, le contrat reste indépendant
 > et propre."
+
+### Lire OpenAPI avec `$ref`
+
+> "Dans OpenAPI, un endpoint référence souvent des schémas avec `$ref`. Le bloc `responses`
+> ne contient pas forcément les champs de la réponse ; il pointe vers
+> `components.schemas.SaleResponse`. Pour implémenter un endpoint, je lis d'abord le path
+> et le statut HTTP, puis je suis les `$ref` vers les schémas request/response. C'est ce qui
+> permet de déduire les DTOs HTTP et de voir si le use case retourne assez d'informations."
+
+### Use case result pour construire une réponse HTTP
+
+> "Si un endpoint doit renvoyer un body riche, le use case ne peut pas toujours rester
+> `void`. Pour `POST /sales`, la réponse doit contenir `saleId`, les lignes, le total et
+> `createdAt`. Ces données appartiennent au scénario applicatif et viennent de la `Sale`
+> créée. Le controller ne doit pas les rechercher lui-même dans les repositories. Le use case
+> retourne donc un `SellProductResult`, que le mapper transforme en `SaleResponse`."
+
+### Timestamp métier vs timestamp technique
+
+> "Quand un agrégat possède déjà un timestamp métier, la réponse doit réutiliser ce
+> timestamp. Pour une vente, `createdAt` vient de `sale.getOccurredAt()`, pas de
+> `LocalDateTime.now()` au moment de construire le result. Sinon on mélange le moment métier
+> de création et le moment technique de mapping, avec un léger décalage possible."
+
+### `201 Created` vs `202 Accepted`
+
+> "`201 Created` signifie que la ressource demandée a été créée immédiatement, comme une
+> `Sale`. `202 Accepted` signifie que la requête est acceptée mais que le traitement ou la
+> ressource de suivi n'est pas forcément exposé immédiatement. Je ne choisis pas le statut
+> au feeling : je lis le contrat OpenAPI et je l'aligne avec le sens HTTP."
 
 ---
 
@@ -1318,6 +1529,18 @@ correspondante. Objectif : réussir à toutes répondre en moins de 10 minutes.
 30. À quoi sert `git add -p` et dans quelle situation typique l'utilise-t-on ?
 31. Pourquoi a-t-on choisi `page/size` plutôt que `offset/limit` pour la signature du port
     domaine ? Quelle est l'alternative défendable ?
+32. À quoi sert `$ref: '#/components/schemas/SaleResponse'` dans OpenAPI ?
+33. Pourquoi `SellProductUseCase` ne peut plus retourner `void` pour `POST /sales` ?
+34. Pourquoi `SellProductResult.createdAt` doit venir de `Sale.getOccurredAt()` et pas
+    de `LocalDateTime.now()` ?
+35. Pourquoi `POST /sales` retourne `201 Created` alors que `POST /stock-receipts`
+    retournait `202 Accepted` ?
+36. Pourquoi le DTO HTTP expose `subtotal` alors que le domaine utilise `lineTotal` ?
+37. Quelle différence entre `@NotNull` et `@NotEmpty` sur `lines` ?
+38. Pourquoi `@Positive` sur `CreateSaleLine.quantity` nécessite aussi `@Valid` sur
+    la liste `lines` ?
+39. Pourquoi un test multi-lignes est utile même si le mapper stream passait déjà ?
+40. Pourquoi `LocalDateTime.toString()` peut différer de la sérialisation JSON Jackson ?
 
 ---
 
