@@ -183,5 +183,78 @@ class SaleControllerTest {
         verifyNoInteractions(sellProductUseCase);
     }
 
+    @Test
+    void should_return_201_when_sale_contains_multiple_lines() throws Exception {
+        UUID secondProductId = UUID.fromString("55555555-5555-5555-5555-555555555555");
+
+        SaleLineDto firstLine = new SaleLineDto(
+                ProductId.of(productId),
+                4,
+                Money.create(new BigDecimal("15.00"), Currency.getInstance("EUR")),
+                Money.create(new BigDecimal("60.00"), Currency.getInstance("EUR"))
+        );
+
+        SaleLineDto secondLine = new SaleLineDto(
+                ProductId.of(secondProductId),
+                2,
+                Money.create(new BigDecimal("5.00"), Currency.getInstance("EUR")),
+                Money.create(new BigDecimal("10.00"), Currency.getInstance("EUR"))
+        );
+
+        given(sellProductUseCase.sell(any(SellProductCommand.class)))
+                .willReturn(new SellProductResult(
+                        SaleId.of(saleId),
+                        UserId.of(userId),
+                        List.of(firstLine, secondLine),
+                        Money.create(new BigDecimal("70.00"), Currency.getInstance("EUR")),
+                        createdAt
+                ));
+
+        mockMvc.perform(post("/api/v1/sales")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "sellerId": "%s",
+                              "shopId": "%s",
+                              "lines": [
+                                {
+                                  "productId": "%s",
+                                  "quantity": 4
+                                },
+                                {
+                                  "productId": "%s",
+                                  "quantity": 2
+                                }
+                              ]
+                            }
+                            """.formatted(userId, shopId, productId, secondProductId)))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.sellerId").value(userId.toString()))
+                .andExpect(jsonPath("$.lines.length()").value(2))
+                .andExpect(jsonPath("$.lines[0].productId").value(productId.toString()))
+                .andExpect(jsonPath("$.lines[0].quantity").value(4))
+                .andExpect(jsonPath("$.lines[0].unitPrice.amount").value("15.00"))
+                .andExpect(jsonPath("$.lines[0].subtotal.amount").value("60.00"))
+                .andExpect(jsonPath("$.lines[1].productId").value(secondProductId.toString()))
+                .andExpect(jsonPath("$.lines[1].quantity").value(2))
+                .andExpect(jsonPath("$.lines[1].unitPrice.amount").value("5.00"))
+                .andExpect(jsonPath("$.lines[1].subtotal.amount").value("10.00"))
+                .andExpect(jsonPath("$.totalAmount.amount").value("70.00"));
+
+        ArgumentCaptor<SellProductCommand> captor = ArgumentCaptor.forClass(SellProductCommand.class);
+        verify(sellProductUseCase).sell(captor.capture());
+
+        SellProductCommand command = captor.getValue();
+        assertThat(command.shopId()).isEqualTo(ShopId.of(shopId));
+        assertThat(command.sellerId()).isEqualTo(UserId.of(userId));
+        assertThat(command.lines()).hasSize(2);
+        assertThat(command.lines().get(0).productId()).isEqualTo(ProductId.of(productId));
+        assertThat(command.lines().get(0).quantity()).isEqualTo(4);
+        assertThat(command.lines().get(1).productId()).isEqualTo(ProductId.of(secondProductId));
+        assertThat(command.lines().get(1).quantity()).isEqualTo(2);
+    }
+
 
 }
