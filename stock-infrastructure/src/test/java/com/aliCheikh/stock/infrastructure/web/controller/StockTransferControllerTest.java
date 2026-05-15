@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -87,5 +88,100 @@ class StockTransferControllerTest {
         assertThat(command.destinationLocationId()).isEqualTo(LocationId.of(destinationLocationId));
         assertThat(command.quantity()).isEqualTo(5);
         assertThat(command.userId()).isEqualTo(UserId.of(userId));
+    }
+
+    @Test
+    void should_return_400_when_body_is_empty() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transferStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_product_id_is_missing() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "sourceLocationId": "%s",
+                                  "destinationLocationId": "%s",
+                                  "quantity": 5,
+                                  "userId": "%s"
+                                }
+                                """.formatted(sourceLocationId, destinationLocationId, userId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transferStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_source_location_id_is_missing() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "productId": "%s",
+                                  "destinationLocationId": "%s",
+                                  "quantity": 5,
+                                  "userId": "%s"
+                                }
+                                """.formatted(productId, destinationLocationId, userId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transferStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_destination_location_id_is_missing() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "productId": "%s",
+                                  "sourceLocationId": "%s",
+                                  "quantity": 5,
+                                  "userId": "%s"
+                                }
+                                """.formatted(productId, sourceLocationId, userId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transferStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_quantity_is_not_positive() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "productId": "%s",
+                                  "sourceLocationId": "%s",
+                                  "destinationLocationId": "%s",
+                                  "quantity": 0,
+                                  "userId": "%s"
+                                }
+                                """.formatted(productId, sourceLocationId, destinationLocationId, userId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transferStockUseCase);
+    }
+
+    @Test
+    void should_return_400_when_user_id_is_missing() throws Exception {
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "productId": "%s",
+                                  "sourceLocationId": "%s",
+                                  "destinationLocationId": "%s",
+                                  "quantity": 5
+                                }
+                                """.formatted(productId, sourceLocationId, destinationLocationId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transferStockUseCase);
     }
 }
