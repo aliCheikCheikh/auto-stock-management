@@ -146,5 +146,21 @@ class SaleControllerTest {
         verifyNoInteractions(sellProductUseCase);
     }
 
+    @Test
+    void should_return_400_when_sale_lines_are_empty() throws Exception {
+        mockMvc.perform(post("/api/v1/sales")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "sellerId": "%s",
+                              "shopId": "%s",
+                              "lines": []
+                            }
+                            """.formatted(userId, shopId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(sellProductUseCase);
+    }
+
 
 }
