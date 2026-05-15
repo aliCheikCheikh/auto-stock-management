@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.application.usecase;
 
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
+import com.aliCheikh.stock.application.dto.TransferStockResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,12 +54,16 @@ class TransferStockUseCaseTest {
     void should_transfer_stock_from_backstock_to_shop_floor_with_partial_source_depletion() {
         TransferFixture fixture = givenValidTransfer(10, 2, 4);
 
-        transferStockUseCase.execute(fixture.command());
+        Instant before = Instant.now();
+        TransferStockResult result = transferStockUseCase.execute(fixture.command());
+        Instant after = Instant.now();
 
         assertThat(fixture.source().getStockLevel(fixture.productId())).isEqualTo(6);
         assertThat(fixture.destination().getStockLevel(fixture.productId())).isEqualTo(6);
 
-        assertSavedTransferMovement(fixture, 4);
+        StockMovement savedMovement = assertSavedTransferMovement(fixture, 4);
+        assertThat(result.movementId()).isEqualTo(savedMovement.getMovementId());
+        assertThat(result.acceptedAt()).isBetween(before, after);
         assertLocationsAreSavedBeforeMovement(fixture.source(), fixture.destination());
         verifyNoInteractions(eventPublisher);
     }
@@ -66,12 +72,14 @@ class TransferStockUseCaseTest {
     void should_transfer_stock_from_backstock_to_shop_floor_with_full_source_depletion() {
         TransferFixture fixture = givenValidTransfer(10, 2, 10);
 
-        transferStockUseCase.execute(fixture.command());
+        TransferStockResult result = transferStockUseCase.execute(fixture.command());
 
         assertThat(fixture.source().getStockLevel(fixture.productId())).isEqualTo(0);
         assertThat(fixture.destination().getStockLevel(fixture.productId())).isEqualTo(12);
 
-        assertSavedTransferMovement(fixture, 10);
+        StockMovement savedMovement = assertSavedTransferMovement(fixture, 10);
+        assertThat(result.movementId()).isEqualTo(savedMovement.getMovementId());
+        assertThat(result.acceptedAt()).isNotNull();
         assertLocationsAreSavedBeforeMovement(fixture.source(), fixture.destination());
         verifyNoInteractions(eventPublisher);
     }
@@ -267,7 +275,7 @@ class TransferStockUseCaseTest {
                 .thenReturn(Optional.of(destination));
     }
 
-    private void assertSavedTransferMovement(TransferFixture fixture, int expectedQuantity) {
+    private StockMovement assertSavedTransferMovement(TransferFixture fixture, int expectedQuantity) {
         ArgumentCaptor<StockMovement> movementCaptor = ArgumentCaptor.forClass(StockMovement.class);
         verify(stockMovementRepository).save(movementCaptor.capture());
 
@@ -284,6 +292,8 @@ class TransferStockUseCaseTest {
                 .isPresent()
                 .contains(fixture.destination().getLocationId());
         assertThat(savedMovement.getSaleId()).isEmpty();
+
+        return savedMovement;
     }
 
     private void assertLocationsAreSavedBeforeMovement(

@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.application.usecase;
 
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
+import com.aliCheikh.stock.application.dto.TransferStockResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
@@ -12,7 +13,9 @@ import com.aliCheikh.stock.domain.model.stock.LocationType;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 
+import java.time.Instant;
 import java.util.Objects;
+
 /**
  * Use case for transferring stock from a backstock location to a shop floor location.
  *
@@ -59,7 +62,7 @@ public class TransferStockUseCase {
      * @throws InvalidStockTransferException if locations do not satisfy transfer rules
      * @throws InsufficientStockException if the source does not have enough stock
      */
-    public void execute(TransferStockCommand command) {
+    public TransferStockResult execute(TransferStockCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
 
         StorageLocation source = storageLocationRepository.findById(command.sourceLocationId())
@@ -93,6 +96,11 @@ public class TransferStockUseCase {
         );
 
         stockMovementRepository.save(transferMovement);
+
+        return new TransferStockResult(
+                transferMovement.getMovementId(),
+                Instant.now()
+        );
     }
 
     private void validateTransfer(StorageLocation source, StorageLocation destination) {

@@ -1028,6 +1028,78 @@ Le test vérifie deux choses :
 
 ---
 
+### Ticket 4.6 — `POST /api/v1/stock-transfers` (terminé)
+
+#### 1. Lire un endpoint avec un acknowledgement minimal
+
+Pour `POST /stock-transfers`, OpenAPI indique :
+
+- request : `productId`, `sourceLocationId`, `destinationLocationId`, `quantity`, `userId` ;
+- response `202 Accepted` : `movementId`, `acceptedAt`.
+
+La réponse ne contient pas le produit, les emplacements ou la quantité. Donc le controller
+n'a pas besoin de recharger tout le transfert : il doit seulement recevoir du use case
+l'identifiant du mouvement créé et le moment d'acceptation.
+
+#### 2. Pourquoi `TransferStockUseCase` ne doit plus retourner `void`
+
+Le use case crée un `StockMovement` de type `TRANSFER`. Le controller doit renvoyer son
+`movementId`, mais il ne doit pas aller fouiller dans le repository pour le retrouver.
+
+Solution :
+
+```java
+public record TransferStockResult(
+        MovementId movementId,
+        Instant acceptedAt
+) {
+}
+```
+
+Le use case reste responsable de l'action métier et retourne le minimum nécessaire au
+caller. Le controller reste responsable du HTTP et transforme ce result en DTO de réponse.
+
+#### 3. Validation HTTP simple sur un body plat
+
+Le body de transfert n'a pas de liste imbriquée, donc pas besoin de `@Valid` sur une
+collection comme pour `lines` ou `distributions`.
+
+On utilise :
+
+- `@NotNull` sur les UUID obligatoires ;
+- `@Positive` sur `quantity` ;
+- `@Valid @RequestBody` dans le controller pour déclencher Bean Validation.
+
+À retenir : si `quantity` est un `int` primitif et absent du JSON, Jackson le met à `0`.
+`@Positive` transforme donc naturellement ce cas en `400 Bad Request`.
+
+#### 4. Test controller : `verifyNoInteractions` protège la frontière
+
+Dans les tests de validation web, on vérifie toujours :
+
+```java
+verifyNoInteractions(transferStockUseCase);
+```
+
+Ça prouve qu'une requête invalide est bloquée dans la couche web. Le use case ne doit pas
+recevoir une commande partiellement invalide.
+
+#### 5. Maven multi-module et tests ciblés
+
+Quand `stock-infrastructure` dépend d'une modification récente dans `stock-application`,
+il faut parfois lancer avec `-am` (*also make*) :
+
+```bash
+mvn -pl stock-infrastructure -am -Dtest=StockTransferControllerTest \
+    -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Pourquoi `-Dsurefire.failIfNoSpecifiedTests=false` ? Parce que `-am` lance aussi les modules
+dépendants. `stock-domain` et `stock-application` n'ont pas forcément un test nommé
+`StockTransferControllerTest`, et Surefire échoue sinon avant d'arriver au module web.
+
+---
+
 ## Pièges récurrents à éviter (compilation)
 
 - **`@RestController` oublié** → 404 silencieux. Pas d'erreur démarrage.
@@ -1061,6 +1133,10 @@ Le test vérifie deux choses :
   objets imbriqués.
 - **Tester `lines` vide avec un autre champ invalide** → le test passe pour la mauvaise
   raison. Garder les autres champs valides pour isoler le cas testé.
+- **Oublier `-am` après avoir modifié `stock-application`** → `stock-infrastructure` peut
+  compiler contre une ancienne version installée localement.
+- **Utiliser `-Dtest=...` avec `-am` sans `-Dsurefire.failIfNoSpecifiedTests=false`** →
+  Maven peut échouer dans un module qui ne contient pas ce test ciblé.
 
 ---
 
@@ -1541,6 +1617,10 @@ correspondante. Objectif : réussir à toutes répondre en moins de 10 minutes.
     la liste `lines` ?
 39. Pourquoi un test multi-lignes est utile même si le mapper stream passait déjà ?
 40. Pourquoi `LocalDateTime.toString()` peut différer de la sérialisation JSON Jackson ?
+41. Pourquoi `TransferStockUseCase` doit retourner un `TransferStockResult` ?
+42. Pourquoi `POST /stock-transfers` retourne `202 Accepted` et seulement un acknowledgement ?
+43. Pourquoi `verifyNoInteractions` est important dans les tests de validation web ?
+44. À quoi servent `-am` et `-Dsurefire.failIfNoSpecifiedTests=false` dans Maven multi-module ?
 
 ---
 
