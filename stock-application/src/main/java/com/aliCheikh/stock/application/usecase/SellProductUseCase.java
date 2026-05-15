@@ -2,6 +2,7 @@ package com.aliCheikh.stock.application.usecase;
 
 import com.aliCheikh.stock.application.dto.SellLineCommand;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
+import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.LowStockAlert;
@@ -79,7 +80,7 @@ public class SellProductUseCase {
      * @throws ProductNotFoundException if one sold product does not exist
      * @throws StorageNotFoundException if an allocation references a location not loaded for the shop
      */
-    public void sell(SellProductCommand command) {
+    public SellProductResult sell(SellProductCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
 
         List<StorageLocation> shopLocations = storageLocationRepository.findByShopId(command.shopId());
@@ -142,6 +143,14 @@ public class SellProductUseCase {
         ));
 
         eventPublisher.publish(eventsToPublish);
+
+        return new SellProductResult(
+                sale.getSaleId(),
+                sale.getSoldBy(),
+                sale.getLines(),
+                sale.getTotalAmount(),
+                sale.getOccurredAt()
+        );
     }
 
     private List<PreparedLine> prepareLines(
