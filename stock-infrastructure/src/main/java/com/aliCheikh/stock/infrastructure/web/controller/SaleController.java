@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.usecase.SellProductUseCase;
 import com.aliCheikh.stock.infrastructure.web.dto.CreateSaleRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.SaleWebMapper;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,7 +26,7 @@ public class SaleController {
     }
 
     @PostMapping
-    public ResponseEntity<SaleResponse> createSale(@RequestBody CreateSaleRequest request) {
+    public ResponseEntity<SaleResponse> createSale(@Valid @RequestBody CreateSaleRequest request) {
         SellProductCommand command = SaleWebMapper.toCommand(request);
         SellProductResult result = sellProductUseCase.sell(command);
 

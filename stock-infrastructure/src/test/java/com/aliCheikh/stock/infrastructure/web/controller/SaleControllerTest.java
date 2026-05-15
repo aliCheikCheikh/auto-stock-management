@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -115,4 +116,35 @@ class SaleControllerTest {
         assertThat(command.lines().get(0).productId()).isEqualTo(ProductId.of(productId));
         assertThat(command.lines().get(0).quantity()).isEqualTo(4);
     }
+
+    @Test
+    void should_return_400_when_body_is_empty() throws Exception {
+        mockMvc.perform(post("/api/v1/sales")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(sellProductUseCase);
+    }
+
+    @Test
+    void should_return_400_when_seller_id_is_missing() throws Exception {
+        mockMvc.perform(post("/api/v1/sales")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "shopId": "%s",
+                              "lines": [
+                                {
+                                  "productId": "%s",
+                                  "quantity": 4
+                                }
+                              ]
+                            }
+                            """.formatted(shopId, productId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(sellProductUseCase);
+    }
+
+
 }
