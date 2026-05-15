@@ -162,5 +162,26 @@ class SaleControllerTest {
         verifyNoInteractions(sellProductUseCase);
     }
 
+    @Test
+    void should_return_400_when_sale_line_quantity_is_not_positive() throws Exception {
+        mockMvc.perform(post("/api/v1/sales")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "sellerId": "%s",
+                              "shopId": "%s",
+                              "lines": [
+                                {
+                                  "productId": "%s",
+                                  "quantity": 0
+                                }
+                              ]
+                            }
+                            """.formatted(userId, shopId, productId)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(sellProductUseCase);
+    }
+
 
 }
