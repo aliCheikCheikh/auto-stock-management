@@ -1,6 +1,10 @@
 package com.aliCheikh.stock.infrastructure.persistence;
 
+import com.aliCheikh.stock.application.dto.ListStockMovementsQuery;
+import com.aliCheikh.stock.application.dto.PageResult;
+import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
+import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.product.ProductId;
@@ -13,6 +17,7 @@ import com.aliCheikh.stock.domain.model.stock.LocationType;
 import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.domain.model.user.UserRole;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleJpaRepositoryAdapter;
+import com.aliCheikh.stock.infrastructure.persistence.adapter.StockMovementQueryJpaAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.StockMovementJpaRepositoryAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.entity.CategoryJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.ProductJpaEntity;
@@ -42,6 +47,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.List;
 
@@ -54,6 +60,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         SaleJpaRepositoryAdapter.class,
         SaleJpaMapper.class,
         StockMovementJpaRepositoryAdapter.class,
+        StockMovementQueryJpaAdapter.class,
         StockMovementJpaMapper.class
 })
 class StockMovementPersistenceTest {
@@ -73,6 +80,9 @@ class StockMovementPersistenceTest {
 
     @Autowired
     private StockMovementJpaRepositoryAdapter adapter;
+
+    @Autowired
+    private StockMovementQueryJpaAdapter queryAdapter;
 
     @Autowired
     private StockMovementJpaRepository movementRepository;
@@ -183,6 +193,65 @@ class StockMovementPersistenceTest {
         assertPersistedEntry(findByType(persistedMovements, MovementType.ENTRY));
         assertPersistedExit(findByType(persistedMovements, MovementType.EXIT));
         assertPersistedTransfer(findByType(persistedMovements, MovementType.TRANSFER));
+    }
+
+    @Test
+    void should_find_stock_movements_by_query() {
+        saveReferenceData();
+
+        StockMovement entry = StockMovement.rehydrate(
+                MovementId.generate(),
+                productId,
+                null,
+                destinationLocationId,
+                MovementType.ENTRY,
+                10,
+                userId,
+                LocalDateTime.of(2026, 5, 1, 10, 0),
+                null
+        );
+        StockMovement transfer = StockMovement.rehydrate(
+                MovementId.generate(),
+                productId,
+                sourceLocationId,
+                destinationLocationId,
+                MovementType.TRANSFER,
+                5,
+                userId,
+                LocalDateTime.of(2026, 5, 2, 10, 0),
+                null
+        );
+
+        adapter.saveAll(List.of(entry, transfer));
+        flushAndClear();
+
+        ListStockMovementsQuery query = new ListStockMovementsQuery(
+                0,
+                10,
+                List.of("executedAt,asc"),
+                productId,
+                sourceLocationId,
+                MovementType.TRANSFER,
+                LocalDateTime.of(2026, 5, 1, 0, 0),
+                LocalDateTime.of(2026, 5, 3, 0, 0)
+        );
+
+        PageResult<StockMovementView> result = queryAdapter.findByQuery(query);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.totalPages()).isEqualTo(1);
+
+        StockMovementView movement = result.content().get(0);
+        assertThat(movement.movementId()).isEqualTo(transfer.getMovementId());
+        assertThat(movement.productId()).isEqualTo(productId);
+        assertThat(movement.locationId()).isEqualTo(sourceLocationId);
+        assertThat(movement.destinationLocationId()).isEqualTo(destinationLocationId);
+        assertThat(movement.type()).isEqualTo(MovementType.TRANSFER);
+        assertThat(movement.quantity()).isEqualTo(5);
+        assertThat(movement.executedBy()).isEqualTo(userId);
+        assertThat(movement.executedAt()).isEqualTo(LocalDateTime.of(2026, 5, 2, 10, 0));
+        assertThat(movement.saleId()).isNull();
     }
 
     private void saveReferenceData() {
