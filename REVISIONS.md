@@ -1100,6 +1100,514 @@ dépendants. `stock-domain` et `stock-application` n'ont pas forcément un test 
 
 ---
 
+### Ticket 4.7 — `GET /api/v1/stock-movements` (terminé)
+
+#### 1. Le but métier de l'endpoint
+
+Les tickets précédents créent des mouvements de stock :
+
+```text
+POST /stock-receipts   -> crée des mouvements ENTRY
+POST /sales            -> crée des mouvements EXIT
+POST /stock-transfers  -> crée un mouvement TRANSFER
+```
+
+`GET /stock-movements` sert à lire cet historique. C'est la page que le frontend utiliserait
+pour afficher : *"qu'est-ce qui s'est passé sur le stock ?"*
+
+Exemple d'appel :
+
+```http
+GET /api/v1/stock-movements?page=0&size=20&type=TRANSFER&sort=executedAt,desc
+```
+
+Traduction humaine :
+
+```text
+Donne-moi les 20 premiers mouvements,
+seulement les transferts,
+triés du plus récent au plus ancien.
+```
+
+#### 2. Pourquoi un query use case ?
+
+Pour `GET /products`, on avait fait simple :
+
+```text
+ProductController -> ProductRepository
+```
+
+Pour `stock-movements`, la lecture est plus riche :
+
+- pagination ;
+- tri ;
+- filtre par produit ;
+- filtre par emplacement ;
+- filtre par type de mouvement ;
+- filtre par période ;
+- mapping entre noms API (`executedAt`) et noms JPA (`occurredAt`).
+
+On a donc créé un use case de lecture :
+
+```java
+public class ListStockMovementsUseCase {
+    public PageResult<StockMovementView> execute(ListStockMovementsQuery query) {
+        return stockMovementQueryPort.findByQuery(query);
+    }
+}
+```
+
+Même s'il paraît petit, il donne une frontière claire :
+
+```text
+Controller HTTP
+-> construit une query application
+-> appelle le use case
+-> le use case appelle un port
+-> l'infrastructure JPA implémente ce port
+```
+
+Phrase à retenir : un controller ne doit pas devenir un endroit où on construit des requêtes
+JPA complexes.
+
+#### 3. `ListStockMovementsQuery` : regrouper les critères de recherche
+
+Au lieu de passer 8 paramètres partout :
+
+```java
+find(page, size, sort, productId, locationId, type, from, to)
+```
+
+on les regroupe dans un seul objet :
+
+```java
+public record ListStockMovementsQuery(
+        int page,
+        int size,
+        List<String> sort,
+        ProductId productId,
+        LocationId locationId,
+        MovementType type,
+        LocalDateTime from,
+        LocalDateTime to
+) {
+}
+```
+
+Exemple :
+
+```http
+GET /stock-movements?page=1&size=10&type=EXIT
+```
+
+devient :
+
+```java
+new ListStockMovementsQuery(
+        1,
+        10,
+        List.of("executedAt,desc"),
+        null,
+        null,
+        MovementType.EXIT,
+        null,
+        null
+)
+```
+
+Pourquoi `ProductId` et `LocationId` ici, alors que le HTTP reçoit des `UUID` ? Parce qu'on
+est dans la couche application. Le HTTP connaît les `UUID`; l'application peut manipuler les
+value objects du domaine pour être plus expressive.
+
+#### 4. `PageResult<T>` : éviter de dépendre de Spring Data dans l'application
+
+Spring Data fournit `Page<T>`, mais c'est un type du framework. Si on l'utilise dans
+`stock-application`, on colle la couche application à Spring Data.
+
+On a donc créé notre page neutre :
+
+```java
+public record PageResult<T>(
+        List<T> content,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages
+) {
+}
+```
+
+Exemple :
+
+```java
+new PageResult<>(
+        List.of(movement1, movement2),
+        0,
+        20,
+        42,
+        3
+)
+```
+
+Traduction :
+
+```text
+Je suis sur la page 0.
+J'ai demandé 20 éléments par page.
+Il y a 42 éléments au total.
+Donc il y a 3 pages.
+Cette page contient movement1 et movement2.
+```
+
+À retenir : `PageResult<T>` est à l'application ce que `Page<T>` est à Spring Data.
+
+#### 5. `StockMovementQueryPort` : contrat de lecture
+
+Le port dit ce dont l'application a besoin :
+
+```java
+public interface StockMovementQueryPort {
+    PageResult<StockMovementView> findByQuery(ListStockMovementsQuery query);
+}
+```
+
+Traduction humaine :
+
+```text
+J'ai besoin de quelqu'un capable de chercher des mouvements de stock avec ces critères.
+Je ne veux pas savoir si c'est fait avec JPA, SQL, Elasticsearch ou autre.
+```
+
+L'application dépend donc de l'interface, pas de JPA :
+
+```text
+ListStockMovementsUseCase -> StockMovementQueryPort
+```
+
+L'infrastructure fournit l'implémentation :
+
+```text
+StockMovementQueryJpaAdapter implements StockMovementQueryPort
+```
+
+#### 6. Est-ce du CQRS ?
+
+Oui, mais en version pragmatique.
+
+CQRS veut dire : séparer les commandes qui modifient le système des queries qui lisent le
+système.
+
+Dans notre cas :
+
+```text
+Command side :
+POST /stock-receipts
+POST /sales
+POST /stock-transfers
+
+Query side :
+GET /stock-movements
+```
+
+Ce n'est pas du CQRS complet avec base de lecture séparée, event sourcing ou projections
+asynchrones. C'est simplement une séparation propre :
+
+```text
+écriture -> use cases métier
+lecture  -> query use case + query port
+```
+
+#### 7. `@RequestParam MultiValueMap<String, String>` : lire les query params bruts
+
+Un paramètre HTTP peut apparaître plusieurs fois :
+
+```http
+GET /stock-movements?sort=executedAt,desc&sort=quantity,asc&type=TRANSFER
+```
+
+Spring peut représenter ça comme une map où chaque clé a une liste de valeurs :
+
+```java
+{
+    "sort": ["executedAt,desc", "quantity,asc"],
+    "type": ["TRANSFER"]
+}
+```
+
+C'est exactement le rôle de :
+
+```java
+@RequestParam MultiValueMap<String, String> queryParams
+```
+
+Pourquoi ne pas écrire directement ?
+
+```java
+@RequestParam(required = false) List<String> sort
+```
+
+Parce que Spring peut découper `sort=executedAt,desc` en :
+
+```java
+["executedAt", "desc"]
+```
+
+Or nous voulons garder une instruction complète :
+
+```java
+["executedAt,desc"]
+```
+
+Donc on lit le param brut :
+
+```java
+queryParams.get("sort")
+```
+
+#### 8. `Sort`, `Sort.Order` et traduction API -> JPA
+
+Le client parle avec les noms OpenAPI :
+
+```http
+GET /stock-movements?sort=executedAt,desc
+```
+
+Mais l'entity JPA n'a pas un champ `executedAt`. Elle a :
+
+```java
+private LocalDateTime occurredAt;
+```
+
+On doit donc traduire :
+
+```text
+API          JPA
+movementId -> id
+type       -> movementType
+executedBy -> performedBy
+executedAt -> occurredAt
+```
+
+Exemple :
+
+```java
+toOrder("executedAt,desc")
+```
+
+fait :
+
+```text
+split -> ["executedAt", "desc"]
+toJpaProperty("executedAt") -> "occurredAt"
+direction -> DESC
+résultat -> Sort.Order.desc("occurredAt")
+```
+
+En SQL, ça revient à :
+
+```sql
+order by occurred_at desc
+```
+
+Si le client ne fournit aucun tri, on choisit le défaut métier :
+
+```java
+Sort.by(Sort.Order.desc("occurredAt"))
+```
+
+Donc l'historique affiche les mouvements les plus récents d'abord.
+
+#### 9. `Specification` JPA : construire un `WHERE` dynamique
+
+Le client peut envoyer zéro, un ou plusieurs filtres :
+
+```http
+GET /stock-movements
+GET /stock-movements?productId=...
+GET /stock-movements?productId=...&type=TRANSFER&from=2026-05-01T00:00:00
+```
+
+On ne veut pas écrire une méthode repository pour chaque combinaison :
+
+```java
+findByProductId(...)
+findByProductIdAndType(...)
+findByProductIdAndTypeAndOccurredAtBetween(...)
+```
+
+`Specification` permet d'ajouter les filtres un par un.
+
+Exemple :
+
+```java
+if (query.productId() != null) {
+    specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+            criteriaBuilder.equal(root.get("productId"), query.productId().getValue()));
+}
+```
+
+Traduction SQL :
+
+```sql
+where product_id = ?
+```
+
+Pour `locationId`, on utilise un `OR` :
+
+```java
+criteriaBuilder.or(
+        criteriaBuilder.equal(root.get("sourceLocationId"), query.locationId().getValue()),
+        criteriaBuilder.equal(root.get("destinationLocationId"), query.locationId().getValue())
+)
+```
+
+Pourquoi ? Parce qu'un emplacement peut être source ou destination.
+
+```text
+ENTRY    -> destination seulement
+EXIT     -> source seulement
+TRANSFER -> source + destination
+```
+
+Donc filtrer par location doit trouver les mouvements où l'emplacement apparaît dans l'une
+des deux colonnes.
+
+#### 10. `toView(...)` : transformer JPA vers un DTO applicatif
+
+La base retourne une entity :
+
+```java
+StockMovementJpaEntity
+```
+
+L'application ne veut pas exposer directement cette entity. Elle veut une vue de lecture :
+
+```java
+StockMovementView
+```
+
+La méthode `toView` traduit donc une ligne de base en objet applicatif.
+
+Exemple `ENTRY` :
+
+```text
+sourceLocationId = null
+destinationLocationId = rayon
+movementType = ENTRY
+```
+
+Résultat :
+
+```text
+locationId = rayon
+destinationLocationId = null
+```
+
+Exemple `EXIT` :
+
+```text
+sourceLocationId = rayon
+destinationLocationId = null
+movementType = EXIT
+saleId = vente-123
+```
+
+Résultat :
+
+```text
+locationId = rayon
+destinationLocationId = null
+saleId = vente-123
+```
+
+Exemple `TRANSFER` :
+
+```text
+sourceLocationId = reserve
+destinationLocationId = rayon
+movementType = TRANSFER
+```
+
+Résultat :
+
+```text
+locationId = reserve
+destinationLocationId = rayon
+```
+
+À retenir : `locationId` est l'emplacement principal du mouvement. Pour un transfert, on
+ajoute aussi `destinationLocationId`.
+
+#### 11. Wiring Spring : `@Configuration` + `@Bean`
+
+Nos use cases application sont des classes Java simples :
+
+```java
+public class ListStockMovementsUseCase {
+}
+```
+
+Elles n'ont pas `@Service`. Spring ne les crée donc pas automatiquement.
+
+On ajoute une configuration :
+
+```java
+@Configuration
+public class UseCaseConfiguration {
+    @Bean
+    public ListStockMovementsUseCase listStockMovementsUseCase(
+            StockMovementQueryPort stockMovementQueryPort
+    ) {
+        return new ListStockMovementsUseCase(stockMovementQueryPort);
+    }
+}
+```
+
+Traduction humaine :
+
+```text
+Spring, si quelqu'un demande un ListStockMovementsUseCase,
+voici comment tu dois le construire.
+```
+
+Le controller peut alors recevoir le use case dans son constructeur :
+
+```java
+public StockMovementController(ListStockMovementsUseCase useCase) {
+    this.listStockMovementsUseCase = useCase;
+}
+```
+
+#### 12. `SpringDomainEventPublisher`
+
+L'application dépend du port :
+
+```java
+EventPublisher
+```
+
+Elle ne connaît pas Spring. L'infrastructure fournit une implémentation :
+
+```java
+public class SpringDomainEventPublisher implements EventPublisher {
+    public void publish(List<DomainEvent> events) {
+        events.forEach(applicationEventPublisher::publishEvent);
+    }
+}
+```
+
+Traduction :
+
+```text
+Le use case dit : publie mes events métier.
+L'infrastructure les transmet au système d'events de Spring.
+```
+
+On garde donc l'application indépendante de Spring, tout en utilisant Spring au bord du
+système.
+
+---
+
 ## Pièges récurrents à éviter (compilation)
 
 - **`@RestController` oublié** → 404 silencieux. Pas d'erreur démarrage.
@@ -1137,6 +1645,15 @@ dépendants. `stock-domain` et `stock-application` n'ont pas forcément un test 
   compiler contre une ancienne version installée localement.
 - **Utiliser `-Dtest=...` avec `-am` sans `-Dsurefire.failIfNoSpecifiedTests=false`** →
   Maven peut échouer dans un module qui ne contient pas ce test ciblé.
+- **Utiliser `@RequestParam List<String> sort` pour `sort=executedAt,desc`** → Spring peut
+  découper la valeur en `["executedAt", "desc"]`. Pour garder la valeur brute, utiliser
+  `MultiValueMap<String, String>`.
+- **Trier avec les noms de l'API directement en JPA** → `executedAt` n'existe pas dans
+  l'entity, il faut traduire vers `occurredAt`.
+- **Exposer `Page<T>` ou `StockMovementJpaEntity` hors persistence** → fuite de Spring Data
+  ou JPA dans l'application/web. Utiliser `PageResult<T>` et `StockMovementView`.
+- **Oublier le wiring `@Bean` d'un use case sans `@Service`** → Spring ne sait pas construire
+  le controller en runtime.
 
 ---
 
@@ -1621,6 +2138,17 @@ correspondante. Objectif : réussir à toutes répondre en moins de 10 minutes.
 42. Pourquoi `POST /stock-transfers` retourne `202 Accepted` et seulement un acknowledgement ?
 43. Pourquoi `verifyNoInteractions` est important dans les tests de validation web ?
 44. À quoi servent `-am` et `-Dsurefire.failIfNoSpecifiedTests=false` dans Maven multi-module ?
+45. À quoi sert un query use case comme `ListStockMovementsUseCase` ?
+46. Pourquoi `ListStockMovementsQuery` regroupe-t-il les filtres au lieu de passer 8 paramètres ?
+47. Pourquoi utilise-t-on `PageResult<T>` au lieu de `Page<T>` de Spring Data dans l'application ?
+48. Qu'est-ce qu'un query port ? Pourquoi `StockMovementQueryPort` ne connaît-il pas JPA ?
+49. Pourquoi `@RequestParam MultiValueMap<String, String>` est utile pour le paramètre `sort` ?
+50. Comment traduire `sort=executedAt,desc` en `Sort.Order.desc("occurredAt")` ?
+51. À quoi sert une `Specification` JPA ? Pourquoi est-elle utile avec des filtres optionnels ?
+52. Pourquoi le filtre `locationId` cherche-t-il dans `sourceLocationId` OU `destinationLocationId` ?
+53. Pourquoi `toView(...)` choisit-il `sourceLocationId` sinon `destinationLocationId` pour remplir `locationId` ?
+54. Pourquoi faut-il déclarer des `@Bean` pour des use cases qui n'ont pas `@Service` ?
+55. Quel rôle joue `SpringDomainEventPublisher` entre l'application et Spring ?
 
 ---
 
