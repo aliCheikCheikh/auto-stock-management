@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -75,14 +76,18 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
                     criteriaBuilder.equal(root.get("movementType"), query.type()));
         }
 
-        if (query.from() != null) {
+        return getStockMovementJpaEntitySpecification(specification, query.from(), query.to(), query);
+    }
+
+    static Specification<StockMovementJpaEntity> getStockMovementJpaEntitySpecification(Specification<StockMovementJpaEntity> specification, LocalDateTime from, LocalDateTime time, ListStockMovementsQuery query) {
+        if (from != null) {
             specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
-                    criteriaBuilder.greaterThanOrEqualTo(root.get("occurredAt"), query.from()));
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("occurredAt"), from));
         }
 
-        if (query.to() != null) {
+        if (time != null) {
             specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
-                    criteriaBuilder.lessThanOrEqualTo(root.get("occurredAt"), query.to()));
+                    criteriaBuilder.lessThanOrEqualTo(root.get("occurredAt"), time));
         }
 
         return specification;
