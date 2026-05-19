@@ -298,5 +298,12 @@ class SaleControllerTest {
                 .andExpect(jsonPath("$.createdAt").value("2026-05-18T10:30:00"));
     }
 
+    @Test
+    void should_return_404_when_sale_not_found() throws Exception {
+       UUID saleId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+       when(saleRepository.findById(SaleId.of(saleId))).thenReturn(Optional.empty());
+       mockMvc.perform(get("/api/v1/sales/{saleId}", saleId)).andExpect(status().isNotFound());
+    }
+
 
 }
