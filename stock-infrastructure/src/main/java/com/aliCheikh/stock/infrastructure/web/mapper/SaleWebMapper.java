@@ -4,6 +4,7 @@ import com.aliCheikh.stock.application.dto.SellLineCommand;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
 import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.domain.model.product.ProductId;
+import com.aliCheikh.stock.domain.model.sale.Sale;
 import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
@@ -39,6 +40,18 @@ public final class SaleWebMapper {
                 moneyToResponse(result.totalAmount()),
                 result.createdAt()
         );
+    }
+
+    public static SaleResponse toResponse(Sale sale) {
+        return new SaleResponse(sale.getSaleId().getValue(),
+                sale.getSoldBy().getValue(),
+                sale.getLines()
+                        .stream()
+                        .map(line -> new SaleLineResponse(line.productId().getValue(),
+                                line.quantity(),
+                                moneyToResponse(line.unitPrice()),
+                                moneyToResponse(line.lineTotal()))
+                        ).toList(), moneyToResponse(sale.getTotalAmount()), sale.getOccurredAt());
     }
 
     private static SellLineCommand toLineCommand(CreateSaleLine line) {
