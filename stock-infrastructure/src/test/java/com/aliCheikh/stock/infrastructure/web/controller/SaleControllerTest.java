@@ -299,10 +299,18 @@ class SaleControllerTest {
     }
 
     @Test
-    void should_return_404_when_sale_not_found() throws Exception {
+    void should_return_404_when_sale_does_not_exist() throws Exception {
        UUID saleId = UUID.fromString("11111111-1111-1111-1111-111111111111");
        when(saleRepository.findById(SaleId.of(saleId))).thenReturn(Optional.empty());
        mockMvc.perform(get("/api/v1/sales/{saleId}", saleId)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void should_return_400_when_sale_id_is_not_uuid() throws Exception {
+        mockMvc.perform(get("/api/v1/sales/not-uuid"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(saleRepository);
     }
 
 
