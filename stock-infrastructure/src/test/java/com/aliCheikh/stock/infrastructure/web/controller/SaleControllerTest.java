@@ -1,7 +1,11 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
+import com.aliCheikh.stock.application.dto.ListSalesQuery;
+import com.aliCheikh.stock.application.dto.PageResult;
+import com.aliCheikh.stock.application.dto.SaleView;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
 import com.aliCheikh.stock.application.dto.SellProductResult;
+import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
 import com.aliCheikh.stock.application.usecase.SellProductUseCase;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
@@ -17,12 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.cglib.core.Local;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -34,7 +35,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -50,6 +54,9 @@ class SaleControllerTest {
     @MockitoBean
     private SaleRepository saleRepository;
 
+    @MockitoBean
+    private ListSalesUseCase listSalesUseCase;
+
     private UUID saleId;
     private UUID productId;
     private UUID userId;
@@ -57,6 +64,7 @@ class SaleControllerTest {
     private SaleLineDto singleLine;
     private LocalDateTime createdAt;
     private String expectedCreatedAt;
+    private Money unitPrice;
 
     @BeforeEach
     void setUp() {
@@ -66,13 +74,12 @@ class SaleControllerTest {
         productId = UUID.fromString("33333333-3333-3333-3333-333333333333");
         shopId = UUID.fromString("44444444-4444-4444-4444-444444444444");
         createdAt = LocalDateTime.of(2026, 5, 15, 10, 30);
-
+        unitPrice = Money.create(new BigDecimal("15.00"), Currency.getInstance("EUR"));
         singleLine = new SaleLineDto(
                 ProductId.of(productId),
                 4,
-                Money.create(new BigDecimal("15.00"), Currency.getInstance("EUR")),
-                Money.create(new BigDecimal("60.00"), Currency.getInstance("EUR"))
-        );
+                unitPrice,
+                unitPrice.multiply(4));
     }
 
     @Test
@@ -267,15 +274,10 @@ class SaleControllerTest {
 
     @Test
     void should_return_200_when_sale_exists() throws Exception {
-        UUID sellerId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        UUID productId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        UUID saleId = UUID.fromString("33333333-3333-3333-3333-333333333333");
-        LocalDateTime createdAt = LocalDateTime.of(2026, 5, 18, 10, 30);
-        Money unitPrice = Money.create(new BigDecimal("15.00"), Currency.getInstance("EUR"));
         SaleLineDto line = new SaleLineDto(ProductId.of(productId), 4, unitPrice, unitPrice.multiply(4));
         Sale sale = Sale.rehydrate(
                 SaleId.of(saleId),
-                UserId.of(sellerId),
+                UserId.of(userId),
                 createdAt,
                 unitPrice.multiply(4),
                 List.of(line)
@@ -287,7 +289,7 @@ class SaleControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.saleId").value(saleId.toString()))
-                .andExpect(jsonPath("$.sellerId").value(sellerId.toString()))
+                .andExpect(jsonPath("$.sellerId").value(userId.toString()))
                 .andExpect(jsonPath("$.lines").isArray())
                 .andExpect(jsonPath("$.lines").isNotEmpty())
                 .andExpect(jsonPath("$.lines[0].productId").value(productId.toString()))
@@ -295,14 +297,14 @@ class SaleControllerTest {
                 .andExpect(jsonPath("$.lines[0].unitPrice.amount").value("15.00"))
                 .andExpect(jsonPath("$.lines[0].subtotal.amount").value("60.00"))
                 .andExpect(jsonPath("$.totalAmount.amount").value("60.00"))
-                .andExpect(jsonPath("$.createdAt").value("2026-05-18T10:30:00"));
+                .andExpect(jsonPath("$.createdAt").value("2026-05-15T10:30:00"));
     }
 
     @Test
     void should_return_404_when_sale_does_not_exist() throws Exception {
-       UUID saleId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-       when(saleRepository.findById(SaleId.of(saleId))).thenReturn(Optional.empty());
-       mockMvc.perform(get("/api/v1/sales/{saleId}", saleId)).andExpect(status().isNotFound());
+        UUID saleId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        when(saleRepository.findById(SaleId.of(saleId))).thenReturn(Optional.empty());
+        mockMvc.perform(get("/api/v1/sales/{saleId}", saleId)).andExpect(status().isNotFound());
     }
 
     @Test
@@ -311,6 +313,55 @@ class SaleControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(saleRepository);
+    }
+
+    @Test
+    void should_return_sale_page() throws Exception {
+        SaleView saleView = new SaleView(SaleId.of(saleId),
+                UserId.of(userId),
+                List.of(singleLine),
+                unitPrice.multiply(4),
+                createdAt);
+        given(listSalesUseCase.execute(any(ListSalesQuery.class))).willReturn(new PageResult<>(
+                List.of(saleView),
+                0,
+                20,
+                1,
+                1
+        ));
+
+        mockMvc.perform(get("/api/v1/sales"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isNotEmpty())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.content[0].sellerId").value(userId.toString()))
+                .andExpect(jsonPath("$.content[0].lines").isArray())
+                .andExpect(jsonPath("$.content[0].lines").isNotEmpty())
+                .andExpect(jsonPath("$.content[0].lines[0].productId").value(productId.toString()))
+                .andExpect(jsonPath("$.content[0].lines[0].quantity").value(4))
+                .andExpect(jsonPath("$.content[0].lines[0].unitPrice.amount").value("15.00"))
+                .andExpect(jsonPath("$.content[0].lines[0].subtotal.amount").value("60.00"))
+                .andExpect(jsonPath("$.content[0].totalAmount.amount").value("60.00"))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-05-15T10:30:00"))
+                .andExpect(jsonPath("$.page.page").value(0))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.page.totalPages").value(1));
+
+        ArgumentCaptor<ListSalesQuery> queryCaptor = ArgumentCaptor.forClass(ListSalesQuery.class);
+        verify(listSalesUseCase).execute(queryCaptor.capture());
+        ListSalesQuery query = queryCaptor.getValue();
+        assertThat(query.page()).isEqualTo(0);
+        assertThat(query.size()).isEqualTo(20);
+        assertThat(query.sort()).containsExactly("createdAt,desc");
+        assertThat(query.sellerId()).isNull();
+        assertThat(query.shopId()).isNull();
+        assertThat(query.from()).isNull();
+        assertThat(query.to()).isNull();
+
     }
 
 
