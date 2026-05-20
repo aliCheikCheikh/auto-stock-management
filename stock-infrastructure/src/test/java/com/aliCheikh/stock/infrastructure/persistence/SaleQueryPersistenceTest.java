@@ -81,9 +81,12 @@ public class SaleQueryPersistenceTest {
     private ProductId firstProductId;
     private ProductId secondProductId;
     private UserId sellerId;
+    private UserId otherSellerId;
+    private UserId userId;
     private Money firstUnitPrice;
     private Money secondUnitPrice;
     private Sale sale;
+    private Sale secondSale;
 
     @BeforeEach
     void setUp() {
@@ -91,6 +94,7 @@ public class SaleQueryPersistenceTest {
         firstProductId = ProductId.generate();
         secondProductId = ProductId.generate();
         sellerId = UserId.generate();
+        otherSellerId = UserId.generate();
         firstUnitPrice = Money.create(new BigDecimal("45.90"), Currency.getInstance("EUR"));
         secondUnitPrice = Money.create(new BigDecimal("12.50"), Currency.getInstance("EUR"));
         sale = Sale.create(
@@ -100,6 +104,10 @@ public class SaleQueryPersistenceTest {
                         new SaleLineInput(secondProductId, 1, secondUnitPrice)
                 )
         );
+        secondSale = Sale.create(otherSellerId, List.of(
+                new SaleLineInput(firstProductId, 5, firstUnitPrice),
+                new SaleLineInput(secondProductId, 2, secondUnitPrice)
+        ));
     }
 
     @Test
@@ -133,6 +141,41 @@ public class SaleQueryPersistenceTest {
         assertThat(view.totalAmount()).isEqualTo(sale.getTotalAmount());
         assertThat(view.createdAt()).isEqualTo(sale.getOccurredAt());
 
+    }
+
+    @Test
+    void should_filter_sales_by_seller_id() {
+        saveReferenceData();
+
+        userRepository.save(UserJpaEntity.of(
+                otherSellerId.getValue(),
+                "other-seller",
+                UserRole.SELLER
+        ));
+        flushAndClear();
+
+        adapter.save(sale);
+        adapter.save(secondSale);
+        flushAndClear();
+
+        ListSalesQuery query = new ListSalesQuery(
+                0,
+                20,
+                List.of("createdAt,desc"),
+                sellerId,
+                null,
+                null,
+                null
+        );
+
+        PageResult<SaleView> result = queryAdapter.findByQuery(query);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.content())
+                .extracting(SaleView::saleId)
+                .containsExactly(sale.getSaleId());
+        assertThat(result.content().get(0).sellerId()).isEqualTo(sellerId);
     }
 
 
