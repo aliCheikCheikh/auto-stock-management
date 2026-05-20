@@ -90,6 +90,7 @@ public class SaleQueryPersistenceTest {
     private Money secondUnitPrice;
     private Sale sale;
     private Sale secondSale;
+    private SaleLineDto line;
 
     @BeforeEach
     void setUp() {
@@ -111,6 +112,13 @@ public class SaleQueryPersistenceTest {
                 new SaleLineInput(firstProductId, 5, firstUnitPrice),
                 new SaleLineInput(secondProductId, 2, secondUnitPrice)
         ));
+
+        line = new SaleLineDto(
+                firstProductId,
+                1,
+                firstUnitPrice,
+                firstUnitPrice
+        );
     }
 
     @Test
@@ -183,13 +191,6 @@ public class SaleQueryPersistenceTest {
 
     @Test
     void should_filter_sales_by_created_at_range() {
-        SaleLineDto line = new SaleLineDto(
-                firstProductId,
-                1,
-                firstUnitPrice,
-                firstUnitPrice
-        );
-
         SaleId tooOldSaleId = SaleId.generate();
         SaleId matchingSaleId = SaleId.generate();
         SaleId tooRecentSaleId = SaleId.generate();
@@ -239,6 +240,63 @@ public class SaleQueryPersistenceTest {
                 .containsExactly(matchingSaleId);
         assertThat(result.content().get(0).createdAt()).isEqualTo(matchingSale.getOccurredAt());
 
+    }
+
+    @Test
+    void should_paginate_sales() {
+        SaleId firstSaleId = SaleId.generate();
+        SaleId secondSaleId = SaleId.generate();
+
+        Sale firstSale = Sale.rehydrate(firstSaleId,
+                sellerId,
+                LocalDateTime.of(2026, 5, 10, 10, 0),
+                firstUnitPrice,
+                List.of(line));
+
+        Sale secondSale = Sale.rehydrate(secondSaleId,
+                sellerId,
+                LocalDateTime.of(2026, 5, 11, 10, 0),
+                firstUnitPrice,
+                List.of(line));
+
+        saveReferenceData();
+
+        adapter.save(secondSale);
+        adapter.save(firstSale);
+
+        flushAndClear();
+
+        ListSalesQuery firstQuery = new ListSalesQuery(0,
+                1,
+                List.of("createdAt,asc"),
+                null,
+                null,
+                null,
+                null);
+
+        PageResult<SaleView> firstPage = queryAdapter.findByQuery(firstQuery);
+        assertThat(firstPage.content()).hasSize(1);
+        assertThat(firstPage.totalElements()).isEqualTo(2);
+        assertThat(firstPage.totalPages()).isEqualTo(2);
+        assertThat(firstPage.page()).isEqualTo(0);
+        assertThat(firstPage.size()).isEqualTo(1);
+        assertThat(firstPage.content().get(0).saleId()).isEqualTo(firstSaleId);
+
+        ListSalesQuery secondQuery = new ListSalesQuery(1,
+                1,
+                List.of("createdAt,asc"),
+                null,
+                null,
+                null,
+                null);
+
+        PageResult<SaleView> secondPage = queryAdapter.findByQuery(secondQuery);
+        assertThat(secondPage.content()).hasSize(1);
+        assertThat(secondPage.totalElements()).isEqualTo(2);
+        assertThat(secondPage.totalPages()).isEqualTo(2);
+        assertThat(secondPage.page()).isEqualTo(1);
+        assertThat(secondPage.size()).isEqualTo(1);
+        assertThat(secondPage.content().get(0).saleId()).isEqualTo(secondSaleId);
     }
 
 
