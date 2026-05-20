@@ -1608,6 +1608,216 @@ système.
 
 ---
 
+### Session révision — JPA `@Query` vs `Specification`, projection constructeur, proxy Spring Data, IoC
+
+Session de compréhension approfondie du code de lecture (`GET /stock-movements` et
+`GET /stock-levels`) et du câblage des beans. Concepts transverses, pas un ticket.
+
+#### 1. Deux routes pour le même problème : filtres optionnels + pagination
+
+Le même besoin (filtrer dynamiquement + paginer) a été résolu de **deux façons** dans le
+projet, et c'est un choix d'architecte, pas une incohérence :
+
+```text
+StockMovement (GET /stock-movements) -> Specification JPA (filtres composés en Java)
+StockLevel    (GET /stock-levels)    -> @Query JPQL écrite à la main + projection
+```
+
+Critère de choix :
+
+```text
+beaucoup de filtres combinables, peu de jointures   -> Specification
+jointures complexes + projection directe vers DTO   -> @Query JPQL
+```
+
+#### 2. JPQL n'est pas SQL
+
+JPQL travaille sur les **entités Java**, pas sur les tables. Hibernate le traduit ensuite en
+SQL.
+
+```text
+SQL  : SELECT * FROM stock_levels          (table)
+JPQL : select sl from StockLevelJpaEntity sl   (entité)
+```
+
+Dans une `@Query`, écrire `StockLevelJpaEntity` désigne la classe Java ; Hibernate fera la
+traduction vers la table `stock_levels`.
+
+#### 3. Projection par constructeur (`select new`)
+
+Au lieu de retourner des entités JPA complètes, la requête construit directement un DTO de
+lecture :
+
+```java
+@Query("""
+        select new com.aliCheikh.stock.infrastructure.persistence.projection.StockLevelRow(
+            stockLevel.id.productId,
+            product.name,
+            stockLevel.id.locationId,
+            location.label,
+            location.locationType,
+            location.shopId,
+            stockLevel.quantity
+        )
+        from StockLevelJpaEntity stockLevel
+        ...
+        """)
+Page<StockLevelRow> findByQuery(UUID productId, UUID shopId, UUID locationId, Pageable pageable);
+```
+
+Conditions strictes pour que ça compile au démarrage :
+
+- `StockLevelRow` doit avoir un **constructeur** prenant exactement ces champs, **dans cet
+  ordre**, **avec ces types** ;
+- on doit donner le **nom de classe complet** (`com.aliCheikh...StockLevelRow`).
+
+Avantage : on charge **uniquement les colonnes nécessaires** (pas l'entité entière), zéro
+lazy loading, zéro N+1, et **pas de mapper manuel** entity -> view (contrairement à
+`StockMovement` qui mappait dans l'adapter). C'est la bonne pratique pour un read model.
+
+#### 4. Deux types de jointures JPQL
+
+```java
+from StockLevelJpaEntity stockLevel
+join stockLevel.location location                                  -- (A) association mappée
+join ProductJpaEntity product on product.id = stockLevel.id.productId  -- (B) jointure ad-hoc
+```
+
+- **(A)** `stockLevel.location` : `StockLevelJpaEntity` a un champ relation JPA (`@ManyToOne`)
+  vers `LocationJpaEntity`. Hibernate connaît déjà la condition de jointure (la FK).
+- **(B)** Pas de relation mappée entre `StockLevel` et `Product` (on ne garde que le
+  `productId` en UUID brut, choix DDD). Donc on écrit la condition `on ...` explicitement.
+
+#### 5. Filtres optionnels avec `IS NULL OR`
+
+```java
+where (:productId is null or stockLevel.id.productId = :productId)
+  and (:shopId is null or location.shopId = :shopId)
+  and (:locationId is null or stockLevel.id.locationId = :locationId)
+```
+
+Chaque ligne : *"soit le param est null (filtre ignoré), soit on filtre dessus"*. Pour
+`?productId=4444&shopId=8888` (locationId absent) le WHERE effectif devient :
+
+```sql
+WHERE stock_level.product_id = '4444' AND location.shop_id = '8888'
+-- la condition sur locationId est toujours vraie -> s'évapore
+```
+
+Nuance perf à connaître : `(:p is null or col = :p)` peut empêcher l'usage optimal d'un index
+sur de grosses tables (condition non sargable). Négligeable pour 3 filtres ; à grande échelle,
+préférer les Specifications.
+
+#### 6. Comment `findByQuery` se branche sur la `@Query` (proxy Spring Data)
+
+Le repository est une **interface sans corps**. Au démarrage, Spring Data **génère une classe
+proxy** qui l'implémente. Quand on appelle `findByQuery(...)`, le proxy :
+
+```text
+1. lit l'annotation @Query posée sur la méthode
+2. lie chaque argument au paramètre nommé correspondant de la requête
+3. exécute via l'EntityManager (Hibernate)
+4. construit les StockLevelRow (select new) et emballe dans un Page
+```
+
+#### 7. Binding des paramètres : par nom (grâce à `-parameters`), `Pageable` par type
+
+```text
+:productId  <- UUID productId    (lié PAR NOM)
+:shopId     <- UUID shopId
+:locationId <- UUID locationId
+Pageable    -> pas de :pageable ; détecté PAR TYPE, pilote LIMIT/OFFSET/ORDER BY + count
+```
+
+Le binding par nom **sans `@Param`** fonctionne uniquement parce que le projet compile avec le
+flag `-parameters` (qui préserve les noms réels dans le bytecode). Sans ce flag, `productId`
+deviendrait `arg0` et il faudrait `@Param("productId")` explicite, sinon l'app **plante au
+démarrage** ("Name for argument not specified").
+
+#### 8. La famille pagination : 4 noms, 4 rôles
+
+```text
+Sort         -> objet de tri (ORDER BY). Sort.by(Sort.Order.desc("occurredAt"))
+Pageable     -> INTERFACE "je transporte page+size+sort" (comme List)
+PageRequest  -> IMPLÉMENTATION concrète de Pageable (comme ArrayList).
+                PageRequest.of(page, size, sort)
+Page<T>      -> RÉSULTAT de findAll : getContent(), getTotalElements(), getTotalPages()
+```
+
+`PageRequest.of(2, 10)` -> `LIMIT 10 OFFSET 20` (offset = page * size).
+
+#### 9. `@RequestParam` séparés vs Request DTO (`@ModelAttribute`)
+
+Pour un GET, deux styles valables :
+
+```java
+// Style A (choisi) : params séparés
+listStockMovements(@RequestParam(defaultValue="0") @Min(0) int page, ...)
+
+// Style B : Request DTO rempli depuis les query params
+listStockMovements(@Valid @ModelAttribute ListStockMovementsRequest request)
+```
+
+On a gardé A pour ce projet car : sémantique HTTP (query params = switches indépendants),
+`defaultValue` natif et concis, et `sort` multi-valeur nécessite un `MultiValueMap` de toute
+façon. Bascule vers B justifiée si > 10 params ou validation cross-field (ex : `from < to`).
+
+Règle : **GET = `@RequestParam`, POST = `@RequestBody` DTO**, et on s'y tient pour la cohérence.
+
+#### 10. Le pont IoC : `UseCaseConfiguration` et les `@Bean`
+
+Les use cases et services domaine sont des **POJO purs** (aucun `@Service`/`@Component`) pour
+garder `stock-application`/`stock-domain` indépendants de Spring. Conséquence : Spring ne peut
+pas les auto-détecter par component scan. On les déclare donc **manuellement** dans une classe
+`@Configuration` côté infrastructure :
+
+```java
+@Configuration
+public class UseCaseConfiguration {
+    @Bean
+    public ReceiveStockUseCase receiveStockUseCase(
+            ProductRepository productRepository,          // <- port, adapter @Repository auto-détecté
+            ReceivingService receivingService,            // <- @Bean défini juste au-dessus
+            ...) {
+        return new ReceiveStockUseCase(productRepository, receivingService, ...);
+    }
+}
+```
+
+Mécanique : `@Bean` = "le retour de cette méthode est un bean". Les **paramètres** de la
+méthode sont injectés par Spring en cherchant un bean compatible dans le conteneur. Spring
+résout le **graphe de dépendances** et instancie dans le bon ordre (ingrédients avant plats).
+
+Deux sources de beans :
+
+```text
+auto-détectés  : adapters JPA (@Repository), publisher (@Component), controllers (@RestController)
+déclarés à la main : use cases + services purs (@Bean dans UseCaseConfiguration)
+```
+
+Phrase entretien : *"Mes use cases restent des POJO sans annotation framework ; le câblage se
+fait dans une @Configuration côté infrastructure. Le cœur métier reste testable sans conteneur
+et migrable vers un autre framework sans le toucher."*
+
+#### 11. Comparatif Specification vs `@Query` JPQL
+
+```text
+                              Specification        @Query JPQL
+filtres dynamiques nombreux   ++ (composables)     -- (IS NULL OR lourd)
+jointures complexes           -- (verbeux)         ++ (lisible comme SQL)
+projection directe -> DTO     -- (mapper après)    ++ (select new)
+perf à grande échelle         ++ (pas de IS NULL)  ~ (IS NULL OR moins sargable)
+lisibilité humaine            ~ (lambdas)          ++ (proche SQL)
+type-safety                   ~ (root.get("str"))  ~ (JPQL en string)
+```
+
+**À retenir global :** on choisit l'outil selon la forme du problème. `StockMovement`
+(beaucoup de filtres, OR sur location) -> Specification. `StockLevel` (2 jointures, projection
+multi-tables) -> `@Query` JPQL avec `select new`. Les deux sont défendables, et le critère de
+choix doit être documenté.
+
+---
+
 ## Pièges récurrents à éviter (compilation)
 
 - **`@RestController` oublié** → 404 silencieux. Pas d'erreur démarrage.
@@ -2149,6 +2359,340 @@ correspondante. Objectif : réussir à toutes répondre en moins de 10 minutes.
 53. Pourquoi `toView(...)` choisit-il `sourceLocationId` sinon `destinationLocationId` pour remplir `locationId` ?
 54. Pourquoi faut-il déclarer des `@Bean` pour des use cases qui n'ont pas `@Service` ?
 55. Quel rôle joue `SpringDomainEventPublisher` entre l'application et Spring ?
+56. Quelle est la différence entre JPQL et SQL : sur quoi travaille chacun ?
+57. Que doit obligatoirement posséder la classe cible d'une projection `select new ...(...)` ?
+58. Quel avantage a la projection constructeur sur le retour d'entités JPA complètes ?
+59. Différence entre une jointure JPQL via association mappée et une jointure ad-hoc (`on ...`) ?
+60. Que fait le pattern `(:param is null or col = :param)` et quel est son coût perf potentiel ?
+61. Comment une méthode de repository (interface sans corps) peut-elle exécuter du code ?
+62. Comment les paramètres se lient-ils à une `@Query` ? Et le cas particulier de `Pageable` ?
+63. Distinguer `Sort`, `Pageable`, `PageRequest` et `Page<T>`.
+64. Quand basculer de `@RequestParam` séparés vers un Request DTO en GET ?
+65. Pourquoi câbler les use cases via `@Bean` dans une `@Configuration` plutôt que `@Service` ?
+66. Specification vs `@Query` JPQL : quel critère de choix ?
+
+> Réponses détaillées : voir la section **« Flashcards corrigées »** (Q1–Q55 et S1–S11).
+
+---
+
+## Flashcards corrigées (réponses du self-quiz + session)
+
+Mode d'emploi : lire la question, formuler la réponse à voix haute, puis vérifier. Réviser en
+boucle espacée (J+1, J+3, J+7, J+15). Les numéros correspondent au "Self-quiz quotidien".
+
+**Q1. Étapes du cycle d'une requête HTTP dans Spring (de Tomcat au JSON) ?**
+R. Tomcat reçoit → `DispatcherServlet` → `HandlerMapping` trouve le controller → `HandlerAdapter`
+invoque la méthode → résolution + validation des arguments (`@RequestParam`/`@RequestBody`/
+`@PathVariable`) → exécution → `HttpMessageConverter` (Jackson) sérialise le retour en JSON → réponse.
+
+**Q2. Différence entre `@Component` et `@RequestMapping` côté création de bean ?**
+R. `@Component` (et `@Service`/`@Repository`/`@RestController`) **crée un bean**. `@RequestMapping`
+ne crée **pas** de bean : c'est un mapping URL → méthode, posé sur un bean controller existant.
+
+**Q3. Pourquoi un `@RestController` oublié donne un 404 silencieux ?**
+R. Sans l'annotation, la classe n'est pas un bean web : aucun mapping n'est enregistré pour ses
+méthodes. L'URL n'existe donc pas (404). Rien n'oblige Spring à connaître la classe → pas d'erreur au boot.
+
+**Q4. 3 raisons de préférer `Optional<T>` à `T`/`null` ?**
+R. (1) Rend l'absence explicite dans la signature. (2) Force le caller à traiter le cas vide
+(`map`/`orElseGet`). (3) Évite les NPE dispersés.
+
+**Q5. 3 raisons d'utiliser un DTO HTTP plutôt que l'objet métier ?**
+R. (1) Découple le contrat public du modèle interne. (2) Évite de fuiter des champs internes/sensibles.
+(3) Évite le lazy loading JPA en plein rendu + maîtrise la forme JSON.
+
+**Q6. Pourquoi un montant en string et pas en number JSON ?**
+R. Un `number` JSON = double IEEE754 → perte de précision décimale (`0.1 + 0.2`). La string préserve la
+précision exacte du `BigDecimal`.
+```json
+{ "amount": "45.90", "currency": "EUR" }
+```
+
+**Q7. `@WebMvcTest` vs `@SpringBootTest` ?**
+R. `@WebMvcTest` : slice web (controllers + Jackson + validation), reste mocké, rapide.
+`@SpringBootTest` : contexte complet (DB, tous les beans), lent, pour l'intégration.
+
+**Q8. 3 raisons de l'injection par constructeur ?**
+R. (1) Dépendances `final`/immuables. (2) Objet toujours valide (impossible d'oublier une dépendance).
+(3) Testable sans Spring (`new` + mocks). Bonus : détecte les cycles au démarrage.
+
+**Q9. Pourquoi le flag `-parameters`, et le binding sans lui ?**
+R. Il préserve les noms de paramètres dans le bytecode. Sans lui ils deviennent `arg0`/`arg1` et Spring
+ne peut pas matcher par nom → il faut `@RequestParam("x")` / `@Param("x")` explicites, sinon erreur au boot.
+
+**Q10. Pourquoi le sens des dépendances est-il toujours `infrastructure → domaine` ?**
+R. Le métier (stable, testable) ne doit dépendre d'aucun détail (DB, web, qui changent souvent). Les
+détails dépendent du métier via des ports (interfaces). C'est le DIP.
+
+**Q11. Quand utiliser `ResponseEntity<T>` plutôt qu'un retour direct ?**
+R. Quand on contrôle le status (201/202/404), ajoute des headers (`Location`), ou retourne des bodies
+conditionnels. Retour direct = 200 implicite, suffisant pour les cas simples.
+
+**Q12. `git commit --amend` vs `git rebase -i HEAD~N` ?**
+R. `--amend` modifie le **dernier** commit. `rebase -i HEAD~N` réécrit les **N derniers** (réordonner,
+squash, éditer, supprimer).
+
+**Q13. Pourquoi `mvn spring-boot:run` échoue à la racine multi-module ?**
+R. Le POM racine est un POM parent (`packaging pom`), sans classe `main` ni plugin exécutable. Il faut
+cibler le module applicatif :
+```bash
+mvn -pl stock-infrastructure spring-boot:run
+```
+
+**Q14. Pourquoi ne jamais rebase un commit déjà pushé sur une branche partagée ?**
+R. Le rebase réécrit l'historique (nouveaux SHA). Ceux qui ont basé leur travail sur les anciens commits
+divergent → conflits et historique cassé pour tous.
+
+**Q15. 3 exemples de Conventional Commit conformes ?**
+R.
+```text
+feat(web): add POST /stock-receipts controller
+test(application): cover ReceiveStockResult return value
+fix(domain): correct Money hashCode precision
+```
+
+**Q16. Comment Jackson sérialise un record sans annotation ?**
+R. Jackson lit par introspection les **composants du record** (accesseurs `productId()`, etc.) et génère
+les champs JSON correspondants. Pas besoin de getters `getX()`.
+
+**Q17. Quelle annotation pour mocker le repo dans un `@WebMvcTest`, et pourquoi ?**
+R. `@MockitoBean` (ex-`@MockBean`, déprécié en SB 3.4). Nécessaire car le slice web ne charge pas les
+beans non-web : il faut fournir un mock du use case/repo attendu par le controller.
+
+**Q18. Pourquoi pas de données de seed dans Flyway ?**
+R. Flyway versionne le **schéma** (structure), immuable une fois appliqué. Les données de seed varient par
+environnement et ne doivent pas être figées dans une migration jouée partout.
+
+**Q19. Que fait `mvn -pl stock-infrastructure -am spring-boot:run` ?**
+R. `-pl` = ne traiter que ce module (*project list*). `-am` = construire aussi les modules dont il dépend
+(*also make*, ex. `stock-application`/`stock-domain`). Donc build des deps + run du module infra.
+
+**Q20. `BigDecimal.toPlainString()` vs `toString()` ?**
+R. `toString()` peut produire de la notation scientifique (`1E+2`). `toPlainString()` force la notation
+décimale simple (`100`), conforme au contrat JSON.
+
+**Q21. `@Valid` (Jakarta) vs `@Validated` (Spring) ?**
+R. `@Valid` : standard Jakarta, valide en cascade (`@RequestBody`, champs imbriqués). `@Validated` :
+annotation Spring, active la validation des `@RequestParam`/`@PathVariable` (au niveau classe) et les groupes.
+
+**Q22. Pourquoi `ConstraintViolationException` → 500 alors que `MethodArgumentNotValidException` → 400 ? Corriger ?**
+R. `@Valid` sur `@RequestBody` lève `MethodArgumentNotValidException`, mappée 400 par défaut. `@Validated`
+sur `@RequestParam` lève `ConstraintViolationException`, non mappée → 500. Correction :
+```java
+@ExceptionHandler(ConstraintViolationException.class)
+public ResponseEntity<Void> handle(ConstraintViolationException e) {
+    return ResponseEntity.badRequest().build();
+}
+```
+
+**Q23. `@Min(0)` sur un `@RequestParam` sans `@Validated` au niveau classe ?**
+R. L'annotation est **ignorée** : sans `@Validated`, Spring ne valide pas les `@RequestParam`, la valeur
+invalide passe.
+
+**Q24. Formule de `totalPages` + piège ?**
+R. `totalPages = ceil(totalElements / size)`. Piège : ne **pas** calculer depuis `content.size()` (taille
+de la page courante) mais depuis `totalElements`.
+```java
+int totalPages = (int) Math.ceil((double) totalElements / size);
+```
+
+**Q25. Pourquoi `count()` retourne `long` et pas `int` ?**
+R. Le total peut dépasser `Integer.MAX_VALUE` (~2,1 milliards). `long` couvre les grandes tables.
+
+**Q26. Pourquoi ne pas exposer `Page<T>` Spring Data en JSON ? (2 raisons)**
+R. (1) Couple le contrat HTTP au framework (une montée de version Spring peut changer le JSON). (2)
+Sérialise des champs internes non maîtrisés (`pageable`, `sort`) → contrat instable. → wrapper DTO custom.
+
+**Q27. `@PathVariable` vs `@RequestParam` : où lit chacun ?**
+R. `@PathVariable` lit dans le **chemin** (`/products/{id}`). `@RequestParam` lit dans la **query string**
+(`?page=0`) ou le form.
+
+**Q28. À quoi sert `defaultValue` sur `@RequestParam` ? Pourquoi toujours une string ?**
+R. Fournit une valeur si le param est absent. Toujours string car la query HTTP est du texte ; Spring
+convertit ensuite vers le type cible (`int`, etc.).
+```java
+@RequestParam(defaultValue = "0") @Min(0) int page
+```
+
+**Q29. Cycle TDD : Red → Green → Refactor → ?**
+R. → **Commit** (atomique, sur cycle vert), puis on recommence un Red pour le scénario suivant.
+
+**Q30. À quoi sert `git add -p` et quand l'utiliser ?**
+R. Stage interactif **hunk par hunk**. Utile pour découper un working tree en commits atomiques quand on a
+mélangé plusieurs changements.
+
+**Q31. Pourquoi `page/size` plutôt que `offset/limit` pour le port domaine ? Alternative ?**
+R. `page/size` est proche du langage REST/utilisateur, l'adapter convertit trivialement (`offset = page*size`).
+Alternative défendable : `offset/limit` (proche SQL), ou keyset/curseur pour la perf sur gros volumes.
+
+**Q32. À quoi sert `$ref: '#/components/schemas/SaleResponse'` dans OpenAPI ?**
+R. Référence vers un schéma réutilisable défini ailleurs dans le fichier. Évite la duplication ; un seul
+endroit à maintenir.
+
+**Q33. Pourquoi `SellProductUseCase` ne peut plus retourner `void` pour `POST /sales` ?**
+R. Le controller a besoin de `saleId`, `lines`, `totalAmount`, `createdAt` pour la réponse 201. Il ne doit
+pas les rechercher en repository → le use case retourne un `SellProductResult`.
+
+**Q34. Pourquoi `SellProductResult.createdAt` doit venir de `Sale.getOccurredAt()` et pas de `now()` ?**
+R. La réponse doit refléter le timestamp **métier** de la vente créée, pas un second timestamp technique
+généré au moment de construire le result.
+```java
+result.createdAt() == savedSale.getOccurredAt()  // pas LocalDateTime.now()
+```
+
+**Q35. Pourquoi `POST /sales` → 201 alors que `POST /stock-receipts` → 202 ?**
+R. `201 Created` : une ressource (`Sale`) est créée immédiatement et consultable (+ `Location`). `202
+Accepted` : requête acceptée sans ressource directement exposée/consultable.
+
+**Q36. Pourquoi le DTO HTTP expose `subtotal` alors que le domaine utilise `lineTotal` ?**
+R. Le DTO suit le vocabulaire **OpenAPI** (`subtotal`), pas le vocabulaire interne (`lineTotal`). Le mapper
+absorbe la différence — c'est exactement son rôle.
+
+**Q37. `@NotNull` vs `@NotEmpty` sur `lines` ?**
+R. `@NotNull` : la liste n'est pas `null` (mais peut être vide). `@NotEmpty` : pas `null` **et** au moins
+un élément.
+
+**Q38. Pourquoi `@Positive` sur `quantity` nécessite aussi `@Valid` sur `lines` ?**
+R. Sans `@Valid` sur la liste, la validation ne **descend pas** dans chaque élément. `@Valid` déclenche la
+cascade vers les `@Positive` de chaque `CreateSaleLine`.
+```java
+@NotEmpty @Valid List<CreateSaleLine> lines
+```
+
+**Q39. Pourquoi un test multi-lignes est utile même si le mapper stream passait déjà ?**
+R. Test de **non-régression** : protège contre un futur changement où le mapper ne traiterait que la
+première ligne.
+
+**Q40. Pourquoi `LocalDateTime.toString()` peut différer de la sérialisation JSON Jackson ?**
+R. `toString()` omet les secondes si elles valent 0 (`2026-05-15T10:30`) ; Jackson les écrit (`...:00`).
+Fixer la date dans les tests et asserter le JSON réel produit.
+
+**Q41. Pourquoi `TransferStockUseCase` doit retourner un `TransferStockResult` ?**
+R. Le controller doit renvoyer le `movementId` créé + `acceptedAt` pour la 202, sans aller le rechercher
+en repository.
+```java
+public record TransferStockResult(MovementId movementId, Instant acceptedAt) {}
+```
+
+**Q42. Pourquoi `POST /stock-transfers` → 202 + simple acknowledgement ?**
+R. Pas de ressource transfert consultable (pas de `GET /stock-transfers/{id}`). On accuse réception
+(`movementId`, `acceptedAt`).
+
+**Q43. Pourquoi `verifyNoInteractions` est important dans les tests de validation web ?**
+R. Prouve qu'une requête invalide est bloquée dans la couche web et n'atteint **jamais** le use case → la
+frontière de validation est respectée.
+```java
+verifyNoInteractions(transferStockUseCase);
+```
+
+**Q44. À quoi servent `-am` et `-Dsurefire.failIfNoSpecifiedTests=false` ?**
+R. `-am` construit aussi les modules dépendants. `failIfNoSpecifiedTests=false` empêche Surefire d'échouer
+dans les modules qui n'ont pas le test ciblé par `-Dtest=...`.
+
+**Q45. À quoi sert un query use case comme `ListStockMovementsUseCase` ?**
+R. Frontière claire de lecture (controller → use case → port), point d'extension (cache, autorisation,
+audit), testable sans Spring. Évite que le controller construise des requêtes complexes.
+
+**Q46. Pourquoi `ListStockMovementsQuery` regroupe les filtres au lieu de 8 paramètres ?**
+R. Évite une signature à 8 args fragile ; ordre figé par les noms ; ajouter un filtre = un champ, sans
+casser la signature.
+
+**Q47. Pourquoi `PageResult<T>` au lieu de `Page<T>` Spring Data dans l'application ?**
+R. `PageResult` est neutre (zéro dépendance framework). Utiliser `Page<T>` collerait `stock-application` à
+Spring Data.
+
+**Q48. Qu'est-ce qu'un query port ? Pourquoi `StockMovementQueryPort` ne connaît pas JPA ?**
+R. Une interface définie côté application exprimant le besoin de lecture. L'implémentation JPA vit en infra
+(DIP : l'app dépend de l'abstraction, pas du détail).
+
+**Q49. Pourquoi `@RequestParam MultiValueMap` est utile pour `sort` ?**
+R. `sort` peut apparaître plusieurs fois ; la map donne les valeurs **brutes** sans split sur la virgule,
+contrairement à `@RequestParam List<String>` qui découperait `executedAt,desc`.
+
+**Q50. Comment traduire `sort=executedAt,desc` en `Sort.Order.desc("occurredAt")` ?**
+R. Split sur `,` → `["executedAt","desc"]` ; `toJpaProperty("executedAt")` → `"occurredAt"` ; direction
+`desc` → `new Sort.Order(DESC, "occurredAt")`.
+
+**Q51. À quoi sert une `Specification` JPA ? Pourquoi utile avec des filtres optionnels ?**
+R. Un morceau de `WHERE` composable avec `.and()`. On n'ajoute une brique que si le filtre est présent →
+`WHERE` dynamique sans 2ⁿ méthodes ni gros `IS NULL OR`.
+```java
+if (q.type() != null)
+    spec = spec.and((root, cq, cb) -> cb.equal(root.get("movementType"), q.type()));
+```
+
+**Q52. Pourquoi le filtre `locationId` cherche `sourceLocationId` OU `destinationLocationId` ?**
+R. Un mouvement implique une location comme source (ENTRY/EXIT) ou source/destination (TRANSFER). Le `or`
+capture "tous les mouvements impliquant cette location".
+
+**Q53. Pourquoi `toView` choisit `sourceLocationId` sinon `destinationLocationId` pour `locationId` ?**
+R. Le contrat expose `locationId` (lieu principal) + `destinationLocationId` (TRANSFER seulement). En base
+on a source+destination ; pour le `locationId` principal on prend la source si présente, sinon la destination.
+
+**Q54. Pourquoi déclarer des `@Bean` pour des use cases sans `@Service` ?**
+R. Les use cases sont des POJO purs (pas d'annotation Spring, pour garder l'application framework-agnostique).
+Spring ne peut pas les auto-scanner → on les déclare dans une `@Configuration`.
+
+**Q55. Rôle de `SpringDomainEventPublisher` entre l'application et Spring ?**
+R. Adapter qui implémente le port `EventPublisher` (défini en application) via le mécanisme Spring
+(`ApplicationEventPublisher`). L'application publie via l'interface ; l'infra fait le pont.
+
+---
+
+### Flashcards de la session — `@Query` JPQL, projection, proxy, IoC
+
+**S1. JPQL vs SQL — sur quoi travaille chacun ?**
+R. SQL travaille sur les **tables**, JPQL sur les **entités Java** (Hibernate traduit ensuite en SQL).
+```text
+SQL  : SELECT * FROM stock_levels
+JPQL : select sl from StockLevelJpaEntity sl
+```
+
+**S2. Qu'exige une projection `select new ...(...)` pour fonctionner au démarrage ?**
+R. La classe cible doit avoir un **constructeur** avec exactement ces champs, **dans cet ordre et ces
+types** ; et il faut le **nom de classe complet** dans le `select new`.
+
+**S3. Avantage de la projection constructeur sur le retour d'entités ?**
+R. On ne charge que les colonnes nécessaires (pas l'entité entière), zéro lazy loading, zéro N+1, et
+**pas de mapper manuel** entity → view.
+
+**S4. Les deux types de jointures JPQL ?**
+R. (A) association mappée : `join stockLevel.location location` (la relation `@ManyToOne` existe, Hibernate
+connaît la FK). (B) ad-hoc : `join ProductJpaEntity p on p.id = stockLevel.id.productId` (pas de relation
+mappée, on écrit la condition).
+
+**S5. Que fait `(:productId is null or col = :productId)` ?**
+R. Filtre optionnel : si le param est `null`, la condition est toujours vraie (filtre ignoré) ; sinon on
+filtre. Nuance perf : peut empêcher l'usage optimal d'un index à grande échelle.
+
+**S6. Comment `findByQuery` (interface sans corps) exécute-t-elle du code ?**
+R. Spring Data **génère une classe proxy** au démarrage qui implémente l'interface, lit la `@Query`, lie
+les paramètres, exécute via l'`EntityManager` et emballe le résultat dans un `Page`.
+
+**S7. Comment les paramètres se lient-ils à la requête ? Le cas de `Pageable` ?**
+R. Les UUID sont liés **par nom** (`:productId` ↔ `productId`), possible sans `@Param` grâce au flag
+`-parameters`. `Pageable` n'a pas de `:pageable` : il est détecté **par type** et pilote `LIMIT/OFFSET/ORDER BY` + count.
+
+**S8. Distingue `Sort`, `Pageable`, `PageRequest`, `Page<T>`.**
+R. `Sort` = tri (ORDER BY). `Pageable` = **interface** "page+size+sort". `PageRequest` = **implémentation**
+concrète (`PageRequest.of(...)`). `Page<T>` = **résultat** (`getContent`, `getTotalElements`, `getTotalPages`).
+```java
+PageRequest.of(2, 10) // -> LIMIT 10 OFFSET 20
+```
+
+**S9. `@RequestParam` séparés vs Request DTO en GET — quand basculer ?**
+R. `@RequestParam` : peu de params, `defaultValue` natif, `sort` multi-valeur. Bascule vers un
+`@ModelAttribute` Request DTO si > 10 params ou validation cross-field (`from < to`). Règle projet :
+GET = `@RequestParam`, POST = `@RequestBody` DTO.
+
+**S10. Pourquoi un fichier `UseCaseConfiguration` avec des `@Bean` ?**
+R. Les use cases/services purs n'ont pas d'annotation Spring → non auto-scannés. On les câble à la main
+dans une `@Configuration` (côté infra). `@Bean` = "le retour est un bean" ; ses paramètres sont injectés
+depuis le conteneur ; Spring résout le graphe de dépendances.
+
+**S11. Specification vs `@Query` JPQL — critère de choix ?**
+R. Specification : beaucoup de filtres combinables, peu de jointures. `@Query` JPQL : jointures complexes +
+projection directe vers DTO (`select new`). On choisit selon la forme du problème, et on documente le critère.
 
 ---
 
