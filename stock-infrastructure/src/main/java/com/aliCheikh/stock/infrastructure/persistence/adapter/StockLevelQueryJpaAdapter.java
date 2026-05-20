@@ -35,6 +35,7 @@ public class StockLevelQueryJpaAdapter implements StockLevelQueryPort {
                 query.productId() == null ? null : query.productId().getValue(),
                 query.shopId() == null ? null : query.shopId().getValue(),
                 query.locationId() == null ? null : query.locationId().getValue(),
+                Boolean.TRUE.equals(query.belowThreshold()),
                 PageRequest.of(query.page(), query.size())
         );
 

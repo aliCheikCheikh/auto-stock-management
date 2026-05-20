@@ -28,11 +28,22 @@ public interface StockLevelQueryJpaRepository extends JpaRepository<StockLevelJp
             where (:productId is null or stockLevel.id.productId = :productId)
               and (:shopId is null or location.shopId = :shopId)
               and (:locationId is null or stockLevel.id.locationId = :locationId)
+              and (
+                  :belowThreshold = false
+                  or stockLevel.id.productId in (
+                      select thresholdStockLevel.id.productId
+                      from StockLevelJpaEntity thresholdStockLevel
+                      join ProductJpaEntity thresholdProduct on thresholdProduct.id = thresholdStockLevel.id.productId
+                      group by thresholdStockLevel.id.productId, thresholdProduct.minimumGlobalThreshold
+                      having sum(thresholdStockLevel.quantity) < thresholdProduct.minimumGlobalThreshold
+                  )
+              )
             """)
     Page<StockLevelRow> findByQuery(
             UUID productId,
             UUID shopId,
             UUID locationId,
+            boolean belowThreshold,
             Pageable pageable
     );
 }
