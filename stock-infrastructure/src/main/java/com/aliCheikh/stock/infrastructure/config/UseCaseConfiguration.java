@@ -1,11 +1,9 @@
 package com.aliCheikh.stock.infrastructure.config;
 
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.application.port.ListSalesQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
-import com.aliCheikh.stock.application.usecase.ListStockMovementsUseCase;
-import com.aliCheikh.stock.application.usecase.ReceiveStockUseCase;
-import com.aliCheikh.stock.application.usecase.SellProductUseCase;
-import com.aliCheikh.stock.application.usecase.TransferStockUseCase;
+import com.aliCheikh.stock.application.usecase.*;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.domain.model.sale.port.SaleRepository;
@@ -82,5 +80,10 @@ public class UseCaseConfiguration {
             StockMovementQueryPort stockMovementQueryPort
     ) {
         return new ListStockMovementsUseCase(stockMovementQueryPort);
+    }
+
+    @Bean
+    public ListSalesUseCase listSalesUseCase(ListSalesQueryPort listSalesQueryPort) {
+        return new ListSalesUseCase(listSalesQueryPort);
     }
 }
