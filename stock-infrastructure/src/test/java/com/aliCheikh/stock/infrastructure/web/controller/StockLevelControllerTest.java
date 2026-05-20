@@ -99,4 +99,35 @@ class StockLevelControllerTest {
 
 
     }
+
+    @Test
+    void should_pass_query_parameters_to_stock_levels_use_case() throws Exception {
+        given(listStockLevelsUseCase.execute(any(ListStockLevelsQuery.class)))
+                .willReturn(new PageResult<>(List.of(), 1, 10, 0, 0));
+        mockMvc.perform(get("/api/v1/stock-levels")
+                        .param("page", "1")
+                        .param("size", "10")
+                        .param("productId", productId.toString())
+                        .param("shopId", shopId.toString())
+                        .param("locationId", locationId.toString())
+                        .param("belowThreshold", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page.page").value(1))
+                .andExpect(jsonPath("$.page.size").value(10));
+
+        ArgumentCaptor<ListStockLevelsQuery> queryCaptor =
+                ArgumentCaptor.forClass(ListStockLevelsQuery.class);
+
+        verify(listStockLevelsUseCase).execute(queryCaptor.capture());
+
+        ListStockLevelsQuery query = queryCaptor.getValue();
+
+        assertThat(query.page()).isEqualTo(1);
+        assertThat(query.size()).isEqualTo(10);
+        assertThat(query.productId()).isEqualTo(ProductId.of(productId));
+        assertThat(query.shopId()).isEqualTo(ShopId.of(shopId));
+        assertThat(query.locationId()).isEqualTo(LocationId.of(locationId));
+        assertThat(query.belowThreshold()).isTrue();
+    }
 }
