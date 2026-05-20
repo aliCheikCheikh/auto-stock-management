@@ -7,19 +7,21 @@ import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfStockLevelResponse;
 
 import com.aliCheikh.stock.infrastructure.web.mapper.StockLevelWebMapper;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/stock-levels")
+@Validated
 public class StockLevelController {
 
-    private ListStockLevelsUseCase listStockLevelsUseCase;
+    private final ListStockLevelsUseCase listStockLevelsUseCase;
 
     public StockLevelController(ListStockLevelsUseCase listStockLevelsUseCase) {
         this.listStockLevelsUseCase = listStockLevelsUseCase;
@@ -27,8 +29,8 @@ public class StockLevelController {
 
 
     @GetMapping
-    public ResponseEntity<PageOfStockLevelResponse> listStockLevels(@RequestParam(defaultValue = "0") int page,
-                                                                    @RequestParam(defaultValue = "20") int size,
+    public ResponseEntity<PageOfStockLevelResponse> listStockLevels(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                                                    @RequestParam(defaultValue = "20") @Min(1) @Max(200) int size,
                                                                     @RequestParam(required = false) UUID productId,
                                                                     @RequestParam(required = false) UUID shopId,
                                                                     @RequestParam(required = false) UUID locationId,
@@ -44,5 +46,10 @@ public class StockLevelController {
         PageOfStockLevelResponse response = StockLevelWebMapper.toPageResponse(pageResult);
         return ResponseEntity.ok(response);
 
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
+        return ResponseEntity.badRequest().build();
     }
 }

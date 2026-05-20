@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -129,5 +130,21 @@ class StockLevelControllerTest {
         assertThat(query.shopId()).isEqualTo(ShopId.of(shopId));
         assertThat(query.locationId()).isEqualTo(LocationId.of(locationId));
         assertThat(query.belowThreshold()).isTrue();
+    }
+
+    @Test
+    void should_return_400_when_stock_levels_page_is_negative() throws Exception {
+        mockMvc.perform(get("/api/v1/stock-levels")
+                        .param("page", "-1"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(listStockLevelsUseCase);
+    }
+
+    @Test
+    void should_return_400_when_stock_levels_page_size_is_too_large() throws Exception {
+        mockMvc.perform(get("/api/v1/stock-levels")
+                        .param("size", "201"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(listStockLevelsUseCase);
     }
 }
