@@ -395,5 +395,21 @@ class SaleControllerTest {
 
     }
 
+    @Test
+    void should_return_400_when_sales_page_is_negative() throws Exception {
+        mockMvc.perform(get("/api/v1/sales")
+                        .param("page", "-1"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(listSalesUseCase);
+    }
+
+    @Test
+    void should_return_400_when_sales_page_size_is_too_large() throws Exception {
+        mockMvc.perform(get("/api/v1/sales")
+                        .param("size", "201"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(listSalesUseCase);
+    }
+
 
 }

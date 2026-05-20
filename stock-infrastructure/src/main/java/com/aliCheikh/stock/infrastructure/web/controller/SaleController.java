@@ -13,6 +13,7 @@ import com.aliCheikh.stock.infrastructure.web.dto.CreateSaleRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfSaleResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.SaleWebMapper;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -21,13 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -90,5 +85,10 @@ public class SaleController {
         PageOfSaleResponse response = SaleWebMapper.toPageResponse(view);
 
         return ResponseEntity.ok(response);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
+        return ResponseEntity.badRequest().build();
     }
 }
