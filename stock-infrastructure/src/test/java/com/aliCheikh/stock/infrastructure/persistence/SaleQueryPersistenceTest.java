@@ -6,6 +6,8 @@ import com.aliCheikh.stock.application.dto.SaleView;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
+import com.aliCheikh.stock.domain.model.sale.SaleId;
+import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
 import com.aliCheikh.stock.domain.model.sale.SaleLineInput;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.user.UserId;
@@ -33,6 +35,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.List;
 
@@ -176,6 +179,66 @@ public class SaleQueryPersistenceTest {
                 .extracting(SaleView::saleId)
                 .containsExactly(sale.getSaleId());
         assertThat(result.content().get(0).sellerId()).isEqualTo(sellerId);
+    }
+
+    @Test
+    void should_filter_sales_by_created_at_range() {
+        SaleLineDto line = new SaleLineDto(
+                firstProductId,
+                1,
+                firstUnitPrice,
+                firstUnitPrice
+        );
+
+        SaleId tooOldSaleId = SaleId.generate();
+        SaleId matchingSaleId = SaleId.generate();
+        SaleId tooRecentSaleId = SaleId.generate();
+
+        Sale tooOldSale = Sale.rehydrate(tooOldSaleId,
+                sellerId,
+                LocalDateTime.of(2026, 5, 1, 10, 0),
+                firstUnitPrice,
+                List.of(line));
+
+        Sale matchingSale = Sale.rehydrate(matchingSaleId,
+                sellerId,
+                LocalDateTime.of(2026, 5, 10, 10, 0),
+                firstUnitPrice,
+                List.of(line));
+
+        Sale tooRecentSale = Sale.rehydrate(tooRecentSaleId,
+                sellerId,
+                LocalDateTime.of(2026, 5, 20, 10, 0),
+                firstUnitPrice,
+                List.of(line));
+
+        saveReferenceData();
+
+        adapter.save(tooOldSale);
+        adapter.save(matchingSale);
+        adapter.save(tooRecentSale);
+
+        flushAndClear();
+
+        ListSalesQuery query = new ListSalesQuery(
+                0,
+                20,
+                List.of("createdAt,desc"),
+                null,
+                null,
+                LocalDateTime.of(2026, 5, 5, 0, 0),
+                LocalDateTime.of(2026, 5, 15, 0, 0)
+        );
+
+        PageResult<SaleView> result = queryAdapter.findByQuery(query);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.content())
+                .extracting(SaleView::saleId)
+                .containsExactly(matchingSaleId);
+        assertThat(result.content().get(0).createdAt()).isEqualTo(matchingSale.getOccurredAt());
+
     }
 
 
