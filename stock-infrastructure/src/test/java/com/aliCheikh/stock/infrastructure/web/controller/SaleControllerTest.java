@@ -11,7 +11,6 @@ import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
-import com.aliCheikh.stock.domain.model.sale.SaleLineInput;
 import com.aliCheikh.stock.domain.model.sale.port.SaleRepository;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
@@ -361,6 +360,38 @@ class SaleControllerTest {
         assertThat(query.shopId()).isNull();
         assertThat(query.from()).isNull();
         assertThat(query.to()).isNull();
+
+    }
+
+    @Test
+    void should_pass_query_parameters_to_sales_listing_use_case() throws Exception {
+
+        given(listSalesUseCase.execute(any(ListSalesQuery.class)))
+                .willReturn(new PageResult<>(List.of(), 1, 10, 0, 0));
+
+        mockMvc.perform(get("/api/v1/sales")
+                        .param("page", "1")
+                        .param("size", "10")
+                        .param("sort", "createdAt,asc")
+                        .param("sellerId", userId.toString())
+                        .param("from", "2026-05-01T00:00:00")
+                        .param("to", "2026-05-20T00:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page.page").value(1))
+                .andExpect(jsonPath("$.page.size").value(10));
+
+        ArgumentCaptor<ListSalesQuery> queryCaptor = ArgumentCaptor.forClass(ListSalesQuery.class);
+        verify(listSalesUseCase).execute(queryCaptor.capture());
+
+        ListSalesQuery query = queryCaptor.getValue();
+
+        assertThat(query.page()).isEqualTo(1);
+        assertThat(query.size()).isEqualTo(10);
+        assertThat(query.sort()).containsExactly("createdAt,asc");
+        assertThat(query.sellerId()).isEqualTo(UserId.of(userId));
+        assertThat(query.from()).isEqualTo(LocalDateTime.of(2026, 5, 1, 0, 0));
+        assertThat(query.to()).isEqualTo(LocalDateTime.of(2026, 5, 20, 0, 0));
 
     }
 

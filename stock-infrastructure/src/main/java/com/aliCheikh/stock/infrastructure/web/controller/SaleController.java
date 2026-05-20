@@ -14,10 +14,13 @@ import com.aliCheikh.stock.infrastructure.web.dto.PageOfSaleResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.SaleWebMapper;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +34,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/sales")
+@Validated
 public class SaleController {
 
     private final SellProductUseCase sellProductUseCase;
@@ -66,8 +70,8 @@ public class SaleController {
 
     @GetMapping
     public ResponseEntity<PageOfSaleResponse> getSales(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(200) int size,
             @RequestParam(required = false) UUID sellerId,
             @RequestParam(required = false) UUID shopId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
