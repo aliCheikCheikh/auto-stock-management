@@ -184,8 +184,14 @@ public class ProductControllerTest {
     @Test
     void should_return_400_when_page_is_negative() throws Exception {
         mockMvc.perform(get("/api/v1/products")
-                        .param("page", "-1").param("size", "20"))
-                .andExpect(status().isBadRequest());
+                        .param("page", "-1")
+                        .param("size", "20"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
         verifyNoInteractions(productRepository);
     }
 

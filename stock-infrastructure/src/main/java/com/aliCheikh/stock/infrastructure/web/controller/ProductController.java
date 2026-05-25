@@ -68,10 +68,4 @@ public class ProductController {
 
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
-        return ResponseEntity.badRequest().build();
-    }
-
-
 }

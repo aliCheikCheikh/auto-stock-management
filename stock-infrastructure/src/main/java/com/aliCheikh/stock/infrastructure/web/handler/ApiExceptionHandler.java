@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.infrastructure.web.handler;
 
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -33,6 +34,17 @@ public class ApiExceptionHandler {
 
         return problem;
 
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(ConstraintViolationException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://api.stock.example.com/errors/validation-failed"));
+        problem.setTitle("Bad Request");
+        problem.setDetail("Request validation failed");
+        problem.setProperty("code", "VALIDATION_FAILED");
+
+        return problem;
     }
 
 }
