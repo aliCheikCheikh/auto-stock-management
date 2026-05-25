@@ -156,6 +156,28 @@ class ProductStockQueryPersistenceTest {
 
     }
 
+    @Test
+    void should_return_empty_stock_summary_when_product_has_no_stock_levels() {
+        saveReferenceData();
+
+        GetProductStockLevelsQuery query = new GetProductStockLevelsQuery(
+                productId,
+                null
+        );
+
+        Optional<ProductStockSummaryView> result = queryAdapter.findProductStockSummary(query);
+
+        assertThat(result).isPresent();
+
+        ProductStockSummaryView summary = result.orElseThrow();
+        assertThat(summary.productId()).isEqualTo(productId);
+        assertThat(summary.productName()).isEqualTo("Oil Filter");
+        assertThat(summary.globalQuantity()).isZero();
+        assertThat(summary.minimumGlobalThreshold()).isEqualTo(10);
+        assertThat(summary.belowGlobalThreshold()).isTrue();
+        assertThat(summary.byLocation()).isEmpty();
+    }
+
     private void saveReferenceData() {
         categoryRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(),
