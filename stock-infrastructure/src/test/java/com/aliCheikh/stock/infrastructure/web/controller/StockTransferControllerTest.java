@@ -3,6 +3,10 @@ package com.aliCheikh.stock.infrastructure.web.controller;
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.dto.TransferStockResult;
 import com.aliCheikh.stock.application.usecase.TransferStockUseCase;
+import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
+import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
+import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferReason;
+import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
@@ -94,7 +98,11 @@ class StockTransferControllerTest {
     void should_return_400_when_body_is_empty() throws Exception {
         mockMvc.perform(post("/api/v1/stock-transfers")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
         verifyNoInteractions(transferStockUseCase);
     }
@@ -183,5 +191,66 @@ class StockTransferControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(transferStockUseCase);
+    }
+
+    @Test
+    void should_return_404_when_transfer_location_does_not_exist() throws Exception {
+        given(transferStockUseCase.execute(any(TransferStockCommand.class)))
+                .willThrow(new StorageNotFoundException(LocationId.of(sourceLocationId)));
+
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validTransferBody()))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Location not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("LOCATION_NOT_FOUND"));
+    }
+
+    @Test
+    void should_return_409_when_transfer_stock_is_insufficient() throws Exception {
+        given(transferStockUseCase.execute(any(TransferStockCommand.class)))
+                .willThrow(new InsufficientStockException(ProductId.of(productId), 2, 5));
+
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validTransferBody()))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Stock insufficient"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.code").value("STOCK_INSUFFICIENT"));
+    }
+
+    @Test
+    void should_return_422_when_transfer_violates_business_rule() throws Exception {
+        given(transferStockUseCase.execute(any(TransferStockCommand.class)))
+                .willThrow(new InvalidStockTransferException(
+                        LocationId.of(sourceLocationId),
+                        LocationId.of(destinationLocationId),
+                        InvalidStockTransferReason.INVALID_TRANSFER_DIRECTION
+                ));
+
+        mockMvc.perform(post("/api/v1/stock-transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validTransferBody()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Invalid stock transfer"))
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.code").value("INVALID_TRANSFER"));
+    }
+
+    private String validTransferBody() {
+        return """
+                {
+                  "productId": "%s",
+                  "sourceLocationId": "%s",
+                  "destinationLocationId": "%s",
+                  "quantity": 5,
+                  "userId": "%s"
+                }
+                """.formatted(productId, sourceLocationId, destinationLocationId, userId);
     }
 }

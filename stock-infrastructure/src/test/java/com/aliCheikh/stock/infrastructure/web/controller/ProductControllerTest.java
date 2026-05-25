@@ -285,7 +285,11 @@ public class ProductControllerTest {
                 .willReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Product not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
 
         ArgumentCaptor<GetProductStockLevelsQuery> queryCaptor =
                 ArgumentCaptor.forClass(GetProductStockLevelsQuery.class);

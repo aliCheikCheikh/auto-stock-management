@@ -12,7 +12,6 @@ import com.aliCheikh.stock.infrastructure.web.dto.PageOfProductResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.ProductResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.ProductStockSummaryResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.ProductWebMapper;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
@@ -64,7 +63,7 @@ public class ProductController {
         return getProductStockLevelsUseCase.execute(query)
                 .map(ProductWebMapper::toProductStockSummaryResponse)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ProductNotFoundException(ProductId.of(productId)));
 
     }
 

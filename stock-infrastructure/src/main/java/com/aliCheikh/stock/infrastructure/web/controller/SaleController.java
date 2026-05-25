@@ -7,13 +7,13 @@ import com.aliCheikh.stock.application.dto.SellProductCommand;
 import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
 import com.aliCheikh.stock.application.usecase.SellProductUseCase;
+import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.sale.port.SaleRepository;
 import com.aliCheikh.stock.infrastructure.web.dto.CreateSaleRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfSaleResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.SaleWebMapper;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -57,10 +57,12 @@ public class SaleController {
 
     @GetMapping("/{saleId}")
     public ResponseEntity<SaleResponse> getSale(@PathVariable UUID saleId) {
-        return saleRepository.findById(SaleId.of(saleId))
+        SaleId id = SaleId.of(saleId);
+
+        return saleRepository.findById(id)
                 .map(SaleWebMapper::toResponse)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new SaleNotFoundException(id));
     }
 
     @GetMapping
@@ -87,8 +89,4 @@ public class SaleController {
         return ResponseEntity.ok(response);
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
-        return ResponseEntity.badRequest().build();
-    }
 }

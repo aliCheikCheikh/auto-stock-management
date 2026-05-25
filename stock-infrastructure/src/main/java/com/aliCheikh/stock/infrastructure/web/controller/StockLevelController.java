@@ -7,7 +7,6 @@ import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfStockLevelResponse;
 
 import com.aliCheikh.stock.infrastructure.web.mapper.StockLevelWebMapper;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
@@ -48,8 +47,4 @@ public class StockLevelController {
 
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
-        return ResponseEntity.badRequest().build();
-    }
 }

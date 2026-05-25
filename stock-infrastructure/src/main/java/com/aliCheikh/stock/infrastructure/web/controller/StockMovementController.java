@@ -7,14 +7,12 @@ import com.aliCheikh.stock.application.usecase.ListStockMovementsUseCase;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfStockMovementResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.StockMovementWebMapper;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -61,8 +59,4 @@ public class StockMovementController {
         return ResponseEntity.ok(StockMovementWebMapper.toPageResponse(result));
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
-        return ResponseEntity.badRequest().build();
-    }
 }
