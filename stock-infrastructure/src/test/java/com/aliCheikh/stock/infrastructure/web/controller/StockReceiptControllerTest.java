@@ -110,7 +110,11 @@ class StockReceiptControllerTest {
     @Test
     void should_return_400_when_body_is_empty() throws Exception {
         mockMvc.perform(post("/api/v1/stock-receipts").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         verifyNoInteractions(receiveStockUseCase);
     }
 
@@ -130,7 +134,12 @@ class StockReceiptControllerTest {
                                     }
                                   ]
                                 }
-                        """.formatted(shopId, userId, locationId))).andExpect(status().isBadRequest());
+                        """.formatted(shopId, userId, locationId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         verifyNoInteractions(receiveStockUseCase);
     }
 

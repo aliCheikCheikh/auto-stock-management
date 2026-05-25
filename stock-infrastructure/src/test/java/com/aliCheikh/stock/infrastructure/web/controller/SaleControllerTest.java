@@ -301,15 +301,24 @@ class SaleControllerTest {
 
     @Test
     void should_return_404_when_sale_does_not_exist() throws Exception {
-        UUID saleId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         when(saleRepository.findById(SaleId.of(saleId))).thenReturn(Optional.empty());
-        mockMvc.perform(get("/api/v1/sales/{saleId}", saleId)).andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/sales/{saleId}", saleId))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Sale not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("SALE_NOT_FOUND"));
     }
 
     @Test
     void should_return_400_when_sale_id_is_not_uuid() throws Exception {
         mockMvc.perform(get("/api/v1/sales/not-uuid"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
         verifyNoInteractions(saleRepository);
     }

@@ -32,6 +32,7 @@ import java.util.stream.IntStream;
 
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -63,10 +64,18 @@ public class ProductControllerTest {
     }
 
     @Test
-    void should_return_404_when_product_does_not_exist() throws Exception {
-        UUID productId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        when(productRepository.findById(ProductId.of(productId))).thenReturn(Optional.empty());
-        mockMvc.perform(get("/api/v1/products/{productId}", productId)).andExpect(status().isNotFound());
+    void should_return_problem_detail_when_product_does_not_exist() throws Exception {
+        when(productRepository.findById(ProductId.of(productId)))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/products/{productId}", productId))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://api.stock.example.com/errors/product-not-found"))
+                .andExpect(jsonPath("$.title").value("Product not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value(containsString(productId.toString())))
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
     }
 
     @Test
@@ -99,7 +108,12 @@ public class ProductControllerTest {
 
     @Test
     void should_return_400_when_product_id_is_not_uuid() throws Exception {
-        mockMvc.perform(get("/api/v1/products/not-uuid")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/products/not-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         verifyNoInteractions(productRepository);
     }
 
@@ -170,8 +184,14 @@ public class ProductControllerTest {
     @Test
     void should_return_400_when_page_is_negative() throws Exception {
         mockMvc.perform(get("/api/v1/products")
-                        .param("page", "-1").param("size", "20"))
-                .andExpect(status().isBadRequest());
+                        .param("page", "-1")
+                        .param("size", "20"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
         verifyNoInteractions(productRepository);
     }
 
@@ -265,7 +285,11 @@ public class ProductControllerTest {
                 .willReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Product not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
 
         ArgumentCaptor<GetProductStockLevelsQuery> queryCaptor =
                 ArgumentCaptor.forClass(GetProductStockLevelsQuery.class);
