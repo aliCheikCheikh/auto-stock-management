@@ -108,7 +108,12 @@ public class ProductControllerTest {
 
     @Test
     void should_return_400_when_product_id_is_not_uuid() throws Exception {
-        mockMvc.perform(get("/api/v1/products/not-uuid")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/products/not-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         verifyNoInteractions(productRepository);
     }
 
