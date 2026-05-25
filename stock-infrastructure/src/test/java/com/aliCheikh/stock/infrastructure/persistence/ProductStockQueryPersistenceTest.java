@@ -178,6 +178,18 @@ class ProductStockQueryPersistenceTest {
         assertThat(summary.byLocation()).isEmpty();
     }
 
+    @Test
+    void should_return_empty_when_product_does_not_exist() {
+        GetProductStockLevelsQuery query = new GetProductStockLevelsQuery(
+                productId,
+                null
+        );
+
+        Optional<ProductStockSummaryView> result = queryAdapter.findProductStockSummary(query);
+
+        assertThat(result).isEmpty();
+    }
+
     private void saveReferenceData() {
         categoryRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(),
