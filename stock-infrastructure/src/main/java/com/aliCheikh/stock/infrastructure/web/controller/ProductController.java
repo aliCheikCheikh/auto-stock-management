@@ -1,11 +1,15 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
+import com.aliCheikh.stock.application.dto.GetProductStockLevelsQuery;
+import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
+import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.infrastructure.web.dto.PageMetaResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfProductResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.ProductResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.ProductStockSummaryResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.ProductWebMapper;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.Max;
@@ -23,9 +27,11 @@ import java.util.UUID;
 public class ProductController {
 
     private final ProductRepository productRepository;
+    private final GetProductStockLevelsUseCase getProductStockLevelsUseCase;
 
-    public ProductController(ProductRepository productRepository) {
+    public ProductController(ProductRepository productRepository, GetProductStockLevelsUseCase getProductStockLevelsUseCase) {
         this.productRepository = productRepository;
+        this.getProductStockLevelsUseCase = getProductStockLevelsUseCase;
     }
 
 
@@ -46,9 +52,22 @@ public class ProductController {
                 .map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{productId}/stock-levels")
+    public ResponseEntity<ProductStockSummaryResponse> getProductStockLevels(@PathVariable UUID productId,
+                                                                             @RequestParam(required = false) UUID shopId) {
+        GetProductStockLevelsQuery query = new GetProductStockLevelsQuery(ProductId.of(productId),
+                shopId == null ? null : ShopId.of(shopId));
+
+        return getProductStockLevelsUseCase.execute(query)
+                .map(ProductWebMapper::toProductStockSummaryResponse)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e){
-          return ResponseEntity.badRequest().build();
+    public ResponseEntity<Void> handleConstraintViolation(ConstraintViolationException e) {
+        return ResponseEntity.badRequest().build();
     }
 
 

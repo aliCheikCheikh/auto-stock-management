@@ -1,12 +1,21 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
 
+import com.aliCheikh.stock.application.dto.GetProductStockLevelsQuery;
+import com.aliCheikh.stock.application.dto.ProductStockSummaryView;
+import com.aliCheikh.stock.application.dto.StockLevelView;
+import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.domain.model.shared.Money;
+import com.aliCheikh.stock.domain.model.shop.ShopId;
+import com.aliCheikh.stock.domain.model.stock.LocationId;
+import com.aliCheikh.stock.domain.model.stock.LocationType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -22,6 +31,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,6 +45,22 @@ public class ProductControllerTest {
 
     @MockitoBean
     private ProductRepository productRepository;
+
+    @MockitoBean
+    private GetProductStockLevelsUseCase getProductStockLevelsUseCase;
+
+    private UUID productId;
+    private UUID shopId;
+    private UUID shopFloorId;
+    private UUID backstockId;
+
+    @BeforeEach
+    void setUp() {
+        productId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        shopId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        shopFloorId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        backstockId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+    }
 
     @Test
     void should_return_404_when_product_does_not_exist() throws Exception {
@@ -144,7 +170,7 @@ public class ProductControllerTest {
     @Test
     void should_return_400_when_page_is_negative() throws Exception {
         mockMvc.perform(get("/api/v1/products")
-                .param("page", "-1").param("size", "20"))
+                        .param("page", "-1").param("size", "20"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(productRepository);
     }
@@ -152,8 +178,8 @@ public class ProductControllerTest {
     @Test
     void should_return_400_when_size_exceeds_maximum() throws Exception {
         mockMvc.perform(get("/api/v1/products")
-                .param("page", "10")
-                .param("size", "500"))
+                        .param("page", "10")
+                        .param("size", "500"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(productRepository);
     }
@@ -161,10 +187,143 @@ public class ProductControllerTest {
     @Test
     void should_return_400_when_size_is_zero() throws Exception {
         mockMvc.perform(get("/api/v1/products")
-                .param("page", "0")
-                .param("size", "0"))
+                        .param("page", "0")
+                        .param("size", "0"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    void should_return_product_stock_summary() throws Exception {
+
+        ProductStockSummaryView summary = productStockSummary();
+
+        given(getProductStockLevelsUseCase.execute(any(GetProductStockLevelsQuery.class)))
+                .willReturn(Optional.of(summary));
+
+        mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.productId").value(productId.toString()))
+                .andExpect(jsonPath("$.productName").value("Oil Filter"))
+                .andExpect(jsonPath("$.globalQuantity").value(7))
+                .andExpect(jsonPath("$.minimumGlobalThreshold").value(10))
+                .andExpect(jsonPath("$.belowGlobalThreshold").value(Boolean.TRUE))
+                .andExpect(jsonPath("$.byLocation.length()").value(2))
+                .andExpect(jsonPath("$.byLocation[0].productId").value(productId.toString()))
+                .andExpect(jsonPath("$.byLocation[0].productName").value("Oil Filter"))
+                .andExpect(jsonPath("$.byLocation[0].locationId").value(shopFloorId.toString()))
+                .andExpect(jsonPath("$.byLocation[0].locationName").value("Shop floor"))
+                .andExpect(jsonPath("$.byLocation[0].locationType").value("SHOP_FLOOR"))
+                .andExpect(jsonPath("$.byLocation[0].shopId").value(shopId.toString()))
+                .andExpect(jsonPath("$.byLocation[1].locationId").value(backstockId.toString()))
+                .andExpect(jsonPath("$.byLocation[0].quantity").value(3))
+                .andExpect(jsonPath("$.byLocation[1].quantity").value(4));
+
+        ArgumentCaptor<GetProductStockLevelsQuery> queryCaptor = ArgumentCaptor.forClass(GetProductStockLevelsQuery.class);
+        verify(getProductStockLevelsUseCase).execute(queryCaptor.capture());
+        GetProductStockLevelsQuery query = queryCaptor.getValue();
+
+        assertThat(query.productId()).isEqualTo(ProductId.of(productId));
+        assertThat(query.shopId()).isNull();
+
+
+    }
+
+    @Test
+    void should_pass_shop_id_to_product_stock_summary_use_case() throws Exception {
+        UUID productId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID shopId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        UUID shopFloorId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        UUID backstockId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+
+        ProductStockSummaryView summary = productStockSummary();
+
+        given(getProductStockLevelsUseCase.execute(any(GetProductStockLevelsQuery.class)))
+                .willReturn(Optional.of(summary));
+
+        mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId)
+                        .param("shopId", shopId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.productId").value(productId.toString()));
+
+        ArgumentCaptor<GetProductStockLevelsQuery> queryCaptor =
+                ArgumentCaptor.forClass(GetProductStockLevelsQuery.class);
+
+        verify(getProductStockLevelsUseCase).execute(queryCaptor.capture());
+
+        GetProductStockLevelsQuery query = queryCaptor.getValue();
+
+        assertThat(query.productId()).isEqualTo(ProductId.of(productId));
+        assertThat(query.shopId()).isEqualTo(ShopId.of(shopId));
+    }
+
+    @Test
+    void should_return_404_when_product_stock_summary_does_not_exist() throws Exception {
+        given(getProductStockLevelsUseCase.execute(any(GetProductStockLevelsQuery.class)))
+                .willReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId))
+                .andExpect(status().isNotFound());
+
+        ArgumentCaptor<GetProductStockLevelsQuery> queryCaptor =
+                ArgumentCaptor.forClass(GetProductStockLevelsQuery.class);
+
+        verify(getProductStockLevelsUseCase).execute(queryCaptor.capture());
+
+        GetProductStockLevelsQuery query = queryCaptor.getValue();
+
+        assertThat(query.productId()).isEqualTo(ProductId.of(productId));
+        assertThat(query.shopId()).isNull();
+    }
+
+    @Test
+    void should_return_400_when_product_stock_summary_product_id_is_not_uuid() throws Exception {
+        mockMvc.perform(get("/api/v1/products/not-uuid/stock-levels"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(getProductStockLevelsUseCase);
+    }
+
+    @Test
+    void should_return_400_when_product_stock_summary_shop_id_is_not_uuid() throws Exception {
+        mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId)
+                        .param("shopId", "not-uuid"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(getProductStockLevelsUseCase);
+    }
+
+    private ProductStockSummaryView productStockSummary(
+    ) {
+        return new ProductStockSummaryView(
+                ProductId.of(productId),
+                "Oil Filter",
+                7,
+                10,
+                true,
+                List.of(
+                        new StockLevelView(
+                                ProductId.of(productId),
+                                "Oil Filter",
+                                LocationId.of(shopFloorId),
+                                "Shop floor",
+                                LocationType.SHOP_FLOOR,
+                                ShopId.of(shopId),
+                                3
+                        ),
+                        new StockLevelView(
+                                ProductId.of(productId),
+                                "Oil Filter",
+                                LocationId.of(backstockId),
+                                "Backstock",
+                                LocationType.BACKSTOCK,
+                                ShopId.of(shopId),
+                                4
+                        )
+                )
+        );
     }
 
     private Product sampleProduct(int index) {
