@@ -254,6 +254,25 @@ public class ProductControllerTest {
         assertThat(query.shopId()).isEqualTo(ShopId.of(shopId));
     }
 
+    @Test
+    void should_return_404_when_product_stock_summary_does_not_exist() throws Exception {
+        given(getProductStockLevelsUseCase.execute(any(GetProductStockLevelsQuery.class)))
+                .willReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId))
+                .andExpect(status().isNotFound());
+
+        ArgumentCaptor<GetProductStockLevelsQuery> queryCaptor =
+                ArgumentCaptor.forClass(GetProductStockLevelsQuery.class);
+
+        verify(getProductStockLevelsUseCase).execute(queryCaptor.capture());
+
+        GetProductStockLevelsQuery query = queryCaptor.getValue();
+
+        assertThat(query.productId()).isEqualTo(ProductId.of(productId));
+        assertThat(query.shopId()).isNull();
+    }
+
     private ProductStockSummaryView productStockSummary(
     ) {
         return new ProductStockSummaryView(
