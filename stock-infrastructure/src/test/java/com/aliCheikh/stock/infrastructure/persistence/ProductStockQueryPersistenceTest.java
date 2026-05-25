@@ -80,6 +80,7 @@ class ProductStockQueryPersistenceTest {
     private CategoryId categoryId;
     private ProductId productId;
     private ShopId shopId;
+    private ShopId otherShopId;
     private LocationId locationId;
     private LocationId otherLocationId;
     private Money unitPrice;
@@ -89,6 +90,7 @@ class ProductStockQueryPersistenceTest {
         categoryId = CategoryId.generate();
         productId = ProductId.generate();
         shopId = ShopId.generate();
+        otherShopId = ShopId.generate();
         locationId = LocationId.generate();
         otherLocationId = LocationId.generate();
         unitPrice = Money.create(new BigDecimal("15.00"), Currency.getInstance("EUR"));
@@ -188,6 +190,59 @@ class ProductStockQueryPersistenceTest {
         Optional<ProductStockSummaryView> result = queryAdapter.findProductStockSummary(query);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void should_filter_product_stock_summary_by_shop_id() {
+        saveReferenceData();
+        shopRepository.save(ShopJpaEntity.of(
+                otherShopId.getValue(),
+                "Rennes Shop",
+                "1 Rue Test"
+        ));
+
+        StorageLocationJpaEntity matchingLocation = StorageLocationJpaEntity.of(
+                locationId.getValue(),
+                shopId.getValue(),
+                LocationType.SHOP_FLOOR,
+                "Nantes shop floor",
+                3
+        );
+        matchingLocation.replaceStockLevels(
+                Set.of(StockLevelJpaEntity.of(matchingLocation, productId.getValue(), 3))
+        );
+
+        StorageLocationJpaEntity otherLocation = StorageLocationJpaEntity.of(
+                otherLocationId.getValue(),
+                otherShopId.getValue(),
+                LocationType.BACKSTOCK,
+                "Rennes backstock",
+                3
+        );
+        otherLocation.replaceStockLevels(
+                Set.of(StockLevelJpaEntity.of(otherLocation, productId.getValue(), 4))
+        );
+
+        storageLocationRepository.save(matchingLocation);
+        storageLocationRepository.save(otherLocation);
+        flushAndClear();
+
+        GetProductStockLevelsQuery query = new GetProductStockLevelsQuery(
+                productId,
+                shopId
+        );
+
+        Optional<ProductStockSummaryView> result = queryAdapter.findProductStockSummary(query);
+
+        assertThat(result).isPresent();
+
+        ProductStockSummaryView summary = result.orElseThrow();
+        assertThat(summary.globalQuantity()).isEqualTo(3);
+        assertThat(summary.belowGlobalThreshold()).isTrue();
+        assertThat(summary.byLocation()).hasSize(1);
+        assertThat(summary.byLocation().get(0).shopId()).isEqualTo(shopId);
+        assertThat(summary.byLocation().get(0).locationId()).isEqualTo(locationId);
+        assertThat(summary.byLocation().get(0).quantity()).isEqualTo(3);
     }
 
     private void saveReferenceData() {
