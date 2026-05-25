@@ -2,6 +2,7 @@ package com.aliCheikh.stock.infrastructure.config;
 
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.application.port.ListSalesQueryPort;
+import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
 import com.aliCheikh.stock.application.usecase.*;
@@ -91,5 +92,10 @@ public class UseCaseConfiguration {
     @Bean
     public ListStockLevelsUseCase listStockLevelsUseCase(StockLevelQueryPort stockLevelQueryPort) {
         return new ListStockLevelsUseCase(stockLevelQueryPort);
+    }
+
+    @Bean
+    public GetProductStockLevelsUseCase getProductStockLevelsUseCase(ProductStockQueryPort productStockQueryPort) {
+        return new GetProductStockLevelsUseCase(productStockQueryPort);
     }
 }
