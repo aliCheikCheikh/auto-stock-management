@@ -245,6 +245,39 @@ class ProductStockQueryPersistenceTest {
         assertThat(summary.byLocation().get(0).quantity()).isEqualTo(3);
     }
 
+    @Test
+    void should_not_mark_product_below_threshold_when_global_quantity_reaches_threshold() {
+        saveReferenceData();
+
+        StorageLocationJpaEntity location = StorageLocationJpaEntity.of(
+                locationId.getValue(),
+                shopId.getValue(),
+                LocationType.SHOP_FLOOR,
+                "Shop floor",
+                3
+        );
+        location.replaceStockLevels(
+                Set.of(StockLevelJpaEntity.of(location, productId.getValue(), 10))
+        );
+
+        storageLocationRepository.save(location);
+        flushAndClear();
+
+        GetProductStockLevelsQuery query = new GetProductStockLevelsQuery(
+                productId,
+                null
+        );
+
+        Optional<ProductStockSummaryView> result = queryAdapter.findProductStockSummary(query);
+
+        assertThat(result).isPresent();
+
+        ProductStockSummaryView summary = result.orElseThrow();
+        assertThat(summary.globalQuantity()).isEqualTo(10);
+        assertThat(summary.minimumGlobalThreshold()).isEqualTo(10);
+        assertThat(summary.belowGlobalThreshold()).isFalse();
+    }
+
     private void saveReferenceData() {
         categoryRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(),
