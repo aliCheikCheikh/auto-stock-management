@@ -210,7 +210,12 @@ public class ProductControllerTest {
                 .andExpect(jsonPath("$.minimumGlobalThreshold").value(10))
                 .andExpect(jsonPath("$.belowGlobalThreshold").value(Boolean.TRUE))
                 .andExpect(jsonPath("$.byLocation.length()").value(2))
+                .andExpect(jsonPath("$.byLocation[0].productId").value(productId.toString()))
+                .andExpect(jsonPath("$.byLocation[0].productName").value("Oil Filter"))
                 .andExpect(jsonPath("$.byLocation[0].locationId").value(shopFloorId.toString()))
+                .andExpect(jsonPath("$.byLocation[0].locationName").value("Shop floor"))
+                .andExpect(jsonPath("$.byLocation[0].locationType").value("SHOP_FLOOR"))
+                .andExpect(jsonPath("$.byLocation[0].shopId").value(shopId.toString()))
                 .andExpect(jsonPath("$.byLocation[1].locationId").value(backstockId.toString()))
                 .andExpect(jsonPath("$.byLocation[0].quantity").value(3))
                 .andExpect(jsonPath("$.byLocation[1].quantity").value(4));
