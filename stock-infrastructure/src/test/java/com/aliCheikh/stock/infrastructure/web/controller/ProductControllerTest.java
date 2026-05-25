@@ -13,6 +13,7 @@ import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.LocationType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,19 @@ public class ProductControllerTest {
 
     @MockitoBean
     private GetProductStockLevelsUseCase getProductStockLevelsUseCase;
+
+    private UUID productId;
+    private UUID shopId;
+    private UUID shopFloorId;
+    private UUID backstockId;
+
+    @BeforeEach
+    void setUp() {
+        productId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        shopId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        shopFloorId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        backstockId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+    }
 
     @Test
     void should_return_404_when_product_does_not_exist() throws Exception {
@@ -181,30 +195,8 @@ public class ProductControllerTest {
 
     @Test
     void should_return_product_stock_summary() throws Exception {
-        UUID productId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        UUID shopId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        UUID shopFloorId = UUID.fromString("33333333-3333-3333-3333-333333333333");
-        UUID backstockId = UUID.fromString("44444444-4444-4444-4444-444444444444");
 
-        ProductStockSummaryView summary = new ProductStockSummaryView(ProductId.of(productId),
-                "Oil Filter",
-                7,
-                10,
-                true,
-                List.of(new StockLevelView(ProductId.of(productId),
-                                "Oil Filter",
-                                LocationId.of(shopFloorId),
-                                "Shop floor",
-                                LocationType.SHOP_FLOOR,
-                                ShopId.of(shopId),
-                                3),
-                        new StockLevelView(ProductId.of(productId),
-                                "Oil Filter",
-                                LocationId.of(backstockId),
-                                "Backstock",
-                                LocationType.BACKSTOCK,
-                                ShopId.of(shopId),
-                                4)));
+        ProductStockSummaryView summary = productStockSummary();
 
         given(getProductStockLevelsUseCase.execute(any(GetProductStockLevelsQuery.class)))
                 .willReturn(Optional.of(summary));
@@ -231,6 +223,66 @@ public class ProductControllerTest {
         assertThat(query.shopId()).isNull();
 
 
+    }
+
+    @Test
+    void should_pass_shop_id_to_product_stock_summary_use_case() throws Exception {
+        UUID productId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID shopId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        UUID shopFloorId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        UUID backstockId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+
+        ProductStockSummaryView summary = productStockSummary();
+
+        given(getProductStockLevelsUseCase.execute(any(GetProductStockLevelsQuery.class)))
+                .willReturn(Optional.of(summary));
+
+        mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId)
+                        .param("shopId", shopId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.productId").value(productId.toString()));
+
+        ArgumentCaptor<GetProductStockLevelsQuery> queryCaptor =
+                ArgumentCaptor.forClass(GetProductStockLevelsQuery.class);
+
+        verify(getProductStockLevelsUseCase).execute(queryCaptor.capture());
+
+        GetProductStockLevelsQuery query = queryCaptor.getValue();
+
+        assertThat(query.productId()).isEqualTo(ProductId.of(productId));
+        assertThat(query.shopId()).isEqualTo(ShopId.of(shopId));
+    }
+
+    private ProductStockSummaryView productStockSummary(
+    ) {
+        return new ProductStockSummaryView(
+                ProductId.of(productId),
+                "Oil Filter",
+                7,
+                10,
+                true,
+                List.of(
+                        new StockLevelView(
+                                ProductId.of(productId),
+                                "Oil Filter",
+                                LocationId.of(shopFloorId),
+                                "Shop floor",
+                                LocationType.SHOP_FLOOR,
+                                ShopId.of(shopId),
+                                3
+                        ),
+                        new StockLevelView(
+                                ProductId.of(productId),
+                                "Oil Filter",
+                                LocationId.of(backstockId),
+                                "Backstock",
+                                LocationType.BACKSTOCK,
+                                ShopId.of(shopId),
+                                4
+                        )
+                )
+        );
     }
 
     private Product sampleProduct(int index) {
