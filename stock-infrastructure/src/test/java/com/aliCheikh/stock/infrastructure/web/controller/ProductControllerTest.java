@@ -273,6 +273,23 @@ public class ProductControllerTest {
         assertThat(query.shopId()).isNull();
     }
 
+    @Test
+    void should_return_400_when_product_stock_summary_product_id_is_not_uuid() throws Exception {
+        mockMvc.perform(get("/api/v1/products/not-uuid/stock-levels"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(getProductStockLevelsUseCase);
+    }
+
+    @Test
+    void should_return_400_when_product_stock_summary_shop_id_is_not_uuid() throws Exception {
+        mockMvc.perform(get("/api/v1/products/{productId}/stock-levels", productId)
+                        .param("shopId", "not-uuid"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(getProductStockLevelsUseCase);
+    }
+
     private ProductStockSummaryView productStockSummary(
     ) {
         return new ProductStockSummaryView(
