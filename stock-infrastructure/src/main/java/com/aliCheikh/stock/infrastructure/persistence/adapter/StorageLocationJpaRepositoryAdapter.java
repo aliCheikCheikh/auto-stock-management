@@ -4,6 +4,7 @@ import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
+import com.aliCheikh.stock.infrastructure.persistence.entity.StorageLocationJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.mapper.StorageLocationJpaMapper;
 import com.aliCheikh.stock.infrastructure.persistence.repository.StorageLocationJpaRepository;
 import org.springframework.stereotype.Repository;
@@ -53,6 +54,14 @@ public class StorageLocationJpaRepositoryAdapter implements StorageLocationRepos
     @Override
     public void save(StorageLocation storageLocation) {
         Objects.requireNonNull(storageLocation, "storageLocation cannot be null");
+        Optional<StorageLocationJpaEntity> existingEntity = storageLocationJpaRepository
+                .findById(storageLocation.getLocationId().getValue());
+        if(existingEntity.isPresent()) {
+            StorageLocationJpaEntity existing = existingEntity.get();
+            storageLocationJpaMapper.updateEntity(storageLocation, existing);
+            storageLocationJpaRepository.save(existing);
+            return;
+        }
 
         storageLocationJpaRepository.save(storageLocationJpaMapper.toEntity(storageLocation));
     }

@@ -61,4 +61,21 @@ public class StorageLocationJpaMapper {
         entity.replaceStockLevels(stockLevelEntities);
         return entity;
     }
+
+    public void updateEntity(StorageLocation source, StorageLocationJpaEntity target) {
+        Objects.requireNonNull(source, "source cannot be null");
+        Objects.requireNonNull(target, "target cannot be null");
+
+        Set<StockLevelJpaEntity> stockLevelEntities = new HashSet<>();
+
+        for (Map.Entry<ProductId, StockLevel> entry : source.getStockLevels().entrySet()) {
+            stockLevelEntities.add(StockLevelJpaEntity.of(
+                    target,
+                    entry.getKey().getValue(),
+                    entry.getValue().getQuantity()
+            ));
+        }
+
+        target.replaceStockLevels(stockLevelEntities);
+    }
 }
