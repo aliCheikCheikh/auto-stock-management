@@ -77,11 +77,6 @@ public class StorageLocationJpaRepositoryAdapter implements StorageLocationRepos
     @Override
     public void saveAll(List<StorageLocation> storageLocations) {
         Objects.requireNonNull(storageLocations, "storageLocations cannot be null");
-
-        storageLocationJpaRepository.saveAll(
-                storageLocations.stream()
-                        .map(storageLocationJpaMapper::toEntity)
-                        .toList()
-        );
+        storageLocations.forEach(this::save);
     }
 }

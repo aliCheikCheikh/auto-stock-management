@@ -189,6 +189,24 @@ class StorageLocationPersistenceTest {
         assertThat(updatedLocation.getStockLevel(productId)).isEqualTo(15);
     }
 
+    @Test
+    void should_update_existing_storage_location_stock_levels_when_saving_all() {
+        saveReferenceData();
+        saveStorageLocationAndClear();
+
+        StorageLocation existingLocation = adapter.findById(locationId)
+                .orElseThrow();
+
+        existingLocation.increaseStock(productId, 5);
+        adapter.saveAll(List.of(existingLocation));
+        flushAndClear();
+
+        StorageLocation updatedLocation = adapter.findById(locationId)
+                .orElseThrow();
+
+        assertThat(updatedLocation.getStockLevel(productId)).isEqualTo(15);
+    }
+
     private void saveReferenceData() {
         categoryRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(),
