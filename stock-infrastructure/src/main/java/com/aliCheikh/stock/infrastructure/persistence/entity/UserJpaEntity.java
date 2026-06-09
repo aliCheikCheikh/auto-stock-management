@@ -26,6 +26,12 @@ public class UserJpaEntity {
     @Column(name = "role", nullable = false, length = 50)
     private UserRole role;
 
+    @Column(name = "email", unique = true, length = 255)
+    private String email;
+
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
     protected UserJpaEntity() {
     }
 
@@ -35,8 +41,20 @@ public class UserJpaEntity {
         this.role = Objects.requireNonNull(role, "role cannot be null");
     }
 
+    private UserJpaEntity(UUID id, String username, String email, String passwordHash, UserRole role) {
+        this.id = Objects.requireNonNull(id, "id cannot be null");
+        this.username = Objects.requireNonNull(username, "username cannot be null");
+        this.email = Objects.requireNonNull(email, "email cannot be null");
+        this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash cannot be null");
+        this.role = Objects.requireNonNull(role, "role cannot be null");
+    }
+
     public static UserJpaEntity of(UUID id, String username, UserRole role) {
         return new UserJpaEntity(id, username, role);
+    }
+
+    public static UserJpaEntity withCredentials(UUID id, String username, String email, String passwordHash, UserRole role) {
+        return new UserJpaEntity(id, username, email, passwordHash, role);
     }
 
     public UUID getId() {
@@ -49,5 +67,13 @@ public class UserJpaEntity {
 
     public UserRole getRole() {
         return role;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
     }
 }
