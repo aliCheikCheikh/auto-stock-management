@@ -11,13 +11,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -38,6 +37,13 @@ public class AuthController {
         this.cookieSecure = cookieSecure;
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<LoginResponse> me(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        String role = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+        return ResponseEntity.ok(new LoginResponse(userId, role));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         String email = loginRequest.email().trim().toLowerCase();
@@ -50,7 +56,8 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("access_token", accessToken)
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("strict").path("/")
+                .sameSite("strict")
+                .path("/")
                 .maxAge(Duration.ofMinutes(15))
                 .build();
 
