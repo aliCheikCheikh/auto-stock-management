@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.infrastructure.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,5 +34,17 @@ public class JwtService {
                 .expiration(Date.from(now.plus(ACCESS_TOKEN_VALIDITY)))
                 .signWith(signingKey)
                 .compact();
+    }
+
+    public AuthenticatedUser parse(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        UUID userId = UUID.fromString(claims.getSubject());
+        String role = claims.get("role", String.class);
+        return new AuthenticatedUser(userId, role);
     }
 }
