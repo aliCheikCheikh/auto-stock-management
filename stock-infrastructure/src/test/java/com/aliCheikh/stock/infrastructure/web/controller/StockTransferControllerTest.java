@@ -11,10 +11,12 @@ import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
+import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -34,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(StockTransferController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class StockTransferControllerTest {
 
     @Autowired
@@ -41,6 +44,9 @@ class StockTransferControllerTest {
 
     @MockitoBean
     private TransferStockUseCase transferStockUseCase;
+
+    @MockitoBean
+    private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;
 
     private UUID productId;
     private UUID sourceLocationId;

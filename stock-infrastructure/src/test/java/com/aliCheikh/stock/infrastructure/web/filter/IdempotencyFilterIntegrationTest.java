@@ -8,6 +8,8 @@ import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
+import com.aliCheikh.stock.infrastructure.security.JwtService;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @Testcontainers
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc()
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class IdempotencyFilterIntegrationTest {
 
@@ -76,6 +78,9 @@ class IdempotencyFilterIntegrationTest {
     @MockitoBean
     private SellProductUseCase sellProductUseCase;
 
+    @Autowired
+    private JwtService jwtService;
+
     @BeforeEach
     void setUp() {
         given(sellProductUseCase.sell(any())).willReturn(stubbedSaleResult());
@@ -106,6 +111,7 @@ class IdempotencyFilterIntegrationTest {
     @Test
     void should_not_store_record_when_no_idempotency_key_is_provided() throws Exception {
         mockMvc.perform(post(SALES_ENDPOINT)
+                        .cookie(authCookie())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(saleRequest(4)))
                 .andExpect(status().isCreated());
@@ -115,6 +121,7 @@ class IdempotencyFilterIntegrationTest {
 
     private ResultActions performSaleWithKey(String body) throws Exception {
         return mockMvc.perform(post(SALES_ENDPOINT)
+                .cookie(authCookie())
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY.toString())
                 .content(body));
@@ -136,5 +143,10 @@ class IdempotencyFilterIntegrationTest {
                 List.of(new SaleLineDto(ProductId.of(PRODUCT_ID), 4, unitPrice, subtotal)),
                 subtotal,
                 LocalDateTime.of(2026, 6, 2, 19, 55));
+    }
+
+    private Cookie authCookie() {
+        String token = jwtService.generateAccessToken(UUID.randomUUID(), "SELLER");
+        return new Cookie("access_token", token);
     }
 }
