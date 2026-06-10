@@ -15,10 +15,12 @@ import com.aliCheikh.stock.domain.model.sale.port.SaleRepository;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.user.UserId;
+import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -42,6 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(SaleController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class SaleControllerTest {
 
     @Autowired
@@ -55,6 +58,9 @@ class SaleControllerTest {
 
     @MockitoBean
     private ListSalesUseCase listSalesUseCase;
+
+    @MockitoBean
+    private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;
 
     private UUID saleId;
     private UUID productId;
