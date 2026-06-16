@@ -12,10 +12,11 @@ import java.util.Objects;
 public class Product {
     private final ProductId productId; // L'identité est immuable
     private String name;
-    private String reference;
-    private CategoryId categoryId;
+    private final String reference;
+    private final CategoryId categoryId;
     private int minimumGlobalThreshold;
     private Money unitPrice;
+    private boolean active;
 
     public Product(ProductId productId, String name, String reference, CategoryId categoryId, int minimumGlobalThreshold, Money unitPrice) {
         this.productId = Objects.requireNonNull(productId, "productId cannot be null");
@@ -25,18 +26,11 @@ public class Product {
         this.categoryId = validateCategoryId(categoryId);
         this.minimumGlobalThreshold = validateThreshold(minimumGlobalThreshold);
         this.unitPrice = validatePrice(unitPrice);
+        this.active = true;
     }
 
     public void rename(String newName) {
         this.name = validateName(newName);
-    }
-
-    public void updateReference(String newReference) {
-        this.reference = validateReference(newReference);
-    }
-
-    public void changeCategory(CategoryId newCategoryId) {
-        this.categoryId = validateCategoryId(newCategoryId);
     }
 
     public void updateThreshold(int newThreshold) {
@@ -51,6 +45,9 @@ public class Product {
         return globalQuantity < minimumGlobalThreshold;
     }
 
+    public void deactivate() {
+        this.active = false;
+    }
 
     private String validateName(String nameToValidate) {
         if (nameToValidate == null || nameToValidate.isBlank()) {
@@ -106,6 +103,10 @@ public class Product {
 
     public Money getUnitPrice() {
         return unitPrice;
+    }
+
+    public boolean isActive() {
+        return this.active;
     }
 
     @Override
