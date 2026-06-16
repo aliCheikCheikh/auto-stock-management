@@ -85,4 +85,17 @@ class ProductTest {
         assertThat(product.isActive()).isFalse();
     }
 
+    @Test
+    void should_restore_inactive_product() {
+        com.aliCheikh.stock.domain.model.product.Product restoredProduct = Product.restore(product.getProductId(),
+                product.getName(),
+                product.getReference(),
+                product.getCategoryId(),
+                product.getMinimumGlobalThreshold(),
+                product.getUnitPrice(),
+                false
+        );
+        assertThat(restoredProduct.isActive()).isFalse();
+    }
+
 }

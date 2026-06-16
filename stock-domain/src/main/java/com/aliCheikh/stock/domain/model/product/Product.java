@@ -19,14 +19,34 @@ public class Product {
     private boolean active;
 
     public Product(ProductId productId, String name, String reference, CategoryId categoryId, int minimumGlobalThreshold, Money unitPrice) {
+        this(productId, name, reference, categoryId, minimumGlobalThreshold, unitPrice, true);
+    }
+
+    private Product(ProductId productId,
+                    String name,
+                    String reference,
+                    CategoryId categoryId,
+                    int minimumGlobalThreshold,
+                    Money unitPrice,
+                    boolean active) {
         this.productId = Objects.requireNonNull(productId, "productId cannot be null");
-        // Le constructeur délègue la validation aux gardiens
         this.name = validateName(name);
         this.reference = validateReference(reference);
         this.categoryId = validateCategoryId(categoryId);
         this.minimumGlobalThreshold = validateThreshold(minimumGlobalThreshold);
         this.unitPrice = validatePrice(unitPrice);
-        this.active = true;
+        this.active = active;
+    }
+
+    public static Product restore(ProductId productId,
+                                  String name,
+                                  String reference,
+                                  CategoryId categoryId,
+                                  int minimumGlobalThreshold,
+                                  Money unitPrice,
+                                  boolean active
+    ) {
+        return new Product(productId, name, reference, categoryId, minimumGlobalThreshold, unitPrice, active);
     }
 
     public void rename(String newName) {
