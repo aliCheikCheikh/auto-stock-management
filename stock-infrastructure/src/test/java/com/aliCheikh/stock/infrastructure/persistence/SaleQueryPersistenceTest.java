@@ -313,7 +313,8 @@ public class SaleQueryPersistenceTest {
                 categoryId.getValue(),
                 5,
                 firstUnitPrice.getAmount(),
-                firstUnitPrice.getCurrency().getCurrencyCode()
+                firstUnitPrice.getCurrency().getCurrencyCode(),
+                true
         ));
 
         productRepository.save(ProductJpaEntity.of(
@@ -323,7 +324,8 @@ public class SaleQueryPersistenceTest {
                 categoryId.getValue(),
                 5,
                 secondUnitPrice.getAmount(),
-                secondUnitPrice.getCurrency().getCurrencyCode()
+                secondUnitPrice.getCurrency().getCurrencyCode(),
+                true
         ));
 
         userRepository.save(UserJpaEntity.of(

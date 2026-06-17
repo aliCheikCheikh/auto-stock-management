@@ -98,6 +98,26 @@ class ProductPersistenceTest {
         assertPersistedProduct(foundProduct);
     }
 
+    @Test
+    void should_persist_inactive_product() {
+        saveCategory();
+        ProductId inactiveProductId = ProductId.generate();
+        Product inactiveProduct = new Product(inactiveProductId,
+                "Test Product",
+                "Ref Test Product",
+                categoryId,
+                5,
+                unitPrice);
+        inactiveProduct.deactivate();
+        adapter.save(inactiveProduct);
+        flushAndClear();
+        Optional<Product> foundProduct = adapter.findById(inactiveProductId);
+        assertThat(foundProduct).isPresent();
+        Product persistedProduct = foundProduct.orElseThrow();
+        assertThat(persistedProduct.isActive()).isFalse();
+
+    }
+
     private void saveCategory() {
         categoryRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(),

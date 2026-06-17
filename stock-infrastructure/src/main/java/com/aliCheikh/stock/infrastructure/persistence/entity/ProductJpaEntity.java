@@ -35,6 +35,9 @@ public class ProductJpaEntity {
     @Column(name = "unit_price_currency", nullable = false, length = 3)
     private String unitPriceCurrency;
 
+    @Column(name = "active", nullable = false)
+    private boolean active;
+
     protected ProductJpaEntity() {
     }
 
@@ -45,7 +48,8 @@ public class ProductJpaEntity {
             UUID categoryId,
             int minimumGlobalThreshold,
             BigDecimal unitPriceAmount,
-            String unitPriceCurrency
+            String unitPriceCurrency,
+            boolean active
     ) {
         this.id = Objects.requireNonNull(id, "id cannot be null");
         this.name = Objects.requireNonNull(name, "name cannot be null");
@@ -54,6 +58,7 @@ public class ProductJpaEntity {
         this.minimumGlobalThreshold = minimumGlobalThreshold;
         this.unitPriceAmount = Objects.requireNonNull(unitPriceAmount, "unitPriceAmount cannot be null");
         this.unitPriceCurrency = Objects.requireNonNull(unitPriceCurrency, "unitPriceCurrency cannot be null");
+        this.active = active;
     }
 
     public static ProductJpaEntity of(
@@ -63,7 +68,8 @@ public class ProductJpaEntity {
             UUID categoryId,
             int minimumGlobalThreshold,
             BigDecimal unitPriceAmount,
-            String unitPriceCurrency
+            String unitPriceCurrency,
+            boolean active
     ) {
         return new ProductJpaEntity(
                 id,
@@ -72,7 +78,8 @@ public class ProductJpaEntity {
                 categoryId,
                 minimumGlobalThreshold,
                 unitPriceAmount,
-                unitPriceCurrency
+                unitPriceCurrency,
+                active
         );
     }
 
@@ -102,5 +109,9 @@ public class ProductJpaEntity {
 
     public String getUnitPriceCurrency() {
         return unitPriceCurrency;
+    }
+
+    public boolean isActive() {
+        return active;
     }
 }

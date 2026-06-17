@@ -267,7 +267,8 @@ class StockMovementPersistenceTest {
                 categoryId.getValue(),
                 5,
                 unitPrice.getAmount(),
-                unitPrice.getCurrency().getCurrencyCode()
+                unitPrice.getCurrency().getCurrencyCode(),
+                true
         ));
 
         shopRepository.save(ShopJpaEntity.of(

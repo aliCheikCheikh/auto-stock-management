@@ -291,7 +291,8 @@ class ProductStockQueryPersistenceTest {
                 categoryId.getValue(),
                 10,
                 unitPrice.getAmount(),
-                unitPrice.getCurrency().getCurrencyCode()
+                unitPrice.getCurrency().getCurrencyCode(),
+                true
         ));
 
         shopRepository.save(ShopJpaEntity.of(shopId.getValue(),
