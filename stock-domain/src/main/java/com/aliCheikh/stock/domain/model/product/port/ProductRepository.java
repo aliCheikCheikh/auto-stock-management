@@ -16,4 +16,8 @@ public interface ProductRepository {
     List<Product> findAll(int page, int size);
 
     long count();
+
+    List<Product> findAllActive(int page, int size);
+
+    long countActive();
 }

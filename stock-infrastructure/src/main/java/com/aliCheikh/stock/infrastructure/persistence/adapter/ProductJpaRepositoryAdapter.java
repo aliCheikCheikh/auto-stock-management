@@ -67,4 +67,18 @@ public class ProductJpaRepositoryAdapter implements ProductRepository {
     public long count() {
         return productJpaRepository.count();
     }
+
+    @Override
+    public List<Product> findAllActive(int page, int size) {
+        return productJpaRepository.findByActiveTrue(PageRequest.of(page, size))
+                .getContent()
+                .stream()
+                .map(productJpaMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countActive() {
+        return productJpaRepository.countByActiveTrue();
+    }
 }
