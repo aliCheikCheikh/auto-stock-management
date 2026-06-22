@@ -1,9 +1,6 @@
 package com.aliCheikh.stock.domain.model.product;
 
-import com.aliCheikh.stock.domain.exception.product.InvalidProductNameException;
-import com.aliCheikh.stock.domain.exception.product.InvalidProductPriceException;
-import com.aliCheikh.stock.domain.exception.product.InvalidProductReferenceException;
-import com.aliCheikh.stock.domain.exception.product.InvalidThresholdException;
+import com.aliCheikh.stock.domain.exception.product.*;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.shared.Money;
 
@@ -127,6 +124,12 @@ public class Product {
 
     public boolean isActive() {
         return this.active;
+    }
+
+    public void ensureActive() {
+        if (!isActive()) {
+            throw new InactiveProductException(this.productId);
+        }
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.domain.model.product;
 
+import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.InvalidProductNameException;
 import com.aliCheikh.stock.domain.exception.product.InvalidProductPriceException;
 import com.aliCheikh.stock.domain.exception.product.InvalidThresholdException;
@@ -11,8 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.Currency;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
 class ProductTest {
 
@@ -96,6 +96,17 @@ class ProductTest {
                 false
         );
         assertThat(restoredProduct.isActive()).isFalse();
+    }
+
+    @Test
+    void should_throw_exception_when_product_is_deactivated() {
+        product.deactivate();
+        assertThatThrownBy(() -> product.ensureActive()).isInstanceOf(InactiveProductException.class);
+    }
+
+    @Test
+    void should_not_throw_exception_when_product_is_active() {
+        assertThatCode(() -> product.ensureActive()).doesNotThrowAnyException();
     }
 
 }
