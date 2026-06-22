@@ -3,12 +3,16 @@ package com.aliCheikh.stock.application.usecase;
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.dto.TransferStockResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
+import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferReason;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
+import com.aliCheikh.stock.domain.model.product.Product;
+import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.domain.model.stock.LocationType;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
@@ -41,16 +45,19 @@ public class TransferStockUseCase {
 
     private final StorageLocationRepository storageLocationRepository;
     private final StockMovementRepository stockMovementRepository;
+    private final ProductRepository productRepository;
     private final EventPublisher eventPublisher;
 
     public TransferStockUseCase(
             StorageLocationRepository storageLocationRepository,
             StockMovementRepository stockMovementRepository,
+            ProductRepository productRepository,
             EventPublisher eventPublisher
     ) {
-        this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository);
-        this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository);
-        this.eventPublisher = Objects.requireNonNull(eventPublisher);
+        this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
+        this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository, "stockMovementRepository cannot be null");
+        this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
 
@@ -58,12 +65,18 @@ public class TransferStockUseCase {
      * Executes a stock transfer according to the reserve-to-shop-floor contract.
      *
      * @param command validated transfer request
-     * @throws StorageNotFoundException if source or destination does not exist
+     * @throws ProductNotFoundException      if the product does not exist
+     * @throws InactiveProductException      if the product is inactive
+     * @throws StorageNotFoundException      if source or destination does not exist
      * @throws InvalidStockTransferException if locations do not satisfy transfer rules
-     * @throws InsufficientStockException if the source does not have enough stock
+     * @throws InsufficientStockException    if the source does not have enough stock
      */
     public TransferStockResult execute(TransferStockCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
+        Product product = productRepository
+                .findById(command.productId())
+                .orElseThrow(() -> new ProductNotFoundException(command.productId()));
+        product.ensureActive();
 
         StorageLocation source = storageLocationRepository.findById(command.sourceLocationId())
                 .orElseThrow(() -> new StorageNotFoundException(command.sourceLocationId()));

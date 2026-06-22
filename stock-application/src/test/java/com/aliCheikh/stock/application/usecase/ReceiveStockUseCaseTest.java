@@ -8,6 +8,7 @@ import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
+import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
@@ -245,6 +246,17 @@ class ReceiveStockUseCaseTest {
         InOrder inOrder = inOrder(stockMovementRepository, eventPublisher);
         inOrder.verify(stockMovementRepository).saveAll(generatedMovements);
         inOrder.verify(eventPublisher).publish(anyList());
+    }
+
+    @Test
+    void should_reject_reception_when_existing_product_is_inactive() {
+        product.deactivate();
+        when(productRepository.findByReference(productReference)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> receiveStockUseCase.execute(command))
+                .isInstanceOf(InactiveProductException.class);
+
+        verify(stockMovementRepository, never()).saveAll(anyList());
     }
 
     private Product product(

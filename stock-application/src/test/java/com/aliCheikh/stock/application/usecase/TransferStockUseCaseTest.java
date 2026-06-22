@@ -3,13 +3,18 @@ package com.aliCheikh.stock.application.usecase;
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.dto.TransferStockResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferReason;
+import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
+import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
+import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
+import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.stock.LocationType;
@@ -21,7 +26,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Currency;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +40,7 @@ class TransferStockUseCaseTest {
 
     private StorageLocationRepository storageLocationRepository;
     private StockMovementRepository stockMovementRepository;
+    private ProductRepository productRepository;
     private EventPublisher eventPublisher;
 
     private TransferStockUseCase transferStockUseCase;
@@ -42,10 +50,12 @@ class TransferStockUseCaseTest {
         storageLocationRepository = mock(StorageLocationRepository.class);
         stockMovementRepository = mock(StockMovementRepository.class);
         eventPublisher = mock(EventPublisher.class);
+        productRepository = mock(ProductRepository.class);
 
         transferStockUseCase = new TransferStockUseCase(
                 storageLocationRepository,
                 stockMovementRepository,
+                productRepository,
                 eventPublisher
         );
     }
@@ -134,6 +144,7 @@ class TransferStockUseCaseTest {
                 userId
         );
 
+        givenActiveProduct(productId);
         givenLocationsExist(source, destination);
 
         assertThatThrownBy(() -> transferStockUseCase.execute(command))
@@ -214,6 +225,27 @@ class TransferStockUseCaseTest {
         verifyNoInteractions(eventPublisher);
     }
 
+    @Test
+    void should_reject_transfer_when_product_is_inactive() {
+        ProductId productId = ProductId.generate();
+        Product inactiveProduct = product(productId);
+        inactiveProduct.deactivate();
+        when(productRepository.findById(productId)).thenReturn(Optional.of(inactiveProduct));
+
+        TransferStockCommand command = new TransferStockCommand(
+                productId,
+                LocationId.generate(),
+                LocationId.generate(),
+                10,
+                UserId.generate());
+
+        assertThatThrownBy(() -> transferStockUseCase.execute(command))
+                .isInstanceOf(InactiveProductException.class);
+
+        verify(storageLocationRepository, never()).save(any());
+        verify(stockMovementRepository, never()).save(any());
+    }
+
     private TransferFixture givenValidTransfer(
             int initialSourceQuantity,
             int initialDestinationQuantity,
@@ -253,6 +285,7 @@ class TransferStockUseCaseTest {
                 userId
         );
 
+        givenActiveProduct(productId);
         givenLocationsExist(source, destination);
 
         return new TransferFixture(productId, userId, source, destination, command);
@@ -273,6 +306,21 @@ class TransferStockUseCaseTest {
                 .thenReturn(Optional.of(source));
         when(storageLocationRepository.findById(destination.getLocationId()))
                 .thenReturn(Optional.of(destination));
+    }
+
+    private void givenActiveProduct(ProductId productId) {
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product(productId)));
+    }
+
+    private Product product(ProductId productId) {
+        return new Product(
+                productId,
+                "Oil Filter",
+                "REF-" + productId,
+                CategoryId.generate(),
+                5,
+                Money.create(new BigDecimal("16.50"), Currency.getInstance("EUR"))
+        );
     }
 
     private StockMovement assertSavedTransferMovement(TransferFixture fixture, int expectedQuantity) {

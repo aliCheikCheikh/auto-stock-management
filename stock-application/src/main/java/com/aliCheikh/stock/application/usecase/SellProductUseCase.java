@@ -163,7 +163,7 @@ public class SellProductUseCase {
         for (SellLineCommand line : command.lines()) {
             Product product = productRepository.findById(line.productId())
                     .orElseThrow(() -> new ProductNotFoundException(line.productId()));
-
+            product.ensureActive();
             List<AllocationResult> allocations = stockAllocationService.allocate(
                     line.productId(),
                     line.quantity(),

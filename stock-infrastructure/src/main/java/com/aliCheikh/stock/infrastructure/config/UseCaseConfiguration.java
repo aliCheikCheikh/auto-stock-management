@@ -68,11 +68,13 @@ public class UseCaseConfiguration {
     public TransferStockUseCase transferStockUseCase(
             StorageLocationRepository storageLocationRepository,
             StockMovementRepository stockMovementRepository,
+            ProductRepository productRepository,
             EventPublisher eventPublisher
     ) {
         return new TransferStockUseCase(
                 storageLocationRepository,
                 stockMovementRepository,
+                productRepository,
                 eventPublisher
         );
     }
