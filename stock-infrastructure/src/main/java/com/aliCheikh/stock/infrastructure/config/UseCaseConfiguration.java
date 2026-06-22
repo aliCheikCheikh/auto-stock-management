@@ -98,4 +98,14 @@ public class UseCaseConfiguration {
     public GetProductStockLevelsUseCase getProductStockLevelsUseCase(ProductStockQueryPort productStockQueryPort) {
         return new GetProductStockLevelsUseCase(productStockQueryPort);
     }
+
+    @Bean
+    public DeactivateProductUseCase deactivateProductUseCase(ProductRepository productRepository) {
+        return new DeactivateProductUseCase(productRepository);
+    }
+
+    @Bean
+    public UpdateProductUseCase updateProductUseCase(ProductRepository productRepository) {
+        return new UpdateProductUseCase(productRepository);
+    }
 }
