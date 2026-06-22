@@ -2,13 +2,18 @@ package com.aliCheikh.stock.infrastructure.web.mapper;
 
 import com.aliCheikh.stock.application.dto.ProductStockSummaryView;
 import com.aliCheikh.stock.application.dto.StockLevelView;
+import com.aliCheikh.stock.application.dto.UpdateProductCommand;
 import com.aliCheikh.stock.domain.model.product.Product;
+import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.stock.StockLevel;
 import com.aliCheikh.stock.infrastructure.web.dto.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.List;
+import java.util.UUID;
 
 public final class ProductWebMapper {
     private ProductWebMapper() {
@@ -64,6 +69,22 @@ public final class ProductWebMapper {
                 level.locationType(),
                 level.shopId().getValue(),
                 level.quantity());
+    }
+
+    public static UpdateProductCommand toCommand(UUID productId, UpdateProductRequest request) {
+        return new UpdateProductCommand(
+                ProductId.of(productId),
+                request.name(),
+                toMoney(request.unitPrice()),
+                request.minimumGlobalThreshold()
+        );
+    }
+
+    private static Money toMoney(MoneyRequest unitPrice) {
+        return Money.create(
+                new BigDecimal(unitPrice.amount()),
+                Currency.getInstance(unitPrice.currency())
+        );
     }
 
 }

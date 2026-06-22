@@ -28,6 +28,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/me").authenticated()
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/**").authenticated()

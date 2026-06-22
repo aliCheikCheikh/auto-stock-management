@@ -1,17 +1,18 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
 import com.aliCheikh.stock.application.dto.GetProductStockLevelsQuery;
+import com.aliCheikh.stock.application.dto.UpdateProductCommand;
+import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
+import com.aliCheikh.stock.application.usecase.UpdateProductUseCase;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
-import com.aliCheikh.stock.infrastructure.web.dto.PageMetaResponse;
-import com.aliCheikh.stock.infrastructure.web.dto.PageOfProductResponse;
-import com.aliCheikh.stock.infrastructure.web.dto.ProductResponse;
-import com.aliCheikh.stock.infrastructure.web.dto.ProductStockSummaryResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.*;
 import com.aliCheikh.stock.infrastructure.web.mapper.ProductWebMapper;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
@@ -28,18 +29,32 @@ public class ProductController {
 
     private final ProductRepository productRepository;
     private final GetProductStockLevelsUseCase getProductStockLevelsUseCase;
+    private final UpdateProductUseCase updateProductUseCase;
+    private final DeactivateProductUseCase deactivateProductUseCase;
 
-    public ProductController(ProductRepository productRepository, GetProductStockLevelsUseCase getProductStockLevelsUseCase) {
+    public ProductController(ProductRepository productRepository,
+                             GetProductStockLevelsUseCase getProductStockLevelsUseCase,
+                             UpdateProductUseCase updateProductUseCase,
+                             DeactivateProductUseCase deactivateProductUseCase) {
         this.productRepository = productRepository;
         this.getProductStockLevelsUseCase = getProductStockLevelsUseCase;
+        this.updateProductUseCase = updateProductUseCase;
+        this.deactivateProductUseCase = deactivateProductUseCase;
     }
 
 
     @GetMapping
     public ResponseEntity<PageOfProductResponse> getAllProducts(@RequestParam(defaultValue = "0") @Min(0) int page,
-                                                                @RequestParam(defaultValue = "20") @Min(1) @Max(200) int size) {
-        List<Product> products = productRepository.findAll(page, size);
-        long totalElements = productRepository.count();
+                                                                @RequestParam(defaultValue = "20") @Min(1) @Max(200) int size,
+                                                                @RequestParam(defaultValue = "false") boolean activeOnly
+    ) {
+        List<Product> products = activeOnly
+                ? productRepository.findAllActive(page, size)
+                : productRepository.findAll(page, size);
+        long totalElements = activeOnly
+                ? productRepository.countActive()
+                : productRepository.count();
+
         PageOfProductResponse response = ProductWebMapper.toPageResponse(products, page, size, totalElements);
         return ResponseEntity.ok(response);
     }
@@ -65,6 +80,20 @@ public class ProductController {
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new ProductNotFoundException(ProductId.of(productId)));
 
+    }
+
+    @PutMapping("/{productId}")
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable UUID productId,
+                                                         @Valid @RequestBody UpdateProductRequest request) {
+        UpdateProductCommand updateProductCommand = ProductWebMapper.toCommand(productId, request);
+        Product product = updateProductUseCase.execute(updateProductCommand);
+        return ResponseEntity.ok(ProductWebMapper.toResponse(product));
+    }
+
+    @DeleteMapping("/{productId}")
+    public ResponseEntity<Void> deactivateProduct(@PathVariable UUID productId) {
+        deactivateProductUseCase.execute(ProductId.of(productId));
+        return ResponseEntity.noContent().build();
     }
 
 }

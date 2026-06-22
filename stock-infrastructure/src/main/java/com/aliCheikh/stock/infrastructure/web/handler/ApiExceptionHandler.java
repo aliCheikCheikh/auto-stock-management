@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.infrastructure.web.handler;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
+import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
@@ -112,6 +113,17 @@ public class ApiExceptionHandler {
                 "Stock insufficient",
                 exception.getMessage(),
                 "STOCK_INSUFFICIENT"
+        );
+    }
+
+    @ExceptionHandler(InactiveProductException.class)
+    public ProblemDetail handleInactiveProduct(InactiveProductException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "product-inactive",
+                "Product inactive",
+                exception.getMessage(),
+                "PRODUCT_INACTIVE"
         );
     }
 
