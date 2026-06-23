@@ -1,9 +1,6 @@
 package com.aliCheikh.stock.domain.model.product;
 
-import com.aliCheikh.stock.domain.exception.product.InvalidProductNameException;
-import com.aliCheikh.stock.domain.exception.product.InvalidProductPriceException;
-import com.aliCheikh.stock.domain.exception.product.InvalidProductReferenceException;
-import com.aliCheikh.stock.domain.exception.product.InvalidThresholdException;
+import com.aliCheikh.stock.domain.exception.product.*;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.shared.Money;
 
@@ -12,31 +9,45 @@ import java.util.Objects;
 public class Product {
     private final ProductId productId; // L'identité est immuable
     private String name;
-    private String reference;
-    private CategoryId categoryId;
+    private final String reference;
+    private final CategoryId categoryId;
     private int minimumGlobalThreshold;
     private Money unitPrice;
+    private boolean active;
 
     public Product(ProductId productId, String name, String reference, CategoryId categoryId, int minimumGlobalThreshold, Money unitPrice) {
+        this(productId, name, reference, categoryId, minimumGlobalThreshold, unitPrice, true);
+    }
+
+    private Product(ProductId productId,
+                    String name,
+                    String reference,
+                    CategoryId categoryId,
+                    int minimumGlobalThreshold,
+                    Money unitPrice,
+                    boolean active) {
         this.productId = Objects.requireNonNull(productId, "productId cannot be null");
-        // Le constructeur délègue la validation aux gardiens
         this.name = validateName(name);
         this.reference = validateReference(reference);
         this.categoryId = validateCategoryId(categoryId);
         this.minimumGlobalThreshold = validateThreshold(minimumGlobalThreshold);
         this.unitPrice = validatePrice(unitPrice);
+        this.active = active;
+    }
+
+    public static Product restore(ProductId productId,
+                                  String name,
+                                  String reference,
+                                  CategoryId categoryId,
+                                  int minimumGlobalThreshold,
+                                  Money unitPrice,
+                                  boolean active
+    ) {
+        return new Product(productId, name, reference, categoryId, minimumGlobalThreshold, unitPrice, active);
     }
 
     public void rename(String newName) {
         this.name = validateName(newName);
-    }
-
-    public void updateReference(String newReference) {
-        this.reference = validateReference(newReference);
-    }
-
-    public void changeCategory(CategoryId newCategoryId) {
-        this.categoryId = validateCategoryId(newCategoryId);
     }
 
     public void updateThreshold(int newThreshold) {
@@ -51,6 +62,9 @@ public class Product {
         return globalQuantity < minimumGlobalThreshold;
     }
 
+    public void deactivate() {
+        this.active = false;
+    }
 
     private String validateName(String nameToValidate) {
         if (nameToValidate == null || nameToValidate.isBlank()) {
@@ -106,6 +120,16 @@ public class Product {
 
     public Money getUnitPrice() {
         return unitPrice;
+    }
+
+    public boolean isActive() {
+        return this.active;
+    }
+
+    public void ensureActive() {
+        if (!isActive()) {
+            throw new InactiveProductException(this.productId);
+        }
     }
 
     @Override

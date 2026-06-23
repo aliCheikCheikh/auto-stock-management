@@ -226,7 +226,8 @@ class StorageLocationPersistenceTest {
                 categoryId.getValue(),
                 5,
                 new BigDecimal("45.90"),
-                Currency.getInstance("EUR").getCurrencyCode()
+                Currency.getInstance("EUR").getCurrencyCode(),
+                true
         ));
 
         flushAndClear();

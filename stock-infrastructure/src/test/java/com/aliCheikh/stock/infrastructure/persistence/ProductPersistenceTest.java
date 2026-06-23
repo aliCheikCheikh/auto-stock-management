@@ -23,6 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.Currency;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,6 +97,46 @@ class ProductPersistenceTest {
         Optional<Product> foundProduct = adapter.findByReference(product.getReference());
 
         assertPersistedProduct(foundProduct);
+    }
+
+    @Test
+    void should_persist_inactive_product() {
+        saveCategory();
+        ProductId inactiveProductId = ProductId.generate();
+        Product inactiveProduct = new Product(inactiveProductId,
+                "Test Product",
+                "Ref Test Product",
+                categoryId,
+                5,
+                unitPrice);
+        inactiveProduct.deactivate();
+        adapter.save(inactiveProduct);
+        flushAndClear();
+        Optional<Product> foundProduct = adapter.findById(inactiveProductId);
+        assertThat(foundProduct).isPresent();
+        Product persistedProduct = foundProduct.orElseThrow();
+        assertThat(persistedProduct.isActive()).isFalse();
+
+    }
+
+    @Test
+    void should_return_only_active_products_when_finding_all_active() {
+        saveCategory();
+
+        Product activeProduct = new Product(
+                ProductId.generate(), "active product", "PRD-001", categoryId, 5, unitPrice);
+        Product inactiveProduct = new Product(
+                ProductId.generate(), "inactive product", "PRD-002", categoryId, 5, unitPrice);
+        inactiveProduct.deactivate();
+        adapter.save(activeProduct);
+        adapter.save(inactiveProduct);
+        flushAndClear();
+
+        List<Product> activeProducts = adapter.findAllActive(0, 10);
+
+        assertThat(activeProducts)
+                .extracting(Product::getReference)
+                .containsExactly("PRD-001");
     }
 
     private void saveCategory() {

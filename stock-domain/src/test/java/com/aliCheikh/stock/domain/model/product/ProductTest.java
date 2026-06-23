@@ -1,25 +1,39 @@
 package com.aliCheikh.stock.domain.model.product;
 
+import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.InvalidProductNameException;
 import com.aliCheikh.stock.domain.exception.product.InvalidProductPriceException;
 import com.aliCheikh.stock.domain.exception.product.InvalidThresholdException;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.shared.Money;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.Currency;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
-public class ProductTest {
+class ProductTest {
 
-    private final Money validPrice = Money.create(BigDecimal.valueOf(15), Currency.getInstance("EUR"));
-    private final Money invalidPrice = Money.create(BigDecimal.valueOf(-1), Currency.getInstance("EUR"));
+    private Money validPrice;
+    private Money invalidPrice;
+    private Product product;
+
+    @BeforeEach
+    void setUp() {
+        validPrice = Money.create(BigDecimal.valueOf(15), Currency.getInstance("EUR"));
+        invalidPrice = Money.create(BigDecimal.valueOf(-1), Currency.getInstance("EUR"));
+        product = new Product(ProductId.generate(),
+                "filtre à huile",
+                "FH-TOY-2024-001",
+                CategoryId.generate(),
+                8,
+                validPrice);
+    }
 
     @Test
-    public void should_throw_exception_when_creating_product_with_zero_or_negative_price() {
+    void should_throw_exception_when_creating_product_with_zero_or_negative_price() {
         assertThatThrownBy(() -> {
             Product product = new Product(ProductId.generate(), "filtre à huile", "FH-TOY-2024-001", CategoryId.generate(), 3, invalidPrice);
         }).isInstanceOf(InvalidProductPriceException.class)
@@ -31,7 +45,7 @@ public class ProductTest {
     }
 
     @Test
-    public void should_throw_exception_when_creating_product_with_empty_name() {
+    void should_throw_exception_when_creating_product_with_empty_name() {
         assertThatThrownBy(() -> {
             Product product = new Product(ProductId.generate(), " ", "FH-TOY-2024-001", CategoryId.generate(), 3, validPrice);
         }).isInstanceOf(InvalidProductNameException.class)
@@ -42,7 +56,7 @@ public class ProductTest {
     }
 
     @Test
-    public void should_throw_exception_when_creating_product_with_negative_threshold() {
+    void should_throw_exception_when_creating_product_with_negative_threshold() {
         assertThatThrownBy(() -> {
             Product product = new Product(ProductId.generate(), "filtre à huile", "FH-TOY-2024-001", CategoryId.generate(), -3, validPrice);
         }).isInstanceOf(InvalidThresholdException.class)
@@ -53,11 +67,46 @@ public class ProductTest {
     }
 
     @Test
-    public void should_return_true_when_is_below_threshold() {
-        Product product = new Product(ProductId.generate(), "filtre à huile", "FH-TOY-2024-001", CategoryId.generate(), 8, validPrice);
-
+    void should_return_true_when_is_below_threshold() {
         assertThat(product.isGlobalStockBelowThreshold(5)).isTrue();   // En dessous
         assertThat(product.isGlobalStockBelowThreshold(10)).isFalse(); // Au dessus
         assertThat(product.isGlobalStockBelowThreshold(8)).isFalse();  // Sur la limite exacte (Boundary test)
     }
+
+
+    @Test
+    void should_be_active_by_default_when_created() {
+        assertThat(product.isActive()).isTrue();
+    }
+
+    @Test
+    void should_be_inactive_when_deactivated() {
+        product.deactivate();
+        assertThat(product.isActive()).isFalse();
+    }
+
+    @Test
+    void should_restore_inactive_product() {
+        com.aliCheikh.stock.domain.model.product.Product restoredProduct = Product.restore(product.getProductId(),
+                product.getName(),
+                product.getReference(),
+                product.getCategoryId(),
+                product.getMinimumGlobalThreshold(),
+                product.getUnitPrice(),
+                false
+        );
+        assertThat(restoredProduct.isActive()).isFalse();
+    }
+
+    @Test
+    void should_throw_exception_when_product_is_deactivated() {
+        product.deactivate();
+        assertThatThrownBy(() -> product.ensureActive()).isInstanceOf(InactiveProductException.class);
+    }
+
+    @Test
+    void should_not_throw_exception_when_product_is_active() {
+        assertThatCode(() -> product.ensureActive()).doesNotThrowAnyException();
+    }
+
 }

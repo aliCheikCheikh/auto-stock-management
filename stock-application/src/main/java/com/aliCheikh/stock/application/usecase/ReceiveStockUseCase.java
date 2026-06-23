@@ -83,7 +83,9 @@ public class ReceiveStockUseCase {
         Optional<Product> existingProduct = productRepository.findByReference(command.productReference());
 
         if (existingProduct.isPresent()) {
-            return existingProduct.get();
+            Product product = existingProduct.get();
+            product.ensureActive();
+            return product;
         }
 
         if (command.newProductInfo() == null) {

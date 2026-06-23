@@ -8,6 +8,7 @@ import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.LowStockAlert;
 import com.aliCheikh.stock.domain.event.SaleCompleted;
 import com.aliCheikh.stock.domain.event.ShopFloorLow;
+import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
@@ -292,6 +293,17 @@ class SellProductUseCaseTest {
         verify(storageLocationRepository, never()).saveAll(anyList());
         verify(stockMovementRepository, never()).saveAll(anyList());
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void should_not_sell_inactive_product() {
+        product.deactivate();
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        assertThatThrownBy(() -> sellProductUseCase
+                .sell(command(new SellLineCommand(productId, 4))))
+                .isInstanceOf(InactiveProductException.class);
+        verify(saleRepository, never()).save(any());
+
     }
 
     private SellProductCommand command(SellLineCommand... lines) {

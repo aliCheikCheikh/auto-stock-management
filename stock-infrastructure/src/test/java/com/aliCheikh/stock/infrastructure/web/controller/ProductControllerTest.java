@@ -4,7 +4,9 @@ package com.aliCheikh.stock.infrastructure.web.controller;
 import com.aliCheikh.stock.application.dto.GetProductStockLevelsQuery;
 import com.aliCheikh.stock.application.dto.ProductStockSummaryView;
 import com.aliCheikh.stock.application.dto.StockLevelView;
+import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
+import com.aliCheikh.stock.application.usecase.UpdateProductUseCase;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
@@ -55,6 +57,12 @@ public class ProductControllerTest {
 
     @MockitoBean
     private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;
+
+    @MockitoBean
+    private UpdateProductUseCase updateProductUseCase;
+
+    @MockitoBean
+    private DeactivateProductUseCase deactivateProductUseCase;
 
     private UUID productId;
     private UUID shopId;

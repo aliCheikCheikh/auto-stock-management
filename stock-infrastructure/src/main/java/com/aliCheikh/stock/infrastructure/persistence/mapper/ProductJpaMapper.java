@@ -16,16 +16,14 @@ public class ProductJpaMapper {
     public Product toDomain(ProductJpaEntity entity) {
         Objects.requireNonNull(entity, "entity cannot be null");
 
-        return new Product(
+        return Product.restore(
                 ProductId.of(entity.getId()),
                 entity.getName(),
                 entity.getReference(),
                 CategoryId.of(entity.getCategoryId()),
                 entity.getMinimumGlobalThreshold(),
-                Money.create(
-                        entity.getUnitPriceAmount(),
-                        Currency.getInstance(entity.getUnitPriceCurrency())
-                )
+                Money.create(entity.getUnitPriceAmount(), Currency.getInstance(entity.getUnitPriceCurrency())),
+                entity.isActive()
         );
     }
 
@@ -39,7 +37,8 @@ public class ProductJpaMapper {
                 product.getCategoryId().getValue(),
                 product.getMinimumGlobalThreshold(),
                 product.getUnitPrice().getAmount(),
-                product.getUnitPrice().getCurrency().getCurrencyCode()
+                product.getUnitPrice().getCurrency().getCurrencyCode(),
+                product.isActive()
         );
     }
 }

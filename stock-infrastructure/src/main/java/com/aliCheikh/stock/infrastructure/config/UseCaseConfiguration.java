@@ -68,11 +68,13 @@ public class UseCaseConfiguration {
     public TransferStockUseCase transferStockUseCase(
             StorageLocationRepository storageLocationRepository,
             StockMovementRepository stockMovementRepository,
+            ProductRepository productRepository,
             EventPublisher eventPublisher
     ) {
         return new TransferStockUseCase(
                 storageLocationRepository,
                 stockMovementRepository,
+                productRepository,
                 eventPublisher
         );
     }
@@ -97,5 +99,15 @@ public class UseCaseConfiguration {
     @Bean
     public GetProductStockLevelsUseCase getProductStockLevelsUseCase(ProductStockQueryPort productStockQueryPort) {
         return new GetProductStockLevelsUseCase(productStockQueryPort);
+    }
+
+    @Bean
+    public DeactivateProductUseCase deactivateProductUseCase(ProductRepository productRepository) {
+        return new DeactivateProductUseCase(productRepository);
+    }
+
+    @Bean
+    public UpdateProductUseCase updateProductUseCase(ProductRepository productRepository) {
+        return new UpdateProductUseCase(productRepository);
     }
 }
