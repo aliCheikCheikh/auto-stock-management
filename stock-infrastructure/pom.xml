@@ -98,7 +98,15 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>sudo docker compose build --no-cache backend && sudo docker compose up -d
+            sudo docker compose logs --tail=40 backend
         </plugins>
     </build>
 
