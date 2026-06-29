@@ -105,8 +105,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>sudo docker compose build --no-cache backend && sudo docker compose up -d
-            sudo docker compose logs --tail=40 backend
+            </plugin>
         </plugins>
     </build>
 
