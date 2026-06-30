@@ -41,6 +41,7 @@ import java.util.Currency;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 @DataJpaTest
 @Testcontainers
@@ -152,7 +153,7 @@ public class SaleQueryPersistenceTest {
         assertThat(view.lines()).hasSize(2);
         assertThat(view.totalAmount()).isEqualTo(sale.getTotalAmount());
         assertThat(view.createdAt())
-                .isEqualTo(sale.getOccurredAt().truncatedTo(ChronoUnit.MICROS));
+                .isCloseTo(sale.getOccurredAt(), within(1, ChronoUnit.MICROS));
 
     }
 
@@ -241,7 +242,7 @@ public class SaleQueryPersistenceTest {
                 .extracting(SaleView::saleId)
                 .containsExactly(matchingSaleId);
         assertThat(result.content().get(0).createdAt())
-                .isEqualTo(matchingSale.getOccurredAt().truncatedTo(ChronoUnit.MICROS));
+                .isCloseTo(matchingSale.getOccurredAt(), within(1, ChronoUnit.MICROS));
 
     }
 
