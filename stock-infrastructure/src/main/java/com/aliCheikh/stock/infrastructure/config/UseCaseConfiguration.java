@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
 import com.aliCheikh.stock.application.usecase.*;
+import com.aliCheikh.stock.domain.model.category.port.CategoryRepository;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.domain.model.sale.port.SaleRepository;
@@ -109,5 +110,10 @@ public class UseCaseConfiguration {
     @Bean
     public UpdateProductUseCase updateProductUseCase(ProductRepository productRepository) {
         return new UpdateProductUseCase(productRepository);
+    }
+
+    @Bean
+    ListCategoriesUseCase listCategoriesUseCase(CategoryRepository categoryRepository) {
+        return new ListCategoriesUseCase(categoryRepository);
     }
 }
