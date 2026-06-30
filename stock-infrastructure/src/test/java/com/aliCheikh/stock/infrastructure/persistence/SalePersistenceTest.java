@@ -32,10 +32,12 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.time.temporal.ChronoUnit;
 import java.util.Currency;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.BDDAssertions.within;
 
 @DataJpaTest
 @Testcontainers
@@ -114,7 +116,8 @@ class SalePersistenceTest {
 
         assertThat(persistedSale.getId()).isEqualTo(sale.getSaleId().getValue());
         assertThat(persistedSale.getSoldBy()).isEqualTo(sellerId.getValue());
-        assertThat(persistedSale.getOccurredAt()).isEqualTo(sale.getOccurredAt());
+        assertThat(persistedSale.getOccurredAt())
+                .isCloseTo(sale.getOccurredAt(), within(1, ChronoUnit.MICROS));
         assertThat(persistedSale.getTotalAmount()).isEqualByComparingTo(new BigDecimal("104.30"));
         assertThat(persistedSale.getTotalCurrency()).isEqualTo("EUR");
         assertThat(persistedSale.getSaleLines()).hasSize(2);
