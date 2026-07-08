@@ -9,7 +9,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,5 +57,20 @@ public class UserController {
         return userJpaRepository.findAll().stream()
                 .map(UserResponse::from)
                 .toList();
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> deactivateUser(@PathVariable UUID userId) {
+        UserJpaEntity user = userJpaRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // On ne désactive que des vendeurs : jamais l'OWNER (sinon on verrouille tout).
+        if (user.getRole() != UserRole.SELLER) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        user.deactivate();
+        userJpaRepository.save(user);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -61,7 +61,7 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         String email = loginRequest.email().trim().toLowerCase();
         UserJpaEntity user = userJpaRepository.findByEmail(email).orElse(null);
-        if (user == null || !passwordEncoder.matches(loginRequest.password(), user.getPasswordHash())) {
+        if (user == null || !passwordEncoder.matches(loginRequest.password(), user.getPasswordHash()) || !user.isActive()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -95,7 +95,7 @@ public class AuthController {
                 .flatMap(userJpaRepository::findById)
                 .orElse(null);
 
-        if (user == null) {
+        if (user == null || !user.isActive()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 

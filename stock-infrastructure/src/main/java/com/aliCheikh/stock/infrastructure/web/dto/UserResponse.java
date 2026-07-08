@@ -7,10 +7,12 @@ import java.util.UUID;
 public record UserResponse(UUID userId,
                            String email,
                            String role,
-                           boolean passwordTemporary) {
+                           boolean passwordTemporary,
+                           boolean active) {
 
     // Ne jamais exposer le passwordHash : on ne recopie que des champs sûrs.
     public static UserResponse from(UserJpaEntity user) {
-        return new UserResponse(user.getId(), user.getEmail(), user.getRole().name(), user.isPasswordTemporary());
+        return new UserResponse(user.getId(), user.getEmail(), user.getRole().name(),
+                user.isPasswordTemporary(), user.isActive());
     }
 }

@@ -35,6 +35,12 @@ public class UserJpaEntity {
     @Column(name = "password_temporary", nullable = false)
     private boolean passwordTemporary;
 
+    // Initialisé à true : tout nouveau compte naît actif. L'initialiseur s'exécute
+    // dans chaque constructeur (donc via withCredentials aussi), et Hibernate écrase
+    // avec la valeur de la base au chargement.
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
 
     protected UserJpaEntity() {
     }
@@ -67,6 +73,10 @@ public class UserJpaEntity {
         this.passwordTemporary = false;
     }
 
+    public void deactivate() {
+        this.active = false;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -89,5 +99,9 @@ public class UserJpaEntity {
 
     public boolean isPasswordTemporary() {
         return passwordTemporary;
+    }
+
+    public boolean isActive() {
+        return active;
     }
 }

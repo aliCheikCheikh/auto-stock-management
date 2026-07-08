@@ -26,6 +26,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -174,6 +175,48 @@ class UserManagementIntegrationTest {
     void listing_accounts_without_authentication_is_unauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/users"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void owner_deactivates_a_seller_who_can_no_longer_login() throws Exception {
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+        UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(delete("/api/v1/users/{id}", sellerId).cookie(ownerCookie))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(SELLER_EMAIL, SELLER_PASSWORD)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deactivating_the_owner_is_rejected() throws Exception {
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+        UUID ownerId = userRepository.findByEmail(OWNER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(delete("/api/v1/users/{id}", ownerId).cookie(ownerCookie))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void deactivating_an_unknown_user_is_not_found() throws Exception {
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+
+        mockMvc.perform(delete("/api/v1/users/{id}", UUID.randomUUID()).cookie(ownerCookie))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void a_seller_cannot_deactivate_a_user() throws Exception {
+        Cookie sellerCookie = login(SELLER_EMAIL, SELLER_PASSWORD);
+        UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(delete("/api/v1/users/{id}", sellerId).cookie(sellerCookie))
+                .andExpect(status().isForbidden());
     }
 
     private void saveEstablishedUser(String email, String password, UserRole role) {
