@@ -32,6 +32,10 @@ public class UserJpaEntity {
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
+    @Column(name = "password_temporary", nullable = false)
+    private boolean passwordTemporary;
+
+
     protected UserJpaEntity() {
     }
 
@@ -47,6 +51,7 @@ public class UserJpaEntity {
         this.email = Objects.requireNonNull(email, "email cannot be null");
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash cannot be null");
         this.role = Objects.requireNonNull(role, "role cannot be null");
+        this.passwordTemporary = true;
     }
 
     public static UserJpaEntity of(UUID id, String username, UserRole role) {
@@ -75,5 +80,9 @@ public class UserJpaEntity {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public boolean isPasswordTemporary() {
+        return passwordTemporary;
     }
 }
