@@ -4,6 +4,7 @@ import com.aliCheikh.stock.domain.model.user.UserRole;
 import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
 import com.aliCheikh.stock.infrastructure.web.dto.CreateUserRequest;
+import com.aliCheikh.stock.infrastructure.web.dto.ResetPasswordRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.UserResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -70,6 +71,22 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
         user.deactivate();
+        userJpaRepository.save(user);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{userId}/reset-password")
+    public ResponseEntity<Void> resetPassword(@PathVariable UUID userId,
+                                              @Valid @RequestBody ResetPasswordRequest request) {
+        UserJpaEntity user = userJpaRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // On ne réinitialise que des vendeurs (l'OWNER passe par change-password lui-même).
+        if (user.getRole() != UserRole.SELLER) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        user.resetPassword(passwordEncoder.encode(request.temporaryPassword()));
         userJpaRepository.save(user);
         return ResponseEntity.noContent().build();
     }

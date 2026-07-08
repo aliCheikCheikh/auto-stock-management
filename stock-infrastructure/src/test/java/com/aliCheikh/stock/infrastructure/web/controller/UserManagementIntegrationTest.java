@@ -44,6 +44,7 @@ class UserManagementIntegrationTest {
     private static final String SELLER_PASSWORD = "SellerPass123!";
     private static final String NEW_SELLER_EMAIL = "new-seller@test.local";
     private static final String NEW_SELLER_TEMP_PASSWORD = "TempSeller123!";
+    private static final String RESET_TEMP_PASSWORD = "ResetTemp123!";
 
     @Container
     static final PostgreSQLContainer<?> postgres =
@@ -216,6 +217,65 @@ class UserManagementIntegrationTest {
         UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
 
         mockMvc.perform(delete("/api/v1/users/{id}", sellerId).cookie(sellerCookie))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void owner_resets_a_seller_password_forcing_a_new_forced_change() throws Exception {
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+        UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(post("/api/v1/users/{id}/reset-password", sellerId)
+                        .cookie(ownerCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"temporaryPassword":"%s"}
+                                """.formatted(RESET_TEMP_PASSWORD)))
+                .andExpect(status().isNoContent());
+
+        // L'ancien mot de passe ne marche plus.
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(SELLER_EMAIL, SELLER_PASSWORD)))
+                .andExpect(status().isUnauthorized());
+
+        // Le nouveau mot de passe temporaire marche, et force un changement.
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(SELLER_EMAIL, RESET_TEMP_PASSWORD)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passwordTemporary").value(true));
+    }
+
+    @Test
+    void resetting_the_owner_password_is_rejected() throws Exception {
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+        UUID ownerId = userRepository.findByEmail(OWNER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(post("/api/v1/users/{id}/reset-password", ownerId)
+                        .cookie(ownerCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"temporaryPassword":"%s"}
+                                """.formatted(RESET_TEMP_PASSWORD)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void a_seller_cannot_reset_a_password() throws Exception {
+        Cookie sellerCookie = login(SELLER_EMAIL, SELLER_PASSWORD);
+        UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(post("/api/v1/users/{id}/reset-password", sellerId)
+                        .cookie(sellerCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"temporaryPassword":"%s"}
+                                """.formatted(RESET_TEMP_PASSWORD)))
                 .andExpect(status().isForbidden());
     }
 
