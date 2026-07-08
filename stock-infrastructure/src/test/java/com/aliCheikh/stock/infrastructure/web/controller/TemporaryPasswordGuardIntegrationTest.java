@@ -26,6 +26,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -110,6 +111,33 @@ class TemporaryPasswordGuardIntegrationTest {
         // Le même cookie passe désormais : le filtre relit le flag en base (maintenant false).
         mockMvc.perform(get("/api/v1/categories").cookie(accessCookie))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void login_and_me_expose_the_temporary_flag() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(OWNER_EMAIL, TEMP_PASSWORD)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passwordTemporary").value(true))
+                .andReturn();
+
+        Cookie accessCookie = loginResult.getResponse().getCookie("access_token");
+        assertThat(accessCookie).isNotNull();
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(accessCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"%s","newPassword":"%s"}
+                                """.formatted(TEMP_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/auth/me").cookie(accessCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passwordTemporary").value(false));
     }
 
     private Cookie login(String password) throws Exception {

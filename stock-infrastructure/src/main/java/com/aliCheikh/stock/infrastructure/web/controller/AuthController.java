@@ -51,7 +51,10 @@ public class AuthController {
     public ResponseEntity<LoginResponse> me(Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
         String role = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
-        return ResponseEntity.ok(new LoginResponse(userId, role));
+        boolean passwordTemporary = userJpaRepository.findById(userId)
+                .map(UserJpaEntity::isPasswordTemporary)
+                .orElse(false);
+        return ResponseEntity.ok(new LoginResponse(userId, role, passwordTemporary));
     }
 
     @PostMapping("/login")
@@ -74,7 +77,7 @@ public class AuthController {
                 .maxAge(Duration.ofDays(7))
                 .build();
 
-        LoginResponse body = new LoginResponse(user.getId(), user.getRole().name());
+        LoginResponse body = new LoginResponse(user.getId(), user.getRole().name(), user.isPasswordTemporary());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
@@ -99,7 +102,6 @@ public class AuthController {
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
         ResponseCookie accessCookie = buildAccessCookie(accessToken);
 
-        LoginResponse body = new LoginResponse(user.getId(), user.getRole().name());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .build();
