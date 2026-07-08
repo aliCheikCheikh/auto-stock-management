@@ -4,6 +4,7 @@ import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
 import com.aliCheikh.stock.infrastructure.security.JwtService;
 import com.aliCheikh.stock.infrastructure.security.RefreshTokenService;
+import com.aliCheikh.stock.infrastructure.web.dto.ChangePasswordRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.LoginRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.LoginResponse;
 import jakarta.validation.Valid;
@@ -14,7 +15,12 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -125,6 +131,20 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, clearedAccess.toString())
                 .header(HttpHeaders.SET_COOKIE, clearedRefresh.toString())
                 .build();
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest, Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserJpaEntity user = userJpaRepository.findById(userId).orElse(null);
+        if (user == null || !passwordEncoder.matches(changePasswordRequest.currentPassword(), user.getPasswordHash())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        }
+        user.changePassword(passwordEncoder.encode(changePasswordRequest.newPassword()));
+        userJpaRepository.save(user);
+        return ResponseEntity.noContent().build();
+
     }
 
     private ResponseCookie buildAccessCookie(String accessToken) {

@@ -62,6 +62,11 @@ public class UserJpaEntity {
         return new UserJpaEntity(id, username, email, passwordHash, role);
     }
 
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = Objects.requireNonNull(newPasswordHash, "passwordHash cannot be null");
+        this.passwordTemporary = false;
+    }
+
     public UUID getId() {
         return id;
     }

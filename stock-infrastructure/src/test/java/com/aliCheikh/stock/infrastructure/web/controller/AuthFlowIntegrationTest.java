@@ -36,6 +36,7 @@ class AuthFlowIntegrationTest {
 
     private static final String OWNER_EMAIL = "owner@test.local";
     private static final String OWNER_PASSWORD = "Secret123!";
+    private static final String NEW_PASSWORD = "NewSecret456!";
 
     @Container
     static final PostgreSQLContainer<?> postgres =
@@ -118,5 +119,101 @@ class AuthFlowIntegrationTest {
         // le refresh est maintenant refusé
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(refreshCookie))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void change_password_succeeds_then_new_password_works_and_old_is_rejected() throws Exception {
+        Cookie accessCookie = loginAndGetAccessCookie(OWNER_PASSWORD);
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(accessCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"%s","newPassword":"%s"}
+                                """.formatted(OWNER_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isNoContent());
+
+        // L'ancien mot de passe ne fonctionne plus.
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(OWNER_EMAIL, OWNER_PASSWORD)))
+                .andExpect(status().isUnauthorized());
+
+        // Le nouveau mot de passe fonctionne.
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(OWNER_EMAIL, NEW_PASSWORD)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void change_password_clears_temporary_flag() throws Exception {
+        assertThat(userRepository.findByEmail(OWNER_EMAIL).orElseThrow().isPasswordTemporary()).isTrue();
+
+        Cookie accessCookie = loginAndGetAccessCookie(OWNER_PASSWORD);
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(accessCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"%s","newPassword":"%s"}
+                                """.formatted(OWNER_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isNoContent());
+
+        assertThat(userRepository.findByEmail(OWNER_EMAIL).orElseThrow().isPasswordTemporary()).isFalse();
+    }
+
+    @Test
+    void change_password_with_wrong_current_password_is_unauthorized() throws Exception {
+        Cookie accessCookie = loginAndGetAccessCookie(OWNER_PASSWORD);
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(accessCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"WrongPassword!","newPassword":"%s"}
+                                """.formatted(NEW_PASSWORD)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void change_password_with_too_short_new_password_is_bad_request() throws Exception {
+        Cookie accessCookie = loginAndGetAccessCookie(OWNER_PASSWORD);
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(accessCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"%s","newPassword":"short"}
+                                """.formatted(OWNER_PASSWORD)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void change_password_requires_authentication() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"%s","newPassword":"%s"}
+                                """.formatted(OWNER_PASSWORD, NEW_PASSWORD)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private Cookie loginAndGetAccessCookie(String password) throws Exception {
+        MvcResult login = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(OWNER_EMAIL, password)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie accessCookie = login.getResponse().getCookie("access_token");
+        assertThat(accessCookie).isNotNull();
+        return accessCookie;
     }
 }

@@ -27,6 +27,7 @@ public class SecurityConfig {
                         new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/me").authenticated()
+                        .requestMatchers("/api/v1/auth/change-password").authenticated()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("OWNER")
