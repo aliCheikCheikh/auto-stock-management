@@ -1,0 +1,1 @@
+ALTER TABLE app_user ADD COLUMN password_temporary BOOLEAN NOT NULL DEFAULT TRUE;

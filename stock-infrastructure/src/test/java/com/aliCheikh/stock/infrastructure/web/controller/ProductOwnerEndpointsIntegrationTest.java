@@ -108,12 +108,8 @@ class ProductOwnerEndpointsIntegrationTest {
         refreshTokenRepository.deleteAll();  // refresh_token -> user
         userRepository.deleteAll();
 
-        userRepository.save(UserJpaEntity.withCredentials(
-                UUID.randomUUID(), OWNER_EMAIL, OWNER_EMAIL,
-                passwordEncoder.encode(OWNER_PASSWORD), UserRole.OWNER));
-        userRepository.save(UserJpaEntity.withCredentials(
-                UUID.randomUUID(), SELLER_EMAIL, SELLER_EMAIL,
-                passwordEncoder.encode(SELLER_PASSWORD), UserRole.SELLER));
+        saveEstablishedUser(OWNER_EMAIL, OWNER_PASSWORD, UserRole.OWNER);
+        saveEstablishedUser(SELLER_EMAIL, SELLER_PASSWORD, UserRole.SELLER);
 
         productId = ProductId.generate();
         categoryId = CategoryId.generate();
@@ -122,6 +118,15 @@ class ProductOwnerEndpointsIntegrationTest {
         productRepository.save(new Product(
                 productId, "Brake pads", "BRK-PAD-001", categoryId, 5,
                 Money.create(new BigDecimal("45.90"), Currency.getInstance("EUR"))));
+    }
+
+    // Les fixtures représentent des comptes déjà onboardés : on efface l'indicateur
+    // "mot de passe temporaire" pour qu'ils ne soient pas bloqués par le TemporaryPasswordFilter.
+    private void saveEstablishedUser(String email, String password, UserRole role) {
+        UserJpaEntity user = UserJpaEntity.withCredentials(
+                UUID.randomUUID(), email, email, passwordEncoder.encode(password), role);
+        user.changePassword(passwordEncoder.encode(password));
+        userRepository.save(user);
     }
 
     @Test

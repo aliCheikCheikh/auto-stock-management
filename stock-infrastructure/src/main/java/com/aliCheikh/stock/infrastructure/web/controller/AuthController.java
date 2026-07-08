@@ -4,6 +4,7 @@ import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
 import com.aliCheikh.stock.infrastructure.security.JwtService;
 import com.aliCheikh.stock.infrastructure.security.RefreshTokenService;
+import com.aliCheikh.stock.infrastructure.web.dto.ChangePasswordRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.LoginRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.LoginResponse;
 import jakarta.validation.Valid;
@@ -14,7 +15,12 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -45,7 +51,10 @@ public class AuthController {
     public ResponseEntity<LoginResponse> me(Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
         String role = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
-        return ResponseEntity.ok(new LoginResponse(userId, role));
+        boolean passwordTemporary = userJpaRepository.findById(userId)
+                .map(UserJpaEntity::isPasswordTemporary)
+                .orElse(false);
+        return ResponseEntity.ok(new LoginResponse(userId, role, passwordTemporary));
     }
 
     @PostMapping("/login")
@@ -68,7 +77,7 @@ public class AuthController {
                 .maxAge(Duration.ofDays(7))
                 .build();
 
-        LoginResponse body = new LoginResponse(user.getId(), user.getRole().name());
+        LoginResponse body = new LoginResponse(user.getId(), user.getRole().name(), user.isPasswordTemporary());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
@@ -93,7 +102,6 @@ public class AuthController {
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
         ResponseCookie accessCookie = buildAccessCookie(accessToken);
 
-        LoginResponse body = new LoginResponse(user.getId(), user.getRole().name());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .build();
@@ -125,6 +133,20 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, clearedAccess.toString())
                 .header(HttpHeaders.SET_COOKIE, clearedRefresh.toString())
                 .build();
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest, Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserJpaEntity user = userJpaRepository.findById(userId).orElse(null);
+        if (user == null || !passwordEncoder.matches(changePasswordRequest.currentPassword(), user.getPasswordHash())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        }
+        user.changePassword(passwordEncoder.encode(changePasswordRequest.newPassword()));
+        userJpaRepository.save(user);
+        return ResponseEntity.noContent().build();
+
     }
 
     private ResponseCookie buildAccessCookie(String accessToken) {
