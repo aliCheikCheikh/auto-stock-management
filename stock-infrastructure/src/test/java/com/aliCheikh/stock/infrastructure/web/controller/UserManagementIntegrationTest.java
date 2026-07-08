@@ -24,6 +24,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -145,6 +148,31 @@ class UserManagementIntegrationTest {
                         .content("""
                                 {"email":"%s","temporaryPassword":"%s"}
                                 """.formatted(NEW_SELLER_EMAIL, NEW_SELLER_TEMP_PASSWORD)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void owner_lists_all_accounts_without_leaking_password_hash() throws Exception {
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+
+        mockMvc.perform(get("/api/v1/users").cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].email", hasItems(OWNER_EMAIL, SELLER_EMAIL)))
+                .andExpect(jsonPath("$[0].passwordHash").doesNotExist());
+    }
+
+    @Test
+    void a_seller_cannot_list_accounts() throws Exception {
+        Cookie sellerCookie = login(SELLER_EMAIL, SELLER_PASSWORD);
+
+        mockMvc.perform(get("/api/v1/users").cookie(sellerCookie))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listing_accounts_without_authentication_is_unauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/users"))
                 .andExpect(status().isUnauthorized());
     }
 

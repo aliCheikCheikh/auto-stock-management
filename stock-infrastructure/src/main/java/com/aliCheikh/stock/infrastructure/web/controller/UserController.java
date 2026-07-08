@@ -9,11 +9,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -45,7 +47,13 @@ public class UserController {
                 UserRole.SELLER);
         userJpaRepository.save(seller);
 
-        UserResponse body = new UserResponse(seller.getId(), seller.getEmail(), seller.getRole().name());
-        return ResponseEntity.status(HttpStatus.CREATED).body(body);
+        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(seller));
+    }
+
+    @GetMapping
+    public List<UserResponse> listUsers() {
+        return userJpaRepository.findAll().stream()
+                .map(UserResponse::from)
+                .toList();
     }
 }
