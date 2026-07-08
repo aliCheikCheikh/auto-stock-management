@@ -50,11 +50,12 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<LoginResponse> me(Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
-        String role = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
-        boolean passwordTemporary = userJpaRepository.findById(userId)
-                .map(UserJpaEntity::isPasswordTemporary)
-                .orElse(false);
-        return ResponseEntity.ok(new LoginResponse(userId, role, passwordTemporary));
+        UserJpaEntity user = userJpaRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(new LoginResponse(
+                user.getId(), user.getEmail(), user.getRole().name(), user.isPasswordTemporary()));
     }
 
     @PostMapping("/login")
@@ -77,7 +78,7 @@ public class AuthController {
                 .maxAge(Duration.ofDays(7))
                 .build();
 
-        LoginResponse body = new LoginResponse(user.getId(), user.getRole().name(), user.isPasswordTemporary());
+        LoginResponse body = new LoginResponse(user.getId(), user.getEmail(), user.getRole().name(), user.isPasswordTemporary());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
