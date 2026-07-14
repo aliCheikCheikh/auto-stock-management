@@ -98,6 +98,17 @@ class ProductSearchPersistenceTest {
     }
 
     @Test
+    void should_find_products_from_a_very_short_reference_fragment() {
+        // "flt" est trop court pour l'opérateur % (score dilué), mais doit remonter
+        // par contenance (ILIKE) sur les références FLT-*.
+        List<ProductSearchView> results = searchAdapter.findProductsByKeyword("flt", LIMIT);
+
+        assertThat(results)
+                .extracting(ProductSearchView::reference)
+                .contains("FLT-HUI-001", "FLT-AIR-002");
+    }
+
+    @Test
     void should_only_return_active_products() {
         // "Filtre à gasoil" existe mais est inactif -> ne doit jamais remonter
         List<ProductSearchView> results = searchAdapter.findProductsByKeyword("gasoil", LIMIT);

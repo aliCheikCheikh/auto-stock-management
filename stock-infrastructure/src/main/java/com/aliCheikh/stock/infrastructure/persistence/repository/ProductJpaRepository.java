@@ -24,8 +24,12 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UU
                         SELECT *
                         FROM product
                         WHERE active = true
-                          AND ( f_unaccent(lower(name)) % f_unaccent(lower(:keyword))
-                                OR f_unaccent(lower(reference)) % f_unaccent(lower(:keyword)) )
+                          AND (
+                            f_unaccent(lower(name))      ILIKE '%' || f_unaccent(lower(:keyword)) || '%'
+                            OR f_unaccent(lower(reference)) ILIKE '%' || f_unaccent(lower(:keyword)) || '%'
+                            OR f_unaccent(lower(name))      % f_unaccent(lower(:keyword))
+                            OR f_unaccent(lower(reference)) % f_unaccent(lower(:keyword))
+                          )
                         ORDER BY GREATEST(
                             similarity(f_unaccent(lower(name)), f_unaccent(lower(:keyword))),
                             similarity(f_unaccent(lower(reference)), f_unaccent(lower(:keyword)))
