@@ -3,6 +3,7 @@ package com.aliCheikh.stock.application.usecase;
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.dto.TransferStockResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
@@ -30,6 +31,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Currency;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,6 +44,7 @@ class TransferStockUseCaseTest {
     private StockMovementRepository stockMovementRepository;
     private ProductRepository productRepository;
     private EventPublisher eventPublisher;
+    private TransactionRunner transactionRunner;
 
     private TransferStockUseCase transferStockUseCase;
 
@@ -51,12 +54,19 @@ class TransferStockUseCaseTest {
         stockMovementRepository = mock(StockMovementRepository.class);
         eventPublisher = mock(EventPublisher.class);
         productRepository = mock(ProductRepository.class);
+        transactionRunner = new TransactionRunner() {
+            @Override
+            public <T> T execute(Supplier<T> work) {
+                return work.get();
+            }
+        };
 
         transferStockUseCase = new TransferStockUseCase(
                 storageLocationRepository,
                 stockMovementRepository,
                 productRepository,
-                eventPublisher
+                eventPublisher,
+                transactionRunner
         );
     }
 

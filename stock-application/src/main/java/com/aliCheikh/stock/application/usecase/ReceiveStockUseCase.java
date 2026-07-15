@@ -5,6 +5,7 @@ import com.aliCheikh.stock.application.dto.ReceiveStockCommand;
 import com.aliCheikh.stock.application.dto.ReceiveStockResult;
 import com.aliCheikh.stock.application.dto.TargetLocation;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
@@ -37,46 +38,50 @@ public class ReceiveStockUseCase {
     private final StockMovementRepository stockMovementRepository;
     private final StorageLocationRepository storageLocationRepository;
     private final EventPublisher eventPublisher;
+    private final TransactionRunner transactionRunner;
 
     public ReceiveStockUseCase(
             ProductRepository productRepository,
             ReceivingService receivingService,
             StockMovementRepository stockMovementRepository,
             StorageLocationRepository storageLocationRepository,
-            EventPublisher eventPublisher
+            EventPublisher eventPublisher,
+            TransactionRunner transactionRunner
     ) {
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
         this.receivingService = Objects.requireNonNull(receivingService, "receivingService cannot be null");
         this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository, "stockMovementRepository cannot be null");
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
+        this.transactionRunner = Objects.requireNonNull(transactionRunner, "transactionRunner cannot be null");
     }
 
     public ReceiveStockResult execute(ReceiveStockCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
+        return transactionRunner.execute(() -> {
+            Product product = resolveProduct(command);
+            List<ReceivingEntry> entries = toReceivingEntries(command, product);
+            List<StockMovement> movements = receivingService.receive(entries, command.userId());
 
-        Product product = resolveProduct(command);
-        List<ReceivingEntry> entries = toReceivingEntries(command, product);
-        List<StockMovement> movements = receivingService.receive(entries, command.userId());
+            stockMovementRepository.saveAll(movements);
 
-        stockMovementRepository.saveAll(movements);
+            publishEvents(command, product);
 
-        publishEvents(command, product);
+            int totalReceived = command.distributions().stream()
+                    .mapToInt(TargetLocation::quantity)
+                    .sum();
+            List<MovementId> movementIds = movements.stream()
+                    .map(StockMovement::getMovementId)
+                    .toList();
+            Instant acceptedAt = Instant.now();
 
-        int totalReceived = command.distributions().stream()
-                .mapToInt(TargetLocation::quantity)
-                .sum();
-        List<MovementId> movementIds = movements.stream()
-                .map(StockMovement::getMovementId)
-                .toList();
-        Instant acceptedAt = Instant.now();
-
-        return new ReceiveStockResult(
-                product.getProductId(),
-                totalReceived,
-                movementIds,
-                acceptedAt
-        );
+            return new ReceiveStockResult(
+                    product.getProductId(),
+                    totalReceived,
+                    movementIds,
+                    acceptedAt
+            );
+        });
     }
 
     private Product resolveProduct(ReceiveStockCommand command) {

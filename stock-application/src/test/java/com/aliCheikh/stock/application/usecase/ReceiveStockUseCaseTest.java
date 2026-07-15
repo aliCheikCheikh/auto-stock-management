@@ -5,6 +5,7 @@ import com.aliCheikh.stock.application.dto.ReceiveStockCommand;
 import com.aliCheikh.stock.application.dto.ReceiveStockResult;
 import com.aliCheikh.stock.application.dto.TargetLocation;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
@@ -35,12 +36,19 @@ import java.time.Instant;
 import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class ReceiveStockUseCaseTest {
 
@@ -49,6 +57,7 @@ class ReceiveStockUseCaseTest {
     private StockMovementRepository stockMovementRepository;
     private StorageLocationRepository storageLocationRepository;
     private EventPublisher eventPublisher;
+    private TransactionRunner transactionRunner;
 
     private ReceiveStockUseCase receiveStockUseCase;
 
@@ -68,13 +77,20 @@ class ReceiveStockUseCaseTest {
         stockMovementRepository = mock(StockMovementRepository.class);
         storageLocationRepository = mock(StorageLocationRepository.class);
         eventPublisher = mock(EventPublisher.class);
+        transactionRunner = new TransactionRunner() {
+            @Override
+            public <T> T execute(Supplier<T> work) {
+                return work.get();   // exécute le travail, sans vraie transaction
+            }
+        };
 
         receiveStockUseCase = new ReceiveStockUseCase(
                 productRepository,
                 receivingService,
                 stockMovementRepository,
                 storageLocationRepository,
-                eventPublisher
+                eventPublisher,
+                transactionRunner
         );
 
         productId = ProductId.generate();

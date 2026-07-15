@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.port.ProductSearchQueryPort;
 import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
+import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
@@ -46,14 +47,16 @@ public class UseCaseConfiguration {
             ReceivingService receivingService,
             StockMovementRepository stockMovementRepository,
             StorageLocationRepository storageLocationRepository,
-            EventPublisher eventPublisher
+            EventPublisher eventPublisher,
+            TransactionRunner transactionRunner
     ) {
         return new ReceiveStockUseCase(
                 productRepository,
                 receivingService,
                 stockMovementRepository,
                 storageLocationRepository,
-                eventPublisher
+                eventPublisher,
+                transactionRunner
         );
     }
 
@@ -64,7 +67,8 @@ public class UseCaseConfiguration {
             SaleRepository saleRepository,
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
-            EventPublisher eventPublisher
+            EventPublisher eventPublisher,
+            TransactionRunner transactionRunner
     ) {
         return new SellProductUseCase(
                 stockAllocationService,
@@ -72,7 +76,8 @@ public class UseCaseConfiguration {
                 saleRepository,
                 stockMovementRepository,
                 productRepository,
-                eventPublisher
+                eventPublisher,
+                transactionRunner
         );
     }
 
@@ -81,13 +86,15 @@ public class UseCaseConfiguration {
             StorageLocationRepository storageLocationRepository,
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
-            EventPublisher eventPublisher
+            EventPublisher eventPublisher,
+            TransactionRunner transactionRunner
     ) {
         return new TransferStockUseCase(
                 storageLocationRepository,
                 stockMovementRepository,
                 productRepository,
-                eventPublisher
+                eventPublisher,
+                transactionRunner
         );
     }
 

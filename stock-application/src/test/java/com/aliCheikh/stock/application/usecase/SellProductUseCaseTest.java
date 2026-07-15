@@ -4,6 +4,7 @@ import com.aliCheikh.stock.application.dto.SellLineCommand;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
 import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.LowStockAlert;
 import com.aliCheikh.stock.domain.event.SaleCompleted;
@@ -38,6 +39,7 @@ import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,6 +54,7 @@ class SellProductUseCaseTest {
     private StockMovementRepository stockMovementRepository;
     private ProductRepository productRepository;
     private EventPublisher eventPublisher;
+    private TransactionRunner transactionRunner;
 
     private SellProductUseCase sellProductUseCase;
 
@@ -68,6 +71,12 @@ class SellProductUseCaseTest {
         stockMovementRepository = mock(StockMovementRepository.class);
         productRepository = mock(ProductRepository.class);
         eventPublisher = mock(EventPublisher.class);
+        transactionRunner = new TransactionRunner() {
+            @Override
+            public <T> T execute(Supplier<T> work) {
+                return work.get();
+            }
+        };
 
         sellProductUseCase = new SellProductUseCase(
                 stockAllocationService,
@@ -75,7 +84,8 @@ class SellProductUseCaseTest {
                 saleRepository,
                 stockMovementRepository,
                 productRepository,
-                eventPublisher
+                eventPublisher,
+                transactionRunner
         );
 
         productId = ProductId.generate();

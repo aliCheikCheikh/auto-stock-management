@@ -4,6 +4,7 @@ import com.aliCheikh.stock.application.dto.SellLineCommand;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
 import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.LowStockAlert;
 import com.aliCheikh.stock.domain.event.SaleCompleted;
@@ -56,6 +57,7 @@ public class SellProductUseCase {
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
     private final EventPublisher eventPublisher;
+    private final TransactionRunner transactionRunner;
 
     public SellProductUseCase(
             StockAllocationService stockAllocationService,
@@ -63,7 +65,8 @@ public class SellProductUseCase {
             SaleRepository saleRepository,
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
-            EventPublisher eventPublisher
+            EventPublisher eventPublisher,
+            TransactionRunner transactionRunner
     ) {
         this.stockAllocationService = Objects.requireNonNull(stockAllocationService, "stockAllocationService cannot be null");
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
@@ -71,6 +74,7 @@ public class SellProductUseCase {
         this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository, "stockMovementRepository cannot be null");
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
+        this.transactionRunner = Objects.requireNonNull(transactionRunner, "transactionRunner cannot be null");
     }
 
     /**
@@ -82,7 +86,10 @@ public class SellProductUseCase {
      */
     public SellProductResult sell(SellProductCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
+        return transactionRunner.execute(() -> doSell(command));
+    }
 
+    private SellProductResult doSell(SellProductCommand command) {
         List<StorageLocation> shopLocations = storageLocationRepository.findByShopId(command.shopId());
         Map<LocationId, StorageLocation> locationsById = shopLocations.stream()
                 .collect(Collectors.toMap(StorageLocation::getLocationId, location -> location));

@@ -3,6 +3,7 @@ package com.aliCheikh.stock.application.usecase;
 import com.aliCheikh.stock.application.dto.TransferStockCommand;
 import com.aliCheikh.stock.application.dto.TransferStockResult;
 import com.aliCheikh.stock.application.port.EventPublisher;
+import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
@@ -47,17 +48,20 @@ public class TransferStockUseCase {
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
     private final EventPublisher eventPublisher;
+    private final TransactionRunner transactionRunner;
 
     public TransferStockUseCase(
             StorageLocationRepository storageLocationRepository,
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
-            EventPublisher eventPublisher
+            EventPublisher eventPublisher,
+            TransactionRunner transactionRunner
     ) {
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
         this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository, "stockMovementRepository cannot be null");
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
+        this.transactionRunner = Objects.requireNonNull(transactionRunner, "transactionRunner cannot be null");
     }
 
 
@@ -73,6 +77,10 @@ public class TransferStockUseCase {
      */
     public TransferStockResult execute(TransferStockCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
+        return transactionRunner.execute(() -> doExecute(command));
+    }
+
+    private TransferStockResult doExecute(TransferStockCommand command) {
         Product product = productRepository
                 .findById(command.productId())
                 .orElseThrow(() -> new ProductNotFoundException(command.productId()));
