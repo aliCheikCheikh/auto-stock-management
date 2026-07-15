@@ -1,16 +1,23 @@
 package com.aliCheikh.stock.infrastructure.web.mapper;
 
+import com.aliCheikh.stock.application.dto.ProductSearchView;
 import com.aliCheikh.stock.application.dto.ProductStockSummaryView;
 import com.aliCheikh.stock.application.dto.StockLevelView;
 import com.aliCheikh.stock.application.dto.UpdateProductCommand;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.shared.Money;
-import com.aliCheikh.stock.domain.model.stock.StockLevel;
-import com.aliCheikh.stock.infrastructure.web.dto.*;
+import com.aliCheikh.stock.infrastructure.web.dto.MoneyRequest;
+import com.aliCheikh.stock.infrastructure.web.dto.MoneyResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.PageMetaResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.PageOfProductResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.ProductResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.ProductSearchResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.ProductStockSummaryResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.StockLevelResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.UpdateProductRequest;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
@@ -79,6 +86,14 @@ public final class ProductWebMapper {
                 request.minimumGlobalThreshold()
         );
     }
+
+    public static ProductSearchResponse toSearchResponse(ProductSearchView view) {
+        return new ProductSearchResponse(view.productId().getValue(),
+                view.name(),
+                view.reference(),
+                moneyToResponse(view.unitPrice()));
+    }
+
 
     private static Money toMoney(MoneyRequest unitPrice) {
         return Money.create(

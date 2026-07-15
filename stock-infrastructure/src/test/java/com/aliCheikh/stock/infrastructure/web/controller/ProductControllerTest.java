@@ -3,9 +3,11 @@ package com.aliCheikh.stock.infrastructure.web.controller;
 
 import com.aliCheikh.stock.application.dto.GetProductStockLevelsQuery;
 import com.aliCheikh.stock.application.dto.ProductStockSummaryView;
+import com.aliCheikh.stock.application.dto.ProductSearchView;
 import com.aliCheikh.stock.application.dto.StockLevelView;
 import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
+import com.aliCheikh.stock.application.usecase.SearchProductsUseCase;
 import com.aliCheikh.stock.application.usecase.UpdateProductUseCase;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.product.Product;
@@ -63,6 +65,9 @@ public class ProductControllerTest {
 
     @MockitoBean
     private DeactivateProductUseCase deactivateProductUseCase;
+
+    @MockitoBean
+    private SearchProductsUseCase searchProductsUseCase;
 
     private UUID productId;
     private UUID shopId;
@@ -331,6 +336,39 @@ public class ProductControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(getProductStockLevelsUseCase);
+    }
+
+    @Test
+    void should_return_matching_products_on_search() throws Exception {
+        ProductSearchView view = new ProductSearchView(
+                ProductId.of(productId),
+                "Filtre à huile",
+                "FIL-001",
+                Money.create(new BigDecimal("2500.00"), Currency.getInstance("XAF"))
+        );
+        given(searchProductsUseCase.findProductsByKeyword("filtr"))
+                .willReturn(List.of(view));
+
+        mockMvc.perform(get("/api/v1/products/search").param("q", "filtr"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].productId").value(productId.toString()))
+                .andExpect(jsonPath("$[0].name").value("Filtre à huile"))
+                .andExpect(jsonPath("$[0].reference").value("FIL-001"))
+                .andExpect(jsonPath("$[0].unitPrice.amount").value("2500.00"))
+                .andExpect(jsonPath("$[0].unitPrice.currency").value("XAF"));
+    }
+
+    @Test
+    void should_return_empty_array_when_no_product_matches() throws Exception {
+        given(searchProductsUseCase.findProductsByKeyword("zzz"))
+                .willReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/products/search").param("q", "zzz"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     private ProductStockSummaryView productStockSummary(

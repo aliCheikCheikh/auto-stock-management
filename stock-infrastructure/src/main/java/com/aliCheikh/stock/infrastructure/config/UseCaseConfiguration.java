@@ -2,10 +2,21 @@ package com.aliCheikh.stock.infrastructure.config;
 
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.application.port.ListSalesQueryPort;
+import com.aliCheikh.stock.application.port.ProductSearchQueryPort;
 import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
-import com.aliCheikh.stock.application.usecase.*;
+import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
+import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
+import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
+import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
+import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
+import com.aliCheikh.stock.application.usecase.ListStockMovementsUseCase;
+import com.aliCheikh.stock.application.usecase.ReceiveStockUseCase;
+import com.aliCheikh.stock.application.usecase.SearchProductsUseCase;
+import com.aliCheikh.stock.application.usecase.SellProductUseCase;
+import com.aliCheikh.stock.application.usecase.TransferStockUseCase;
+import com.aliCheikh.stock.application.usecase.UpdateProductUseCase;
 import com.aliCheikh.stock.domain.model.category.port.CategoryRepository;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
@@ -115,5 +126,10 @@ public class UseCaseConfiguration {
     @Bean
     ListCategoriesUseCase listCategoriesUseCase(CategoryRepository categoryRepository) {
         return new ListCategoriesUseCase(categoryRepository);
+    }
+
+    @Bean
+    public SearchProductsUseCase searchProductsUseCase(ProductSearchQueryPort productSearchQueryPort) {
+        return new SearchProductsUseCase(productSearchQueryPort);
     }
 }
