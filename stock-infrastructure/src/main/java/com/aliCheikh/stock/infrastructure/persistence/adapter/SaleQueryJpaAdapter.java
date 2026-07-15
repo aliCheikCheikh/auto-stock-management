@@ -12,6 +12,7 @@ import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.infrastructure.persistence.entity.SaleJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.SaleLineJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.repository.SaleQueryJpaRepository;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -36,6 +37,7 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<SaleView> findByQuery(ListSalesQuery query) {
         Objects.requireNonNull(query, "query cannot be null");
 
