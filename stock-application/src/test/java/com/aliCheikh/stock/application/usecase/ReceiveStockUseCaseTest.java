@@ -9,6 +9,8 @@ import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
+import com.aliCheikh.stock.domain.exception.product.DuplicateProductNameException;
+import com.aliCheikh.stock.domain.exception.product.DuplicateProductReferenceException;
 import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
@@ -273,6 +275,41 @@ class ReceiveStockUseCaseTest {
                 .isInstanceOf(InactiveProductException.class);
 
         verify(stockMovementRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void should_reject_new_product_when_reference_already_exists() {
+        ProductInfo info = new ProductInfo(
+                "Filtre à huile", "REF-DUP", CategoryId.generate(),
+                Money.create(new BigDecimal("2500.00"), Currency.getInstance("XAF")), 5);
+        ReceiveStockCommand command = new ReceiveStockCommand(
+                "REF-DUP", info, ShopId.generate(), UserId.generate(),
+                List.of(new TargetLocation(LocationId.generate(), 10)));
+
+        when(productRepository.findByReference("REF-DUP")).thenReturn(Optional.of(mock(Product.class)));
+
+        assertThatThrownBy(() -> receiveStockUseCase.execute(command))
+                .isInstanceOf(DuplicateProductReferenceException.class);
+
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void should_reject_new_product_when_name_already_exists() {
+        ProductInfo info = new ProductInfo(
+                "Filtre à huile", "REF-NEW", CategoryId.generate(),
+                Money.create(new BigDecimal("2500.00"), Currency.getInstance("XAF")), 5);
+        ReceiveStockCommand command = new ReceiveStockCommand(
+                "REF-NEW", info, ShopId.generate(), UserId.generate(),
+                List.of(new TargetLocation(LocationId.generate(), 10)));
+
+        when(productRepository.findByReference("REF-NEW")).thenReturn(Optional.empty());
+        when(productRepository.existsByName("Filtre à huile")).thenReturn(true);
+
+        assertThatThrownBy(() -> receiveStockUseCase.execute(command))
+                .isInstanceOf(DuplicateProductNameException.class);
+
+        verify(productRepository, never()).save(any(Product.class));
     }
 
     private Product product(

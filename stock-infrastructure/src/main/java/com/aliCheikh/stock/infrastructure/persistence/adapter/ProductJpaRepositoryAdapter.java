@@ -81,4 +81,10 @@ public class ProductJpaRepositoryAdapter implements ProductRepository {
     public long countActive() {
         return productJpaRepository.countByActiveTrue();
     }
+
+
+    @Override
+    public boolean existsByName(String name) {
+        return productJpaRepository.existsByName(name);
+    }
 }

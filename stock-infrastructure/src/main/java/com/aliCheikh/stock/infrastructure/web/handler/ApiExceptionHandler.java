@@ -1,6 +1,8 @@
 package com.aliCheikh.stock.infrastructure.web.handler;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
+import com.aliCheikh.stock.domain.exception.product.DuplicateProductNameException;
+import com.aliCheikh.stock.domain.exception.product.DuplicateProductReferenceException;
 import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
@@ -135,6 +137,28 @@ public class ApiExceptionHandler {
                 "Invalid stock transfer",
                 exception.getMessage(),
                 "INVALID_TRANSFER"
+        );
+    }
+
+    @ExceptionHandler(DuplicateProductReferenceException.class)
+    public ProblemDetail handleDuplicateProductReference(DuplicateProductReferenceException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "product-reference-already-used",
+                "Product reference already used",
+                exception.getMessage(),
+                "PRODUCT_REFERENCE_ALREADY_USED"
+        );
+    }
+
+    @ExceptionHandler(DuplicateProductNameException.class)
+    public ProblemDetail handleDuplicateProductName(DuplicateProductNameException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "product-name-already-used",
+                "Product name already used",
+                exception.getMessage(),
+                "PRODUCT_NAME_ALREADY_USED"
         );
     }
 
