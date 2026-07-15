@@ -10,8 +10,8 @@ import com.aliCheikh.stock.domain.model.shop.ShopId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.infrastructure.web.dto.ProductInfoRequest;
-import com.aliCheikh.stock.infrastructure.web.dto.ReceivingDistributionRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.ReceiveStockRequest;
+import com.aliCheikh.stock.infrastructure.web.dto.ReceivingDistributionRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.StockReceiptAcknowledgementResponse;
 
 import java.math.BigDecimal;
@@ -24,12 +24,12 @@ public final class ReceiveStockWebMapper {
     private ReceiveStockWebMapper() {
     }
 
-    public static ReceiveStockCommand toCommand(ReceiveStockRequest request) {
+    public static ReceiveStockCommand toCommand(ReceiveStockRequest request, UUID userId) {
         return new ReceiveStockCommand(
                 request.productReference(),
                 toProductInfo(request.newProductInfo()),
                 ShopId.of(request.shopId()),
-                UserId.of(request.userId()),
+                UserId.of(userId),
                 toTargetLocations(request.distributions())
         );
     }

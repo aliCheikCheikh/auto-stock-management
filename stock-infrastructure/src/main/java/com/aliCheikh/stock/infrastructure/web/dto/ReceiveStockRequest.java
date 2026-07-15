@@ -10,6 +10,5 @@ import java.util.UUID;
 public record ReceiveStockRequest(@NotBlank String productReference,
                                   ProductInfoRequest newProductInfo,
                                   UUID shopId,
-                                  UUID userId,
                                   @NotEmpty @Valid List<ReceivingDistributionRequest> distributions) {
 }

@@ -9,7 +9,6 @@ public record TransferStockRequest(
         @NotNull UUID productId,
         @NotNull UUID sourceLocationId,
         @NotNull UUID destinationLocationId,
-        @Positive int quantity,
-        @NotNull UUID userId
+        @Positive int quantity
 ) {
 }

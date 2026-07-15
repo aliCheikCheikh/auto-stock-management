@@ -8,10 +8,13 @@ import com.aliCheikh.stock.infrastructure.web.dto.TransferStockRequest;
 import com.aliCheikh.stock.infrastructure.web.mapper.TransferStockWebMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/stock-transfers")
@@ -25,9 +28,11 @@ public class StockTransferController {
 
     @PostMapping
     public ResponseEntity<StockTransferAcknowledgementResponse> transferStock(
-            @Valid @RequestBody TransferStockRequest request
+            @Valid @RequestBody TransferStockRequest request,
+            Authentication authentication
     ) {
-        TransferStockCommand command = TransferStockWebMapper.toCommand(request);
+        UUID userId = (UUID) authentication.getPrincipal();
+        TransferStockCommand command = TransferStockWebMapper.toCommand(request, userId);
         TransferStockResult result = transferStockUseCase.execute(command);
 
         return ResponseEntity.accepted()

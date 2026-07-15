@@ -8,18 +8,20 @@ import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.infrastructure.web.dto.StockTransferAcknowledgementResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.TransferStockRequest;
 
+import java.util.UUID;
+
 public final class TransferStockWebMapper {
 
     private TransferStockWebMapper() {
     }
 
-    public static TransferStockCommand toCommand(TransferStockRequest request) {
+    public static TransferStockCommand toCommand(TransferStockRequest request, UUID userId) {
         return new TransferStockCommand(
                 ProductId.of(request.productId()),
                 LocationId.of(request.sourceLocationId()),
                 LocationId.of(request.destinationLocationId()),
                 request.quantity(),
-                UserId.of(request.userId())
+                UserId.of(userId)
         );
     }
 
