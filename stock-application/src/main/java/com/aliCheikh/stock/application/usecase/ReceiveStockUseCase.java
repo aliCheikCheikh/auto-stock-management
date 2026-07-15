@@ -9,6 +9,8 @@ import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.StockReceived;
 import com.aliCheikh.stock.domain.event.StockReplenished;
+import com.aliCheikh.stock.domain.exception.product.DuplicateProductNameException;
+import com.aliCheikh.stock.domain.exception.product.DuplicateProductReferenceException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
@@ -28,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ReceiveStockUseCase {
@@ -85,30 +86,28 @@ public class ReceiveStockUseCase {
     }
 
     private Product resolveProduct(ReceiveStockCommand command) {
-        Optional<Product> existingProduct = productRepository.findByReference(command.productReference());
+        boolean creatingNewProduct = command.newProductInfo() != null;
 
-        if (existingProduct.isPresent()) {
-            Product product = existingProduct.get();
-            product.ensureActive();
-            return product;
+        if (creatingNewProduct) {
+            ProductInfo info = command.newProductInfo();
+            if (productRepository.findByReference(info.reference()).isPresent()) {
+                throw new DuplicateProductReferenceException(info.reference());
+            }
+            if (productRepository.existsByName(info.name())) {
+                throw new DuplicateProductNameException(info.name());
+            }
+            Product newProduct = new Product(
+                    ProductId.generate(), info.name(), info.reference(),
+                    info.categoryId(), info.minimumGlobalThreshold(), info.unitPrice());
+            productRepository.save(newProduct);
+            return newProduct;
         }
 
-        if (command.newProductInfo() == null) {
-            throw new ProductNotFoundException(command.productReference());
-        }
-
-        ProductInfo info = command.newProductInfo();
-        Product newProduct = new Product(
-                ProductId.generate(),
-                info.name(),
-                info.reference(),
-                info.categoryId(),
-                info.minimumGlobalThreshold(),
-                info.unitPrice()
-        );
-
-        productRepository.save(newProduct);
-        return newProduct;
+        // mode « produit existant » : on ajoute du stock, inchangé
+        Product product = productRepository.findByReference(command.productReference())
+                .orElseThrow(() -> new ProductNotFoundException(command.productReference()));
+        product.ensureActive();
+        return product;
     }
 
     private List<ReceivingEntry> toReceivingEntries(ReceiveStockCommand command, Product product) {

@@ -1,0 +1,1 @@
+ALTER TABLE product ADD CONSTRAINT uk_product_name UNIQUE (name);

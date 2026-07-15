@@ -38,4 +38,6 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UU
             """, nativeQuery = true)
     List<ProductJpaEntity> searchActiveByKeyword(@Param("keyword") String keyword,
                                                  @Param("limit") int limit);
+
+    boolean existsByName(String name);
 }
