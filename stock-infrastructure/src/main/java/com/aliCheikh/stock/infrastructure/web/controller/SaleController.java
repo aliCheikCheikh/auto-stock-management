@@ -20,6 +20,7 @@ import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.util.MultiValueMap;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -47,8 +48,10 @@ public class SaleController {
     }
 
     @PostMapping
-    public ResponseEntity<SaleResponse> createSale(@Valid @RequestBody CreateSaleRequest request) {
-        SellProductCommand command = SaleWebMapper.toCommand(request);
+    public ResponseEntity<SaleResponse> createSale(@Valid @RequestBody CreateSaleRequest request,
+                                                   Authentication authentication) {
+        UUID sellerId = (UUID) authentication.getPrincipal();
+        SellProductCommand command = SaleWebMapper.toCommand(request, sellerId);
         SellProductResult result = sellProductUseCase.sell(command);
 
         return ResponseEntity.status(HttpStatus.CREATED)

@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -87,6 +88,10 @@ class SaleControllerTest {
                 unitPrice.multiply(4));
     }
 
+    private UsernamePasswordAuthenticationToken authenticatedAs(UUID userId) {
+        return new UsernamePasswordAuthenticationToken(userId, null, List.of());
+    }
+
     @Test
     void should_return_201_when_new_valid_sale_is_created() throws Exception {
         given(sellProductUseCase.sell(any(SellProductCommand.class)))
@@ -99,10 +104,10 @@ class SaleControllerTest {
                 ));
 
         mockMvc.perform(post("/api/v1/sales")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "sellerId": "%s",
                                   "shopId": "%s",
                                   "lines": [
                                     {
@@ -111,7 +116,7 @@ class SaleControllerTest {
                                     }
                                   ]
                                 }
-                                """.formatted(userId, shopId, productId)))
+                                """.formatted(shopId, productId)))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.saleId").value(saleId.toString()))
@@ -148,36 +153,49 @@ class SaleControllerTest {
     }
 
     @Test
-    void should_return_400_when_seller_id_is_missing() throws Exception {
-        mockMvc.perform(post("/api/v1/sales")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "shopId": "%s",
-                                  "lines": [
-                                    {
-                                      "productId": "%s",
-                                      "quantity": 4
-                                    }
-                                  ]
-                                }
-                                """.formatted(shopId, productId)))
-                .andExpect(status().isBadRequest());
+    void should_ignore_any_seller_id_smuggled_in_the_body() throws Exception {
+        given(sellProductUseCase.sell(any(SellProductCommand.class)))
+                .willReturn(new SellProductResult(
+                        SaleId.of(saleId),
+                        UserId.of(userId),
+                        List.of(singleLine),
+                        singleLine.lineTotal(),
+                        createdAt
+                ));
+        UUID spoofedSellerId = UUID.fromString("99999999-9999-9999-9999-999999999999");
 
-        verifyNoInteractions(sellProductUseCase);
-    }
-
-    @Test
-    void should_return_400_when_sale_lines_are_empty() throws Exception {
         mockMvc.perform(post("/api/v1/sales")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "sellerId": "%s",
                                   "shopId": "%s",
+                                  "lines": [
+                                    { "productId": "%s", "quantity": 4 }
+                                  ]
+                                }
+                                """.formatted(spoofedSellerId, shopId, productId)))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<SellProductCommand> captor = ArgumentCaptor.forClass(SellProductCommand.class);
+        verify(sellProductUseCase).sell(captor.capture());
+        assertThat(captor.getValue().sellerId())
+                .as("l'identité doit venir du token, pas du corps")
+                .isEqualTo(UserId.of(userId));
+    }
+
+    @Test
+    void should_return_400_when_sale_lines_are_empty() throws Exception {
+        mockMvc.perform(post("/api/v1/sales")
+                        .principal(authenticatedAs(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "shopId": "%s",
                                   "lines": []
                                 }
-                                """.formatted(userId, shopId)))
+                                """.formatted(shopId)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(sellProductUseCase);
@@ -186,10 +204,10 @@ class SaleControllerTest {
     @Test
     void should_return_400_when_sale_line_quantity_is_not_positive() throws Exception {
         mockMvc.perform(post("/api/v1/sales")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "sellerId": "%s",
                                   "shopId": "%s",
                                   "lines": [
                                     {
@@ -198,7 +216,7 @@ class SaleControllerTest {
                                     }
                                   ]
                                 }
-                                """.formatted(userId, shopId, productId)))
+                                """.formatted(shopId, productId)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(sellProductUseCase);
@@ -232,10 +250,10 @@ class SaleControllerTest {
                 ));
 
         mockMvc.perform(post("/api/v1/sales")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "sellerId": "%s",
                                   "shopId": "%s",
                                   "lines": [
                                     {
@@ -248,7 +266,7 @@ class SaleControllerTest {
                                     }
                                   ]
                                 }
-                                """.formatted(userId, shopId, productId, secondProductId)))
+                                """.formatted(shopId, productId, secondProductId)))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.saleId").value(saleId.toString()))

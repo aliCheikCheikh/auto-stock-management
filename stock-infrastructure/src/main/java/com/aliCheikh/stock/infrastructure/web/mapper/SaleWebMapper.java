@@ -30,9 +30,9 @@ public final class SaleWebMapper {
     private SaleWebMapper() {
     }
 
-    public static SellProductCommand toCommand(CreateSaleRequest request) {
+    public static SellProductCommand toCommand(CreateSaleRequest request, UUID sellerId) {
         return new SellProductCommand(
-                UserId.of(request.sellerId()),
+                UserId.of(sellerId),
                 ShopId.of(request.shopId()),
                 request.lines().stream()
                         .map(SaleWebMapper::toLineCommand)

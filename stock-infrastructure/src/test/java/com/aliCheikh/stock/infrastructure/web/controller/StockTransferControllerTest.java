@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -65,6 +66,10 @@ class StockTransferControllerTest {
         acceptedAt = Instant.parse("2026-05-15T12:00:00Z");
     }
 
+    private UsernamePasswordAuthenticationToken authenticatedAs(UUID userId) {
+        return new UsernamePasswordAuthenticationToken(userId, null, java.util.List.of());
+    }
+
     @Test
     void should_accept_stock_transfer() throws Exception {
         given(transferStockUseCase.execute(any(TransferStockCommand.class)))
@@ -74,16 +79,16 @@ class StockTransferControllerTest {
                 ));
 
         mockMvc.perform(post("/api/v1/stock-transfers")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "productId": "%s",
                                   "sourceLocationId": "%s",
                                   "destinationLocationId": "%s",
-                                  "quantity": 5,
-                                  "userId": "%s"
+                                  "quantity": 5
                                 }
-                                """.formatted(productId, sourceLocationId, destinationLocationId, userId)))
+                                """.formatted(productId, sourceLocationId, destinationLocationId)))
                 .andExpect(status().isAccepted())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.movementId").value(movementId.toString()))
@@ -183,20 +188,30 @@ class StockTransferControllerTest {
     }
 
     @Test
-    void should_return_400_when_user_id_is_missing() throws Exception {
+    void should_ignore_any_user_id_smuggled_in_the_body() throws Exception {
+        given(transferStockUseCase.execute(any(TransferStockCommand.class)))
+                .willReturn(new TransferStockResult(MovementId.of(movementId), acceptedAt));
+        UUID spoofedUserId = UUID.fromString("99999999-9999-9999-9999-999999999999");
+
         mockMvc.perform(post("/api/v1/stock-transfers")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "productId": "%s",
                                   "sourceLocationId": "%s",
                                   "destinationLocationId": "%s",
-                                  "quantity": 5
+                                  "quantity": 5,
+                                  "userId": "%s"
                                 }
-                                """.formatted(productId, sourceLocationId, destinationLocationId)))
-                .andExpect(status().isBadRequest());
+                                """.formatted(productId, sourceLocationId, destinationLocationId, spoofedUserId)))
+                .andExpect(status().isAccepted());
 
-        verifyNoInteractions(transferStockUseCase);
+        ArgumentCaptor<TransferStockCommand> captor = ArgumentCaptor.forClass(TransferStockCommand.class);
+        verify(transferStockUseCase).execute(captor.capture());
+        assertThat(captor.getValue().userId())
+                .as("l'identité doit venir du token, pas du corps")
+                .isEqualTo(UserId.of(userId));
     }
 
     @Test
@@ -205,6 +220,7 @@ class StockTransferControllerTest {
                 .willThrow(new StorageNotFoundException(LocationId.of(sourceLocationId)));
 
         mockMvc.perform(post("/api/v1/stock-transfers")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validTransferBody()))
                 .andExpect(status().isNotFound())
@@ -220,6 +236,7 @@ class StockTransferControllerTest {
                 .willThrow(new InsufficientStockException(ProductId.of(productId), 2, 5));
 
         mockMvc.perform(post("/api/v1/stock-transfers")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validTransferBody()))
                 .andExpect(status().isConflict())
@@ -239,6 +256,7 @@ class StockTransferControllerTest {
                 ));
 
         mockMvc.perform(post("/api/v1/stock-transfers")
+                        .principal(authenticatedAs(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validTransferBody()))
                 .andExpect(status().isUnprocessableEntity())
@@ -254,9 +272,8 @@ class StockTransferControllerTest {
                   "productId": "%s",
                   "sourceLocationId": "%s",
                   "destinationLocationId": "%s",
-                  "quantity": 5,
-                  "userId": "%s"
+                  "quantity": 5
                 }
-                """.formatted(productId, sourceLocationId, destinationLocationId, userId);
+                """.formatted(productId, sourceLocationId, destinationLocationId);
     }
 }
