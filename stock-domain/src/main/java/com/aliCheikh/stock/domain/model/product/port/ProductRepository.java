@@ -20,4 +20,6 @@ public interface ProductRepository {
     List<Product> findAllActive(int page, int size);
 
     long countActive();
+
+    boolean existsByName(String name);
 }
