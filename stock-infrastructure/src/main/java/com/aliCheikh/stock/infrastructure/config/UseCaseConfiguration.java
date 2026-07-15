@@ -9,6 +9,7 @@ import com.aliCheikh.stock.application.port.StockMovementQueryPort;
 import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
+import com.aliCheikh.stock.application.usecase.GetSessionContextUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
 import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
@@ -39,6 +40,11 @@ public class UseCaseConfiguration {
     @Bean
     public StockAllocationService stockAllocationService(StorageLocationRepository storageLocationRepository) {
         return new StockAllocationService(storageLocationRepository);
+    }
+
+    @Bean
+    public GetSessionContextUseCase getSessionContextUseCase(StorageLocationRepository storageLocationRepository) {
+        return new GetSessionContextUseCase(storageLocationRepository);
     }
 
     @Bean
