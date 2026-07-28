@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.infrastructure.persistence;
 
+import com.aliCheikh.stock.domain.exception.customer.DuplicatePhoneNumberException;
 import com.aliCheikh.stock.domain.model.customer.Customer;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.customer.PhoneNumber;
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -77,13 +77,17 @@ class CustomerPersistenceTest {
     void should_reject_two_customers_sharing_the_same_phone_number() {
         customerRepository.save(Customer.create(
                 CustomerId.generate(), PhoneNumber.of("66 12 34 56"), "Ahmat", null, null));
-        entityManager.flush();
 
-        customerRepository.save(Customer.create(
-                CustomerId.generate(), PhoneNumber.of("+235 66 12 34 56"), "Moussa", null, null));
+        // Même numéro, écrit autrement : après normalisation, c'est un doublon.
+        Customer duplicate = Customer.create(
+                CustomerId.generate(), PhoneNumber.of("+235 66 12 34 56"), "Moussa", null, null);
 
-        assertThatThrownBy(() -> entityManager.flush())
-                .isInstanceOf(DataIntegrityViolationException.class);
+        // L'adapter traduit la violation de contrainte en exception métier : c'est ce qui permet
+        // de répondre 409 plutôt que 500 lorsque deux créations concurrentes franchissent le
+        // contrôle d'unicité préalable.
+        assertThatThrownBy(() -> customerRepository.save(duplicate))
+                .isInstanceOf(DuplicatePhoneNumberException.class)
+                .hasMessageContaining("+23566123456");
     }
 
     @Test

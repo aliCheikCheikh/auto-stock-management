@@ -1,11 +1,14 @@
 package com.aliCheikh.stock.infrastructure.persistence.adapter;
 
+import com.aliCheikh.stock.domain.exception.customer.DuplicateCustomerEmailException;
+import com.aliCheikh.stock.domain.exception.customer.DuplicatePhoneNumberException;
 import com.aliCheikh.stock.domain.model.customer.Customer;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.customer.PhoneNumber;
 import com.aliCheikh.stock.domain.model.customer.port.CustomerRepository;
 import com.aliCheikh.stock.infrastructure.persistence.mapper.CustomerJpaMapper;
 import com.aliCheikh.stock.infrastructure.persistence.repository.CustomerJpaRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 import java.util.Objects;
@@ -22,10 +25,35 @@ public class CustomerJpaRepositoryAdapter implements CustomerRepository {
         this.customerJpaMapper = Objects.requireNonNull(customerJpaMapper, "customerJpaMapper cannot be null");
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>La vérification d'unicité faite en amont par le use case ne protège pas d'une création
+     * concurrente : deux requêtes simultanées peuvent la franchir toutes les deux. La contrainte
+     * en base tranche alors, et l'erreur technique est traduite ici en exception métier — sans
+     * quoi l'appelant recevrait un 500 au lieu d'un 409.</p>
+     */
     @Override
     public void save(Customer customer) {
         Objects.requireNonNull(customer, "customer cannot be null");
-        customerJpaRepository.save(customerJpaMapper.toEntity(customer));
+
+        try {
+            customerJpaRepository.saveAndFlush(customerJpaMapper.toEntity(customer));
+        } catch (DataIntegrityViolationException violation) {
+            throw translate(violation, customer);
+        }
+    }
+
+    private RuntimeException translate(DataIntegrityViolationException violation, Customer customer) {
+        String cause = String.valueOf(violation.getMostSpecificCause().getMessage()).toLowerCase();
+
+        if (cause.contains("phone_number")) {
+            return new DuplicatePhoneNumberException(customer.getPhoneNumber());
+        }
+        if (cause.contains("email")) {
+            return new DuplicateCustomerEmailException(customer.getEmail().orElse(null));
+        }
+        return violation;
     }
 
     @Override
