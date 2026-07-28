@@ -2,12 +2,14 @@ package com.aliCheikh.stock.infrastructure.web.controller;
 
 import com.aliCheikh.stock.application.dto.RegisterCustomerCommand;
 import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
+import com.aliCheikh.stock.application.usecase.GetCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.RegisterCustomerUseCase;
+import com.aliCheikh.stock.application.usecase.SearchCustomersUseCase;
 import com.aliCheikh.stock.domain.exception.customer.DuplicatePhoneNumberException;
 import com.aliCheikh.stock.domain.model.customer.Customer;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.customer.PhoneNumber;
-import com.aliCheikh.stock.domain.model.customer.port.CustomerRepository;
+import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +41,14 @@ class CustomerControllerTest {
     private ListOutstandingDebtsUseCase listOutstandingDebtsUseCase;
 
     @MockitoBean
-    private CustomerRepository customerRepository;
+    private GetCustomerUseCase getCustomerUseCase;
+
+    @MockitoBean
+    private SearchCustomersUseCase searchCustomersUseCase;
+
+    /** Requis par IdempotencyFilter, chargé par la tranche web mais dépendant de la persistance. */
+    @MockitoBean
+    private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;
 
     @Test
     void should_create_a_customer_and_return_its_canonical_phone_number() throws Exception {

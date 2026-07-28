@@ -2,6 +2,7 @@ package com.aliCheikh.stock.infrastructure.config;
 
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.application.port.ListSalesQueryPort;
+import com.aliCheikh.stock.application.port.CustomerSearchQueryPort;
 import com.aliCheikh.stock.application.port.OutstandingDebtQueryPort;
 import com.aliCheikh.stock.application.port.ProductSearchQueryPort;
 import com.aliCheikh.stock.application.port.ProductStockQueryPort;
@@ -12,7 +13,9 @@ import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.application.usecase.GetSessionContextUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
+import com.aliCheikh.stock.application.usecase.GetCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
+import com.aliCheikh.stock.application.usecase.SearchCustomersUseCase;
 import com.aliCheikh.stock.application.usecase.RegisterCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
 import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
@@ -32,6 +35,7 @@ import com.aliCheikh.stock.domain.service.ReceivingService;
 import com.aliCheikh.stock.domain.service.StockAllocationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 
 @Configuration
 public class UseCaseConfiguration {
@@ -99,6 +103,16 @@ public class UseCaseConfiguration {
             TransactionRunner transactionRunner
     ) {
         return new RegisterCustomerUseCase(customerRepository, transactionRunner);
+    }
+
+    @Bean
+    public GetCustomerUseCase getCustomerUseCase(CustomerRepository customerRepository) {
+        return new GetCustomerUseCase(customerRepository);
+    }
+
+    @Bean
+    public SearchCustomersUseCase searchCustomersUseCase(CustomerSearchQueryPort customerSearchQueryPort) {
+        return new SearchCustomersUseCase(customerSearchQueryPort);
     }
 
     @Bean
