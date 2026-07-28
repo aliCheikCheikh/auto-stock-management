@@ -1,8 +1,9 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
-import com.aliCheikh.stock.application.dto.OutstandingDebtView;
+import com.aliCheikh.stock.application.dto.OutstandingDebtSummary;
 import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
 import com.aliCheikh.stock.domain.model.shared.Money;
+import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,12 +34,16 @@ class OutstandingDebtControllerTest {
     @MockitoBean
     private ListOutstandingDebtsUseCase listOutstandingDebtsUseCase;
 
+    /** Requis par IdempotencyFilter, chargé par la tranche web mais dépendant de la persistance. */
+    @MockitoBean
+    private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;
+
     @Test
     void should_expose_outstanding_debts_with_their_balance() throws Exception {
         UUID saleId = UUID.randomUUID();
         UUID customerId = UUID.randomUUID();
 
-        given(listOutstandingDebtsUseCase.listAll()).willReturn(List.of(new OutstandingDebtView(
+        given(listOutstandingDebtsUseCase.listAll()).willReturn(List.of(new OutstandingDebtSummary(
                 saleId,
                 LocalDateTime.of(2026, 7, 20, 10, 30),
                 customerId,
@@ -47,7 +52,9 @@ class OutstandingDebtControllerTest {
                 "+23566123456",
                 xaf("50000"),
                 xaf("20000"),
-                xaf("30000"))));
+                xaf("30000"),
+                45,
+                true)));
 
         mockMvc.perform(get("/api/v1/debts"))
                 .andExpect(status().isOk())

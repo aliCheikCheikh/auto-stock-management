@@ -36,6 +36,7 @@ import com.aliCheikh.stock.domain.service.StockAllocationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Clock;
 
 @Configuration
 public class UseCaseConfiguration {
@@ -117,9 +118,16 @@ public class UseCaseConfiguration {
 
     @Bean
     public ListOutstandingDebtsUseCase listOutstandingDebtsUseCase(
-            OutstandingDebtQueryPort outstandingDebtQueryPort
+            OutstandingDebtQueryPort outstandingDebtQueryPort,
+            Clock clock
     ) {
-        return new ListOutstandingDebtsUseCase(outstandingDebtQueryPort);
+        return new ListOutstandingDebtsUseCase(outstandingDebtQueryPort, clock);
+    }
+
+    /** Horloge système, injectée pour rendre les calculs d'ancienneté testables. */
+    @Bean
+    public Clock clock() {
+        return Clock.systemDefaultZone();
     }
 
     @Bean

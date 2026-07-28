@@ -1,11 +1,17 @@
 package com.aliCheikh.stock.infrastructure.web.dto;
 
-import com.aliCheikh.stock.application.dto.OutstandingDebtView;
+import com.aliCheikh.stock.application.dto.OutstandingDebtSummary;
+import com.aliCheikh.stock.domain.model.shared.Money;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** Une créance telle qu'affichée dans l'écran « qui me doit de l'argent ». */
+/**
+ * Une créance telle qu'affichée dans l'écran « qui me doit de l'argent ».
+ *
+ * <p>{@code daysOutstanding} et {@code overdue} viennent de la politique de crédit du domaine :
+ * l'interface les affiche, elle ne les recalcule pas.</p>
+ */
 public record OutstandingDebtResponse(UUID saleId,
                                       LocalDateTime occurredAt,
                                       UUID customerId,
@@ -14,26 +20,28 @@ public record OutstandingDebtResponse(UUID saleId,
                                       String customerPhoneNumber,
                                       MoneyResponse totalAmount,
                                       MoneyResponse amountPaid,
-                                      MoneyResponse amountDue) {
+                                      MoneyResponse amountDue,
+                                      long daysOutstanding,
+                                      boolean overdue) {
 
-    public static OutstandingDebtResponse from(OutstandingDebtView view) {
+    public static OutstandingDebtResponse from(OutstandingDebtSummary summary) {
         return new OutstandingDebtResponse(
-                view.saleId(),
-                view.occurredAt(),
-                view.customerId(),
-                view.customerGivenName(),
-                view.customerFatherName(),
-                view.customerPhoneNumber(),
-                toMoney(view.totalAmount()),
-                toMoney(view.amountPaid()),
-                toMoney(view.amountDue())
-        );
+                summary.saleId(),
+                summary.occurredAt(),
+                summary.customerId(),
+                summary.customerGivenName(),
+                summary.customerFatherName(),
+                summary.customerPhoneNumber(),
+                toMoney(summary.totalAmount()),
+                toMoney(summary.amountPaid()),
+                toMoney(summary.amountDue()),
+                summary.daysOutstanding(),
+                summary.overdue());
     }
 
-    private static MoneyResponse toMoney(com.aliCheikh.stock.domain.model.shared.Money money) {
+    private static MoneyResponse toMoney(Money money) {
         return new MoneyResponse(
                 money.getAmount().toPlainString(),
-                money.getCurrency().getCurrencyCode()
-        );
+                money.getCurrency().getCurrencyCode());
     }
 }
