@@ -3,13 +3,11 @@ package com.aliCheikh.stock.infrastructure.persistence.adapter;
 import com.aliCheikh.stock.application.dto.OutstandingDebtView;
 import com.aliCheikh.stock.application.port.OutstandingDebtQueryPort;
 import com.aliCheikh.stock.domain.model.shared.Money;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
+import com.aliCheikh.stock.infrastructure.persistence.projection.OutstandingDebtProjection;
+import com.aliCheikh.stock.infrastructure.persistence.repository.OutstandingDebtJpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.util.Currency;
 import java.util.List;
 import java.util.Objects;
@@ -18,71 +16,50 @@ import java.util.UUID;
 /**
  * Lecture des créances par jointure directe vente ↔ client.
  *
- * <p>Requête native et projection plate : on ne reconstruit aucun agrégat, ce qui évite le N+1
- * qu'entraînerait le chargement des lignes de vente — inutiles pour cet écran.</p>
+ * <p>Projection plate typée : aucun agrégat n'est reconstruit, ce qui évite de charger les lignes
+ * de vente inutiles à cet écran.</p>
  */
 @Repository
 public class OutstandingDebtQueryJpaAdapter implements OutstandingDebtQueryPort {
 
-    private static final String BASE_QUERY = """
-            SELECT s.id,
-                   s.occurred_at,
-                   c.id,
-                   c.given_name,
-                   c.father_name,
-                   c.phone_number,
-                   s.total_amount,
-                   s.total_currency,
-                   s.amount_paid
-            FROM sale s
-            JOIN customer c ON c.id = s.customer_id
-            WHERE s.amount_paid < s.total_amount
-            """;
+    private final OutstandingDebtJpaRepository outstandingDebtJpaRepository;
 
-    private final EntityManager entityManager;
-
-    public OutstandingDebtQueryJpaAdapter(EntityManager entityManager) {
-        this.entityManager = Objects.requireNonNull(entityManager, "entityManager cannot be null");
+    public OutstandingDebtQueryJpaAdapter(OutstandingDebtJpaRepository outstandingDebtJpaRepository) {
+        this.outstandingDebtJpaRepository = Objects.requireNonNull(
+                outstandingDebtJpaRepository, "outstandingDebtJpaRepository cannot be null");
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<OutstandingDebtView> findAllOutstanding() {
-        Query query = entityManager.createNativeQuery(BASE_QUERY + " ORDER BY s.occurred_at ASC");
-        return toViews(query.getResultList());
+        return toViews(outstandingDebtJpaRepository.findAllOutstanding());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<OutstandingDebtView> findOutstandingByCustomer(UUID customerId) {
         Objects.requireNonNull(customerId, "customerId cannot be null");
-
-        Query query = entityManager
-                .createNativeQuery(BASE_QUERY + " AND s.customer_id = :customerId ORDER BY s.occurred_at ASC")
-                .setParameter("customerId", customerId);
-
-        return toViews(query.getResultList());
+        return toViews(outstandingDebtJpaRepository.findOutstandingByCustomer(customerId));
     }
 
-    @SuppressWarnings("unchecked")
-    private List<OutstandingDebtView> toViews(List<?> rows) {
-        return ((List<Object[]>) rows).stream()
-                .map(this::toView)
+    private static List<OutstandingDebtView> toViews(List<OutstandingDebtProjection> projections) {
+        return projections.stream()
+                .map(OutstandingDebtQueryJpaAdapter::toView)
                 .toList();
     }
 
-    private OutstandingDebtView toView(Object[] row) {
-        Currency currency = Currency.getInstance((String) row[7]);
-        Money totalAmount = Money.create((BigDecimal) row[6], currency);
-        Money amountPaid = Money.create((BigDecimal) row[8], currency);
+    private static OutstandingDebtView toView(OutstandingDebtProjection projection) {
+        Currency currency = Currency.getInstance(projection.getCurrency());
+        Money totalAmount = Money.create(projection.getTotalAmount(), currency);
+        Money amountPaid = Money.create(projection.getAmountPaid(), currency);
 
         return new OutstandingDebtView(
-                (UUID) row[0],
-                ((Timestamp) row[1]).toLocalDateTime(),
-                (UUID) row[2],
-                (String) row[3],
-                (String) row[4],
-                (String) row[5],
+                projection.getSaleId(),
+                projection.getOccurredAt(),
+                projection.getCustomerId(),
+                projection.getCustomerGivenName(),
+                projection.getCustomerFatherName(),
+                projection.getCustomerPhoneNumber(),
                 totalAmount,
                 amountPaid,
                 // Le solde reste dérivé, jamais stocké : une seule source de vérité.
