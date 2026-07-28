@@ -18,6 +18,7 @@ import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
+import com.aliCheikh.stock.domain.model.customer.port.CustomerRepository;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
 import com.aliCheikh.stock.domain.model.sale.Sale;
 import com.aliCheikh.stock.domain.model.sale.port.SaleRepository;
@@ -53,6 +54,7 @@ class SellProductUseCaseTest {
     private SaleRepository saleRepository;
     private StockMovementRepository stockMovementRepository;
     private ProductRepository productRepository;
+    private CustomerRepository customerRepository;
     private EventPublisher eventPublisher;
     private TransactionRunner transactionRunner;
 
@@ -70,6 +72,7 @@ class SellProductUseCaseTest {
         saleRepository = mock(SaleRepository.class);
         stockMovementRepository = mock(StockMovementRepository.class);
         productRepository = mock(ProductRepository.class);
+        customerRepository = mock(CustomerRepository.class);
         eventPublisher = mock(EventPublisher.class);
         transactionRunner = new TransactionRunner() {
             @Override
@@ -84,6 +87,7 @@ class SellProductUseCaseTest {
                 saleRepository,
                 stockMovementRepository,
                 productRepository,
+                customerRepository,
                 eventPublisher,
                 transactionRunner
         );
