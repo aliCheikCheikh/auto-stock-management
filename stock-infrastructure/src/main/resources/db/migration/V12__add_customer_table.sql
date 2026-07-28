@@ -11,6 +11,9 @@ CREATE TABLE customer (
     -- UNIQUE tolère plusieurs NULL (les NULL sont distincts entre eux en PostgreSQL),
     -- ce qui donne exactement la règle voulue : « unique seulement s'il est renseigné ».
     email VARCHAR(200) NULL UNIQUE,
+    -- Date d'enregistrement : sert à proposer les derniers clients dans le sélecteur de vente,
+    -- et donne une trace d'audit sur l'ouverture d'un compte à crédit.
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
     CHECK (length(trim(given_name)) > 0),
     CHECK (father_name IS NULL OR length(trim(father_name)) > 0),
     CHECK (email IS NULL OR length(trim(email)) > 0)

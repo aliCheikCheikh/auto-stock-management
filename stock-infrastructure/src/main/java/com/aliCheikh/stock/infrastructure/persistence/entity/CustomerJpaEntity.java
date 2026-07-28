@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -18,10 +19,13 @@ public class CustomerJpaEntity {
     private String givenName;
     @Column(name = "father_name", length = 100)
     private String fatherName;
-    @Column(name = "phone_number", nullable = false, length = 100)
+    @Column(name = "phone_number", nullable = false, length = 20)
     private String phoneNumber;
-    @Column(name = "email", length = 100)
+    @Column(name = "email", length = 200)
     private String email;
+    // Renseignée par le DEFAULT de la base : l'horodatage ne dépend pas de l'horloge applicative.
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     protected CustomerJpaEntity() {
 
