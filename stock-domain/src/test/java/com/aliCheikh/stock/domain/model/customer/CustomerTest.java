@@ -1,7 +1,7 @@
 package com.aliCheikh.stock.domain.model.customer;
 
 import com.aliCheikh.stock.domain.exception.customer.InvalidCustomerEmailException;
-import com.aliCheikh.stock.domain.exception.customer.InvalidCustomerLastNameException;
+import com.aliCheikh.stock.domain.exception.customer.InvalidCustomerGivenNameException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,25 +21,39 @@ public class CustomerTest {
         // THEN les champs sont posés et l'email est normalisé (trim + minuscules)
         assertThat(customer.getCustomerId()).isEqualTo(ID);
         assertThat(customer.getPhoneNumber()).isEqualTo(PHONE);
-        assertThat(customer.getLastName()).isEqualTo("Ahmat");
-        assertThat(customer.getFirstName()).contains("Youssouf");
+        assertThat(customer.getGivenName()).isEqualTo("Ahmat");
+        assertThat(customer.getFatherName()).contains("Youssouf");
         assertThat(customer.getEmail()).contains("ahmat@example.com");
     }
 
     @Test
     public void should_create_customer_without_optional_fields() {
-        // WHEN prénom et email absents (cas courant au Tchad)
+        // WHEN le nom du père et l'email sont absents (cas courant au Tchad)
         Customer customer = Customer.create(ID, PHONE, "Ahmat", null, null);
 
         // THEN les optionnels sont vides, pas d'exception
-        assertThat(customer.getFirstName()).isEmpty();
+        assertThat(customer.getGivenName()).isEqualTo("Ahmat");
+        assertThat(customer.getFatherName()).isEmpty();
         assertThat(customer.getEmail()).isEmpty();
     }
 
     @Test
-    public void should_reject_blank_last_name() {
+    public void should_trim_the_given_name() {
+        Customer customer = Customer.create(ID, PHONE, "  Ahmat  ", null, null);
+
+        assertThat(customer.getGivenName()).isEqualTo("Ahmat");
+    }
+
+    @Test
+    public void should_reject_blank_given_name() {
         assertThatThrownBy(() -> Customer.create(ID, PHONE, "  ", "Youssouf", null))
-                .isInstanceOf(InvalidCustomerLastNameException.class);
+                .isInstanceOf(InvalidCustomerGivenNameException.class);
+    }
+
+    @Test
+    public void should_reject_null_given_name() {
+        assertThatThrownBy(() -> Customer.create(ID, PHONE, null, "Youssouf", null))
+                .isInstanceOf(InvalidCustomerGivenNameException.class);
     }
 
     @Test
