@@ -31,6 +31,15 @@ public final class Money {
         return new Money(newAmount, currency);
     }
 
+    public Money subtract(Money other) {
+        Objects.requireNonNull(other, "other money cannot be null");
+        if (!this.currency.equals(other.currency)) {
+            throw new CurrencyMismatchException(this.currency, other.currency);
+        }
+        BigDecimal newAmount = this.amount.subtract(other.amount);
+        return new Money(newAmount, currency);
+    }
+
     public Money multiply(int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("quantity must be greater than zero");
@@ -43,6 +52,10 @@ public final class Money {
 
     public boolean isPositive() {
         return amount.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    public boolean isNegative() {
+        return amount.compareTo(BigDecimal.ZERO) < 0;
     }
 
 
@@ -67,6 +80,13 @@ public final class Money {
     @Override
     public int hashCode() {
         return Objects.hash(amount.stripTrailingZeros(), currency);
+    }
+
+    @Override
+    public String toString() {
+        // Forme lisible dans les logs et les messages d'exception : "50000 XAF".
+        // toPlainString() évite la notation scientifique (5E+4) sur les gros montants.
+        return amount.toPlainString() + " " + currency.getCurrencyCode();
     }
 
 

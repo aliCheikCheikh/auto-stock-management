@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.infrastructure.persistence.mapper;
 
+import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
@@ -45,7 +46,13 @@ public class SaleJpaMapper {
                                         Currency.getInstance(line.getLineTotalCurrency())
                                 )
                         ))
-                        .toList()
+                        .toList(),
+                // customer_id est NULL pour une vente au comptant.
+                entity.getCustomerId() == null ? null : CustomerId.of(entity.getCustomerId()),
+                Money.create(
+                        entity.getAmountPaid(),
+                        Currency.getInstance(entity.getAmountPaidCurrency())
+                )
         );
     }
 
@@ -57,7 +64,10 @@ public class SaleJpaMapper {
                 sale.getSoldBy().getValue(),
                 sale.getOccurredAt(),
                 sale.getTotalAmount().getAmount(),
-                sale.getTotalAmount().getCurrency().getCurrencyCode()
+                sale.getTotalAmount().getCurrency().getCurrencyCode(),
+                sale.getCustomerId().map(CustomerId::getValue).orElse(null),
+                sale.getAmountPaid().getAmount(),
+                sale.getAmountPaid().getCurrency().getCurrencyCode()
         );
 
         Set<SaleLineJpaEntity> saleLineEntities = new HashSet<>();

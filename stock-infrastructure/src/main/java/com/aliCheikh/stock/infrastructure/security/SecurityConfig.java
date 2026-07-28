@@ -39,6 +39,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/users", "/api/v1/users/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("OWNER")
+                        // Créances et fiches clients portent des données personnelles (nom, téléphone) :
+                        // la règle générale « GET public » ne doit pas s'y appliquer.
+                        // Les créances relèvent de la gestion : même exigence, quel que soit le chemin
+                        // d'accès — global ou par client.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/debts/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/customers/*/debts").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/customers/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/**").authenticated()

@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.SaleView;
 import com.aliCheikh.stock.application.dto.SellLineCommand;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
 import com.aliCheikh.stock.application.dto.SellProductResult;
+import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
 import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
@@ -21,11 +22,18 @@ import com.aliCheikh.stock.infrastructure.web.dto.SaleLineResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleResponse;
 
 import java.time.LocalDateTime;
+import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
 public final class SaleWebMapper {
     private static final List<String> DEFAULT_SORT = List.of("createdAt,desc");
+
+    /**
+     * Devise du magasin (Franc CFA). L'API reçoit un montant nu ; la devise est celle du catalogue.
+     * Le domaine refusera de toute façon un acompte dans une devise différente du total.
+     */
+    private static final Currency SHOP_CURRENCY = Currency.getInstance("XAF");
 
     private SaleWebMapper() {
     }
@@ -36,7 +44,10 @@ public final class SaleWebMapper {
                 ShopId.of(request.shopId()),
                 request.lines().stream()
                         .map(SaleWebMapper::toLineCommand)
-                        .toList()
+                        .toList(),
+                request.customerId() == null ? null : CustomerId.of(request.customerId()),
+                // L'acompte est saisi dans la devise du magasin ; absent, la vente est au comptant.
+                request.amountPaid() == null ? null : Money.create(request.amountPaid(), SHOP_CURRENCY)
         );
     }
 
@@ -48,7 +59,10 @@ public final class SaleWebMapper {
                         .map(SaleWebMapper::toSaleLineResponse)
                         .toList(),
                 moneyToResponse(result.totalAmount()),
-                result.createdAt()
+                result.createdAt(),
+                result.customerId().map(CustomerId::getValue).orElse(null),
+                moneyToResponse(result.amountPaid()),
+                moneyToResponse(result.amountDue())
         );
     }
 
@@ -60,10 +74,17 @@ public final class SaleWebMapper {
                         .map(SaleWebMapper::toSaleLineResponse)
                         .toList(),
                 moneyToResponse(sale.getTotalAmount()),
-                sale.getOccurredAt()
+                sale.getOccurredAt(),
+                sale.getCustomerId().map(CustomerId::getValue).orElse(null),
+                moneyToResponse(sale.getAmountPaid()),
+                moneyToResponse(sale.getAmountDue())
         );
     }
 
+    /**
+     * Le modèle de lecture de l'historique ne porte pas le volet crédit : la consultation des
+     * créances passe par son endpoint dédié, qui joint déjà les informations du client.
+     */
     private static SaleResponse toResponse(SaleView saleView) {
         return new SaleResponse(
                 saleView.saleId().getValue(),
@@ -72,7 +93,10 @@ public final class SaleWebMapper {
                         .map(SaleWebMapper::toSaleLineResponse)
                         .toList(),
                 moneyToResponse(saleView.totalAmount()),
-                saleView.createdAt()
+                saleView.createdAt(),
+                null,
+                null,
+                null
         );
     }
 

@@ -1,10 +1,15 @@
 package com.aliCheikh.stock.infrastructure.web.handler;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
+import com.aliCheikh.stock.domain.exception.customer.CustomerNotFoundException;
+import com.aliCheikh.stock.domain.exception.customer.DuplicateCustomerEmailException;
+import com.aliCheikh.stock.domain.exception.customer.DuplicatePhoneNumberException;
+import com.aliCheikh.stock.domain.exception.customer.InvalidPhoneNumberException;
 import com.aliCheikh.stock.domain.exception.product.DuplicateProductNameException;
 import com.aliCheikh.stock.domain.exception.product.DuplicateProductReferenceException;
 import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
+import com.aliCheikh.stock.domain.exception.sale.CreditSaleRequiresCustomerException;
 import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
@@ -159,6 +164,61 @@ public class ApiExceptionHandler {
                 "Product name already used",
                 exception.getMessage(),
                 "PRODUCT_NAME_ALREADY_USED"
+        );
+    }
+
+    @ExceptionHandler(CustomerNotFoundException.class)
+    public ProblemDetail handleCustomerNotFound(CustomerNotFoundException exception) {
+        return problem(
+                HttpStatus.NOT_FOUND,
+                "customer-not-found",
+                "Customer not found",
+                exception.getMessage(),
+                "CUSTOMER_NOT_FOUND"
+        );
+    }
+
+    @ExceptionHandler(DuplicatePhoneNumberException.class)
+    public ProblemDetail handleDuplicatePhoneNumber(DuplicatePhoneNumberException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "customer-phone-already-used",
+                "Phone number already used",
+                exception.getMessage(),
+                "CUSTOMER_PHONE_ALREADY_USED"
+        );
+    }
+
+    @ExceptionHandler(DuplicateCustomerEmailException.class)
+    public ProblemDetail handleDuplicateCustomerEmail(DuplicateCustomerEmailException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "customer-email-already-used",
+                "Email already used",
+                exception.getMessage(),
+                "CUSTOMER_EMAIL_ALREADY_USED"
+        );
+    }
+
+    @ExceptionHandler(CreditSaleRequiresCustomerException.class)
+    public ProblemDetail handleCreditSaleRequiresCustomer(CreditSaleRequiresCustomerException exception) {
+        return problem(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "credit-sale-requires-customer",
+                "Credit sale requires a customer",
+                exception.getMessage(),
+                "CREDIT_SALE_REQUIRES_CUSTOMER"
+        );
+    }
+
+    @ExceptionHandler(InvalidPhoneNumberException.class)
+    public ProblemDetail handleInvalidPhoneNumber(InvalidPhoneNumberException exception) {
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                "invalid-phone-number",
+                "Invalid phone number",
+                exception.getMessage(),
+                "INVALID_PHONE_NUMBER"
         );
     }
 

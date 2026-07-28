@@ -8,7 +8,9 @@ import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.domain.event.DomainEvent;
 import com.aliCheikh.stock.domain.event.LowStockAlert;
 import com.aliCheikh.stock.domain.event.SaleCompleted;
+import com.aliCheikh.stock.domain.exception.customer.CustomerNotFoundException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
+import com.aliCheikh.stock.domain.model.customer.port.CustomerRepository;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
@@ -56,6 +58,7 @@ public class SellProductUseCase {
     private final SaleRepository saleRepository;
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
+    private final CustomerRepository customerRepository;
     private final EventPublisher eventPublisher;
     private final TransactionRunner transactionRunner;
 
@@ -65,6 +68,7 @@ public class SellProductUseCase {
             SaleRepository saleRepository,
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
+            CustomerRepository customerRepository,
             EventPublisher eventPublisher,
             TransactionRunner transactionRunner
     ) {
@@ -73,6 +77,7 @@ public class SellProductUseCase {
         this.saleRepository = Objects.requireNonNull(saleRepository, "saleRepository cannot be null");
         this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository, "stockMovementRepository cannot be null");
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
+        this.customerRepository = Objects.requireNonNull(customerRepository, "customerRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
         this.transactionRunner = Objects.requireNonNull(transactionRunner, "transactionRunner cannot be null");
     }
@@ -97,7 +102,17 @@ public class SellProductUseCase {
         List<SaleLineInput> saleLineInputs = new ArrayList<>();
         List<PreparedLine> preparedLines = prepareLines(command, locationsById, saleLineInputs);
 
-        Sale sale = Sale.create(command.sellerId(), saleLineInputs);
+        // Un client référencé doit exister : sans ça, on créerait une créance rattachée
+        // à un client fantôme, donc irrécouvrable.
+        if (command.customerId() != null && customerRepository.findById(command.customerId()).isEmpty()) {
+            throw new CustomerNotFoundException(command.customerId());
+        }
+
+        Sale sale = Sale.create(
+                command.sellerId(),
+                saleLineInputs,
+                command.customerId(),
+                command.amountPaid());
 
         List<StockMovement> generatedMovements = new ArrayList<>();
         Set<StorageLocation> changedLocations = new LinkedHashSet<>();
@@ -156,7 +171,10 @@ public class SellProductUseCase {
                 sale.getSoldBy(),
                 sale.getLines(),
                 sale.getTotalAmount(),
-                sale.getOccurredAt()
+                sale.getOccurredAt(),
+                sale.getCustomerId(),
+                sale.getAmountPaid(),
+                sale.getAmountDue()
         );
     }
 
