@@ -43,6 +43,11 @@ public class SecurityConfig {
                         // la règle générale « GET public » ne doit pas s'y appliquer.
                         // Les créances relèvent de la gestion : même exigence, quel que soit le chemin
                         // d'accès — global ou par client.
+                        // Le catalogue des familles se lit librement (le vendeur classe un produit),
+                        // mais sa gestion appartient au patron.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/categories").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/categories/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/categories/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/debts/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/customers/*/debts").hasRole("OWNER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/customers/**").authenticated()

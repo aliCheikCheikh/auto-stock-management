@@ -190,7 +190,7 @@ public class SaleTest {
                 original.getTotalAmount(),
                 original.getLines(),
                 customerId,
-                original.getAmountPaid());
+                original.getPayments());
 
         assertThat(rehydrated.getAmountDue()).isEqualTo(eur(40));
         assertThat(rehydrated.getCustomerId()).contains(customerId);

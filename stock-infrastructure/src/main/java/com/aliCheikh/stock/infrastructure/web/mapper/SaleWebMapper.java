@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.infrastructure.web.mapper;
 
 import com.aliCheikh.stock.application.dto.ListSalesQuery;
+import com.aliCheikh.stock.application.dto.RecordPaymentCommand;
 import com.aliCheikh.stock.application.dto.PageResult;
 import com.aliCheikh.stock.application.dto.SaleView;
 import com.aliCheikh.stock.application.dto.SellLineCommand;
@@ -9,6 +10,7 @@ import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
+import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.shop.ShopId;
@@ -18,6 +20,7 @@ import com.aliCheikh.stock.infrastructure.web.dto.CreateSaleRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.MoneyResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.PageMetaResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfSaleResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.RecordPaymentRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleLineResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleResponse;
 
@@ -49,6 +52,14 @@ public final class SaleWebMapper {
                 // L'acompte est saisi dans la devise du magasin ; absent, la vente est au comptant.
                 request.amountPaid() == null ? null : Money.create(request.amountPaid(), SHOP_CURRENCY)
         );
+    }
+
+    /** Encaissement d'un remboursement : le montant est saisi nu, dans la devise du magasin. */
+    public static RecordPaymentCommand toCommand(UUID saleId, RecordPaymentRequest request, UUID receivedBy) {
+        return new RecordPaymentCommand(
+                SaleId.of(saleId),
+                Money.create(request.amount(), SHOP_CURRENCY),
+                UserId.of(receivedBy));
     }
 
     public static SaleResponse toResponse(SellProductResult result) {

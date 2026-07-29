@@ -40,4 +40,7 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UU
                                                  @Param("limit") int limit);
 
     boolean existsByName(String name);
+
+    /** Utilisé pour refuser la suppression d'une catégorie encore rattachée à des produits. */
+    boolean existsByCategoryId(UUID categoryId);
 }

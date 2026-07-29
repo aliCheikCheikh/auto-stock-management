@@ -2,23 +2,32 @@ package com.aliCheikh.stock.domain.model.sale;
 
 import com.aliCheikh.stock.domain.exception.sale.CreditSaleRequiresCustomerException;
 import com.aliCheikh.stock.domain.exception.sale.InvalidSaleException;
+import com.aliCheikh.stock.domain.exception.sale.PaymentExceedsAmountDueException;
+import com.aliCheikh.stock.domain.exception.sale.SaleAlreadySettledException;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.user.UserId;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Currency;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Vente réalisée par un vendeur : un fait daté, immuable une fois enregistré.
+ * Vente réalisée par un vendeur, avec les encaissements qui la soldent.
  *
- * <p><b>Vente au comptant ou à crédit.</b> Le montant encaissé au moment de la vente
- * ({@code amountPaid}) peut couvrir la totalité, une partie seulement, ou rien du tout. Ce qui
- * reste à payer — la <i>créance</i> — n'est jamais stocké : il se déduit du total et du montant
- * payé (voir {@link #getAmountDue()}). Une donnée dérivable ne se duplique pas, sous peine de se
+ * <p><b>Ce que l'agrégat contient.</b> Les lignes vendues sont un fait daté : elles ne changent
+ * jamais. Les <b>paiements</b>, eux, s'accumulent dans le temps — l'acompte du jour de la vente,
+ * puis les remboursements successifs. Une vente à crédit n'est pas un fait clos tant qu'elle n'est
+ * pas soldée, et c'est pourquoi les paiements appartiennent à cet agrégat : la règle
+ * « on n'encaisse jamais plus que ce qui reste dû » ne peut être garantie que si le total et les
+ * encaissements sont dans la même frontière de cohérence.</p>
+ *
+ * <p><b>Rien n'est stocké deux fois.</b> Le montant encaissé est la somme des paiements, et le solde
+ * restant dû s'en déduit ({@link #getAmountDue()}). Une donnée dérivable qu'on duplique finit par se
  * désynchroniser.</p>
  *
  * <p><b>Règle métier centrale :</b> si un solde reste dû, la vente <b>doit</b> être rattachée à un
@@ -36,8 +45,8 @@ public class Sale {
     /** Client débiteur. {@code null} pour une vente au comptant, obligatoire dès qu'un solde reste dû. */
     private final CustomerId customerId;
 
-    /** Montant encaissé au moment de la vente. Jamais nul : une vente au comptant vaut le total. */
-    private final Money amountPaid;
+    /** Encaissements successifs, du plus ancien au plus récent. Seule collection qui peut croître. */
+    private final List<Payment> payments;
 
     /**
      * Porte les invariants de l'agrégat : tout chemin de construction, présent ou futur,
@@ -49,15 +58,16 @@ public class Sale {
                  Money totalAmount,
                  List<SaleLineItem> lines,
                  CustomerId customerId,
-                 Money amountPaid) {
+                 List<Payment> payments) {
         Objects.requireNonNull(saleId, "saleId cannot be null");
         Objects.requireNonNull(soldBy, "soldBy cannot be null");
         Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         Objects.requireNonNull(totalAmount, "totalAmount cannot be null");
         Objects.requireNonNull(lines, "lines cannot be null");
-        Objects.requireNonNull(amountPaid, "amountPaid cannot be null");
+        Objects.requireNonNull(payments, "payments cannot be null");
 
-        requireConsistentPaymentTerms(soldBy, totalAmount, amountPaid, customerId);
+        Money collected = sumOfPayments(payments, totalAmount.getCurrency());
+        requireConsistentPaymentTerms(soldBy, totalAmount, collected, customerId);
 
         this.saleId = saleId;
         this.soldBy = soldBy;
@@ -65,7 +75,7 @@ public class Sale {
         this.totalAmount = totalAmount;
         this.lines = List.copyOf(lines);
         this.customerId = customerId;
-        this.amountPaid = amountPaid;
+        this.payments = new ArrayList<>(payments);
     }
 
     /**
@@ -75,7 +85,7 @@ public class Sale {
      * @param lineRequests les lignes vendues, au moins une
      * @param customerId   le client débiteur ; peut être {@code null} si la vente est intégralement
      *                     payée, obligatoire sinon
-     * @param amountPaid   le montant encaissé ; {@code null} signifie « payé en entier »
+     * @param amountPaid   le montant encaissé au comptoir ; {@code null} signifie « payé en entier »
      */
     public static Sale create(UserId sellerId,
                               List<SaleLineInput> lineRequests,
@@ -94,14 +104,25 @@ public class Sale {
         // Absence d'acompte = vente au comptant : le client repart sans rien devoir.
         Money effectiveAmountPaid = (amountPaid == null) ? totalAmount : amountPaid;
 
+        if (effectiveAmountPaid.isNegative()) {
+            throw new InvalidSaleException(sellerId, "The amount paid cannot be negative");
+        }
+
+        LocalDateTime occurredAt = LocalDateTime.now();
+
+        // Un acompte nul ne produit aucun paiement : le client repart sans avoir rien versé.
+        List<Payment> initialPayments = effectiveAmountPaid.isPositive()
+                ? List.of(Payment.record(effectiveAmountPaid, sellerId, occurredAt))
+                : List.of();
+
         return new Sale(
                 SaleId.generate(),
                 sellerId,
-                LocalDateTime.now(),
+                occurredAt,
                 totalAmount,
                 internalLines,
                 customerId,
-                effectiveAmountPaid);
+                initialPayments);
     }
 
     /**
@@ -125,7 +146,8 @@ public class Sale {
                                  LocalDateTime occurredAt,
                                  Money totalAmount,
                                  List<SaleLineDto> lines) {
-        return rehydrate(saleId, soldBy, occurredAt, totalAmount, lines, null, totalAmount);
+        return rehydrate(saleId, soldBy, occurredAt, totalAmount, lines, null,
+                List.of(Payment.record(totalAmount, soldBy, occurredAt)));
     }
 
     /** Reconstruit une vente déjà persistée, sans rejouer la génération d'identifiant ni l'horodatage. */
@@ -135,7 +157,7 @@ public class Sale {
                                  Money totalAmount,
                                  List<SaleLineDto> lines,
                                  CustomerId customerId,
-                                 Money amountPaid) {
+                                 List<Payment> payments) {
         Objects.requireNonNull(lines, "lines cannot be null");
 
         if (lines.isEmpty()) {
@@ -153,7 +175,32 @@ public class Sale {
             throw new InvalidSaleException(soldBy, "Persisted sale total does not match sale lines total");
         }
 
-        return new Sale(saleId, soldBy, occurredAt, totalAmount, internalLines, customerId, amountPaid);
+        return new Sale(saleId, soldBy, occurredAt, totalAmount, internalLines, customerId, payments);
+    }
+
+    /**
+     * Enregistre un remboursement du client sur cette vente.
+     *
+     * @throws SaleAlreadySettledException      si plus rien n'est dû
+     * @throws PaymentExceedsAmountDueException si le montant dépasse le solde restant
+     */
+    public Payment recordPayment(Money amount, UserId receivedBy, LocalDateTime receivedAt) {
+        Money amountDue = getAmountDue();
+
+        if (!amountDue.isPositive()) {
+            throw new SaleAlreadySettledException(saleId);
+        }
+
+        // Payment garantit déjà qu'un encaissement est strictement positif.
+        Payment payment = Payment.record(amount, receivedBy, receivedAt);
+
+        // subtract lève CurrencyMismatchException si les devises diffèrent.
+        if (amountDue.subtract(amount).isNegative()) {
+            throw new PaymentExceedsAmountDueException(amount, amountDue);
+        }
+
+        payments.add(payment);
+        return payment;
     }
 
     /**
@@ -165,13 +212,9 @@ public class Sale {
      */
     private static void requireConsistentPaymentTerms(UserId sellerId,
                                                       Money totalAmount,
-                                                      Money amountPaid,
+                                                      Money collected,
                                                       CustomerId customerId) {
-        if (amountPaid.isNegative()) {
-            throw new InvalidSaleException(sellerId, "The amount paid cannot be negative");
-        }
-
-        Money amountDue = totalAmount.subtract(amountPaid);
+        Money amountDue = totalAmount.subtract(collected);
 
         if (amountDue.isNegative()) {
             throw new InvalidSaleException(sellerId, "The amount paid cannot exceed the sale total");
@@ -180,6 +223,13 @@ public class Sale {
         if (amountDue.isPositive() && customerId == null) {
             throw new CreditSaleRequiresCustomerException(amountDue);
         }
+    }
+
+    private static Money sumOfPayments(List<Payment> payments, Currency currency) {
+        return payments.stream()
+                .map(Payment::getAmount)
+                .reduce(Money::add)
+                .orElseGet(() -> Money.zero(currency));
     }
 
     private static Money sumOf(List<SaleLineItem> lines, String emptyMessage) {
@@ -205,9 +255,14 @@ public class Sale {
         return totalAmount;
     }
 
-    /** Le montant encaissé au moment de la vente. */
+    /** Le total encaissé à ce jour : la somme des paiements. */
     public Money getAmountPaid() {
-        return amountPaid;
+        return sumOfPayments(payments, totalAmount.getCurrency());
+    }
+
+    /** Les encaissements, du plus ancien au plus récent. */
+    public List<Payment> getPayments() {
+        return List.copyOf(payments);
     }
 
     /** Le client débiteur, s'il y en a un. Vide pour une vente au comptant. */
@@ -217,7 +272,7 @@ public class Sale {
 
     /** Le solde restant dû, calculé à la demande. Vaut zéro pour une vente intégralement payée. */
     public Money getAmountDue() {
-        return totalAmount.subtract(amountPaid);
+        return totalAmount.subtract(getAmountPaid());
     }
 
     /** {@code true} si cette vente porte encore une créance. */

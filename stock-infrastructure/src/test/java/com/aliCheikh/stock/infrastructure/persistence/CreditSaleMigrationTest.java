@@ -47,10 +47,12 @@ class CreditSaleMigrationTest {
         UUID saleId = UUID.randomUUID();
         insertLegacySale(saleId);
 
-        // WHEN : on applique V12 sur une base qui contient déjà une vente
+        // WHEN : on applique V12 sur une base qui contient déjà une vente.
+        // La cible est épinglée : V13 supprime amount_paid, ce test porte sur son remplissage.
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
+                .target(org.flywaydb.core.api.MigrationVersion.fromVersion("12"))
                 .load()
                 .migrate();
 

@@ -3,10 +3,13 @@ package com.aliCheikh.stock.infrastructure.persistence.mapper;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
+import com.aliCheikh.stock.domain.model.sale.Payment;
+import com.aliCheikh.stock.domain.model.sale.PaymentId;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.user.UserId;
+import com.aliCheikh.stock.infrastructure.persistence.entity.PaymentJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.SaleJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.SaleLineJpaEntity;
 import org.springframework.stereotype.Component;
@@ -49,10 +52,17 @@ public class SaleJpaMapper {
                         .toList(),
                 // customer_id est NULL pour une vente au comptant.
                 entity.getCustomerId() == null ? null : CustomerId.of(entity.getCustomerId()),
-                Money.create(
-                        entity.getAmountPaid(),
-                        Currency.getInstance(entity.getAmountPaidCurrency())
-                )
+                entity.getPayments()
+                        .stream()
+                        // Ordre chronologique : l'historique des encaissements se lit du premier au dernier.
+                        .sorted(Comparator.comparing(PaymentJpaEntity::getReceivedAt))
+                        .map(payment -> Payment.rehydrate(
+                                PaymentId.of(payment.getId()),
+                                Money.create(payment.getAmount(), Currency.getInstance(payment.getCurrency())),
+                                UserId.of(payment.getReceivedBy()),
+                                payment.getReceivedAt()
+                        ))
+                        .toList()
         );
     }
 
@@ -65,9 +75,7 @@ public class SaleJpaMapper {
                 sale.getOccurredAt(),
                 sale.getTotalAmount().getAmount(),
                 sale.getTotalAmount().getCurrency().getCurrencyCode(),
-                sale.getCustomerId().map(CustomerId::getValue).orElse(null),
-                sale.getAmountPaid().getAmount(),
-                sale.getAmountPaid().getCurrency().getCurrencyCode()
+                sale.getCustomerId().map(CustomerId::getValue).orElse(null)
         );
 
         Set<SaleLineJpaEntity> saleLineEntities = new HashSet<>();
@@ -88,6 +96,20 @@ public class SaleJpaMapper {
         }
 
         entity.replaceSaleLines(saleLineEntities);
+
+        // L'identité du paiement vient du domaine : la réécriture de la vente conserve donc les
+        // encaissements déjà enregistrés au lieu de les supprimer puis les recréer.
+        entity.replacePayments(sale.getPayments().stream()
+                .map(payment -> PaymentJpaEntity.of(
+                        payment.getPaymentId().getValue(),
+                        entity,
+                        payment.getAmount().getAmount(),
+                        payment.getAmount().getCurrency().getCurrencyCode(),
+                        payment.getReceivedAt(),
+                        payment.getReceivedBy().getValue()
+                ))
+                .toList());
+
         return entity;
     }
 }

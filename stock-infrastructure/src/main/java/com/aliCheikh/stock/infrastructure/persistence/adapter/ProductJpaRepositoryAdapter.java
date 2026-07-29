@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.infrastructure.persistence.adapter;
 
+import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.product.port.ProductRepository;
@@ -86,5 +87,11 @@ public class ProductJpaRepositoryAdapter implements ProductRepository {
     @Override
     public boolean existsByName(String name) {
         return productJpaRepository.existsByName(name);
+    }
+
+    @Override
+    public boolean existsByCategoryId(CategoryId categoryId) {
+        Objects.requireNonNull(categoryId, "categoryId cannot be null");
+        return productJpaRepository.existsByCategoryId(categoryId.getValue());
     }
 }

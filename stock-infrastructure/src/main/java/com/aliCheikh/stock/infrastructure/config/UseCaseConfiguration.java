@@ -9,13 +9,17 @@ import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
 import com.aliCheikh.stock.application.port.TransactionRunner;
+import com.aliCheikh.stock.application.usecase.CreateCategoryUseCase;
 import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
+import com.aliCheikh.stock.application.usecase.DeleteCategoryUseCase;
+import com.aliCheikh.stock.application.usecase.RenameCategoryUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.application.usecase.GetSessionContextUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
 import com.aliCheikh.stock.application.usecase.GetCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
 import com.aliCheikh.stock.application.usecase.SearchCustomersUseCase;
+import com.aliCheikh.stock.application.usecase.RecordPaymentUseCase;
 import com.aliCheikh.stock.application.usecase.RegisterCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
 import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
@@ -122,6 +126,40 @@ public class UseCaseConfiguration {
             Clock clock
     ) {
         return new ListOutstandingDebtsUseCase(outstandingDebtQueryPort, clock);
+    }
+
+    @Bean
+    public RecordPaymentUseCase recordPaymentUseCase(
+            SaleRepository saleRepository,
+            TransactionRunner transactionRunner,
+            Clock clock
+    ) {
+        return new RecordPaymentUseCase(saleRepository, transactionRunner, clock);
+    }
+
+    @Bean
+    public CreateCategoryUseCase createCategoryUseCase(
+            CategoryRepository categoryRepository,
+            TransactionRunner transactionRunner
+    ) {
+        return new CreateCategoryUseCase(categoryRepository, transactionRunner);
+    }
+
+    @Bean
+    public RenameCategoryUseCase renameCategoryUseCase(
+            CategoryRepository categoryRepository,
+            TransactionRunner transactionRunner
+    ) {
+        return new RenameCategoryUseCase(categoryRepository, transactionRunner);
+    }
+
+    @Bean
+    public DeleteCategoryUseCase deleteCategoryUseCase(
+            CategoryRepository categoryRepository,
+            ProductRepository productRepository,
+            TransactionRunner transactionRunner
+    ) {
+        return new DeleteCategoryUseCase(categoryRepository, productRepository, transactionRunner);
     }
 
     /** Horloge système, injectée pour rendre les calculs d'ancienneté testables. */

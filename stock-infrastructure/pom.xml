@@ -64,6 +64,17 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
+        <!--
+            Permet d'authentifier une requête MockMvc avec un rôle réel, chaîne de filtres active.
+            Indispensable pour vérifier les restrictions d'accès : sans elle, un test « ce rôle n'a
+            pas le droit » ne prouverait rien puisque la sécurité serait désactivée.
+        -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>

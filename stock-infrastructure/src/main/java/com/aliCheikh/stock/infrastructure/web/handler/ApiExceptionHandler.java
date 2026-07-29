@@ -1,6 +1,9 @@
 package com.aliCheikh.stock.infrastructure.web.handler;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
+import com.aliCheikh.stock.domain.exception.category.CategoryInUseException;
+import com.aliCheikh.stock.domain.exception.category.CategoryNotFoundException;
+import com.aliCheikh.stock.domain.exception.category.DuplicateCategoryNameException;
 import com.aliCheikh.stock.domain.exception.customer.CustomerNotFoundException;
 import com.aliCheikh.stock.domain.exception.customer.DuplicateCustomerEmailException;
 import com.aliCheikh.stock.domain.exception.customer.DuplicatePhoneNumberException;
@@ -10,6 +13,8 @@ import com.aliCheikh.stock.domain.exception.product.DuplicateProductReferenceExc
 import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.exception.sale.CreditSaleRequiresCustomerException;
+import com.aliCheikh.stock.domain.exception.sale.PaymentExceedsAmountDueException;
+import com.aliCheikh.stock.domain.exception.sale.SaleAlreadySettledException;
 import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
@@ -219,6 +224,61 @@ public class ApiExceptionHandler {
                 "Invalid phone number",
                 exception.getMessage(),
                 "INVALID_PHONE_NUMBER"
+        );
+    }
+
+    @ExceptionHandler(SaleAlreadySettledException.class)
+    public ProblemDetail handleSaleAlreadySettled(SaleAlreadySettledException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "sale-already-settled",
+                "Sale already settled",
+                exception.getMessage(),
+                "SALE_ALREADY_SETTLED"
+        );
+    }
+
+    @ExceptionHandler(PaymentExceedsAmountDueException.class)
+    public ProblemDetail handlePaymentExceedsAmountDue(PaymentExceedsAmountDueException exception) {
+        return problem(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "payment-exceeds-amount-due",
+                "Payment exceeds the outstanding balance",
+                exception.getMessage(),
+                "PAYMENT_EXCEEDS_AMOUNT_DUE"
+        );
+    }
+
+    @ExceptionHandler(CategoryNotFoundException.class)
+    public ProblemDetail handleCategoryNotFound(CategoryNotFoundException exception) {
+        return problem(
+                HttpStatus.NOT_FOUND,
+                "category-not-found",
+                "Category not found",
+                exception.getMessage(),
+                "CATEGORY_NOT_FOUND"
+        );
+    }
+
+    @ExceptionHandler(DuplicateCategoryNameException.class)
+    public ProblemDetail handleDuplicateCategoryName(DuplicateCategoryNameException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "category-name-already-used",
+                "Category name already used",
+                exception.getMessage(),
+                "CATEGORY_NAME_ALREADY_USED"
+        );
+    }
+
+    @ExceptionHandler(CategoryInUseException.class)
+    public ProblemDetail handleCategoryInUse(CategoryInUseException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "category-in-use",
+                "Category still holds products",
+                exception.getMessage(),
+                "CATEGORY_IN_USE"
         );
     }
 
