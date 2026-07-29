@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.infrastructure.persistence.mapper;
 
 import com.aliCheikh.stock.domain.model.movement.MovementId;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
@@ -27,7 +28,8 @@ public class StockMovementJpaMapper {
                 entity.getQuantity(),
                 UserId.of(entity.getPerformedBy()),
                 entity.getOccurredAt(),
-                toSaleId(entity.getSaleId())
+                toSaleId(entity.getSaleId()),
+                OperationId.of(entity.getOperationId())
         );
     }
 
@@ -49,7 +51,8 @@ public class StockMovementJpaMapper {
                 movement.getOccurredAt(),
                 movement.getSaleId()
                         .map(SaleId::getValue)
-                        .orElse(null)
+                        .orElse(null),
+                movement.getOperationId().getValue()
         );
     }
 

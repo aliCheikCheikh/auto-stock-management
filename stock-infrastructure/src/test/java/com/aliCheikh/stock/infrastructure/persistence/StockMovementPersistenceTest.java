@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
@@ -140,8 +141,8 @@ class StockMovementPersistenceTest {
                 productId,
                 destinationLocationId,
                 10,
-                userId
-        );
+                userId,
+                OperationId.generate());
 
         adapter.save(entry);
         flushAndClear();
@@ -167,22 +168,22 @@ class StockMovementPersistenceTest {
                 productId,
                 destinationLocationId,
                 10,
-                userId
-        );
+                userId,
+                OperationId.generate());
         StockMovement exit = StockMovement.createExit(
                 productId,
                 sourceLocationId,
                 1,
                 userId,
-                sale.getSaleId()
-        );
+                sale.getSaleId(),
+                OperationId.generate());
         StockMovement transfer = StockMovement.createTransfer(
                 productId,
                 sourceLocationId,
                 destinationLocationId,
                 5,
-                userId
-        );
+                userId,
+                OperationId.generate());
 
         adapter.saveAll(List.of(entry, exit, transfer));
         flushAndClear();
@@ -208,8 +209,8 @@ class StockMovementPersistenceTest {
                 10,
                 userId,
                 LocalDateTime.of(2026, 5, 1, 10, 0),
-                null
-        );
+                null,
+                OperationId.generate());
         StockMovement transfer = StockMovement.rehydrate(
                 MovementId.generate(),
                 productId,
@@ -219,8 +220,8 @@ class StockMovementPersistenceTest {
                 5,
                 userId,
                 LocalDateTime.of(2026, 5, 2, 10, 0),
-                null
-        );
+                null,
+                OperationId.generate());
 
         adapter.saveAll(List.of(entry, transfer));
         flushAndClear();
