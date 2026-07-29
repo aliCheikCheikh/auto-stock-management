@@ -1,7 +1,10 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
 import com.aliCheikh.stock.application.dto.CategoryView;
+import com.aliCheikh.stock.application.usecase.CreateCategoryUseCase;
+import com.aliCheikh.stock.application.usecase.DeleteCategoryUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
+import com.aliCheikh.stock.application.usecase.RenameCategoryUseCase;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,15 @@ class CategoryControllerTest {
 
     @MockitoBean
     private ListCategoriesUseCase listCategoriesUseCase;
+
+    @MockitoBean
+    private CreateCategoryUseCase createCategoryUseCase;
+
+    @MockitoBean
+    private RenameCategoryUseCase renameCategoryUseCase;
+
+    @MockitoBean
+    private DeleteCategoryUseCase deleteCategoryUseCase;
 
     @MockitoBean
     private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;

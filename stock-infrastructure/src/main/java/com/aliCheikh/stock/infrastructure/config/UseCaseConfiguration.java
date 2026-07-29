@@ -9,7 +9,10 @@ import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
 import com.aliCheikh.stock.application.port.TransactionRunner;
+import com.aliCheikh.stock.application.usecase.CreateCategoryUseCase;
 import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
+import com.aliCheikh.stock.application.usecase.DeleteCategoryUseCase;
+import com.aliCheikh.stock.application.usecase.RenameCategoryUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.application.usecase.GetSessionContextUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
@@ -132,6 +135,31 @@ public class UseCaseConfiguration {
             Clock clock
     ) {
         return new RecordPaymentUseCase(saleRepository, transactionRunner, clock);
+    }
+
+    @Bean
+    public CreateCategoryUseCase createCategoryUseCase(
+            CategoryRepository categoryRepository,
+            TransactionRunner transactionRunner
+    ) {
+        return new CreateCategoryUseCase(categoryRepository, transactionRunner);
+    }
+
+    @Bean
+    public RenameCategoryUseCase renameCategoryUseCase(
+            CategoryRepository categoryRepository,
+            TransactionRunner transactionRunner
+    ) {
+        return new RenameCategoryUseCase(categoryRepository, transactionRunner);
+    }
+
+    @Bean
+    public DeleteCategoryUseCase deleteCategoryUseCase(
+            CategoryRepository categoryRepository,
+            ProductRepository productRepository,
+            TransactionRunner transactionRunner
+    ) {
+        return new DeleteCategoryUseCase(categoryRepository, productRepository, transactionRunner);
     }
 
     /** Horloge système, injectée pour rendre les calculs d'ancienneté testables. */

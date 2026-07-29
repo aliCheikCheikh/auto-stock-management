@@ -1,6 +1,9 @@
 package com.aliCheikh.stock.infrastructure.web.handler;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
+import com.aliCheikh.stock.domain.exception.category.CategoryInUseException;
+import com.aliCheikh.stock.domain.exception.category.CategoryNotFoundException;
+import com.aliCheikh.stock.domain.exception.category.DuplicateCategoryNameException;
 import com.aliCheikh.stock.domain.exception.customer.CustomerNotFoundException;
 import com.aliCheikh.stock.domain.exception.customer.DuplicateCustomerEmailException;
 import com.aliCheikh.stock.domain.exception.customer.DuplicatePhoneNumberException;
@@ -243,6 +246,39 @@ public class ApiExceptionHandler {
                 "Payment exceeds the outstanding balance",
                 exception.getMessage(),
                 "PAYMENT_EXCEEDS_AMOUNT_DUE"
+        );
+    }
+
+    @ExceptionHandler(CategoryNotFoundException.class)
+    public ProblemDetail handleCategoryNotFound(CategoryNotFoundException exception) {
+        return problem(
+                HttpStatus.NOT_FOUND,
+                "category-not-found",
+                "Category not found",
+                exception.getMessage(),
+                "CATEGORY_NOT_FOUND"
+        );
+    }
+
+    @ExceptionHandler(DuplicateCategoryNameException.class)
+    public ProblemDetail handleDuplicateCategoryName(DuplicateCategoryNameException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "category-name-already-used",
+                "Category name already used",
+                exception.getMessage(),
+                "CATEGORY_NAME_ALREADY_USED"
+        );
+    }
+
+    @ExceptionHandler(CategoryInUseException.class)
+    public ProblemDetail handleCategoryInUse(CategoryInUseException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "category-in-use",
+                "Category still holds products",
+                exception.getMessage(),
+                "CATEGORY_IN_USE"
         );
     }
 
