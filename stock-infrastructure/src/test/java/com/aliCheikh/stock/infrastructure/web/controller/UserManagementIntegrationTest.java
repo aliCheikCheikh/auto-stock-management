@@ -179,6 +179,18 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    void business_data_is_private_by_default() throws Exception {
+        mockMvc.perform(get("/api/v1/products"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void health_check_remains_public() throws Exception {
+        mockMvc.perform(get("/api/v1/health"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void owner_deactivates_a_seller_who_can_no_longer_login() throws Exception {
         Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
         UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
