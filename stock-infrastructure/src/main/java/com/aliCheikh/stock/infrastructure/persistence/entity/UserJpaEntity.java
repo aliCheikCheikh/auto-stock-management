@@ -114,16 +114,6 @@ public class UserJpaEntity {
         this.passwordTemporary = false;
     }
 
-    public void deactivate() {
-        this.active = false;
-    }
-
-    // Repose un mot de passe temporaire : l'utilisateur devra le changer au prochain login.
-    public void resetPassword(String newPasswordHash) {
-        this.passwordHash = Objects.requireNonNull(newPasswordHash, "passwordHash cannot be null");
-        this.passwordTemporary = true;
-    }
-
     public UUID getId() {
         return id;
     }

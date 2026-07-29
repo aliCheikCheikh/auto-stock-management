@@ -19,6 +19,14 @@ import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
+import com.aliCheikh.stock.domain.exception.user.DuplicateUserEmailException;
+import com.aliCheikh.stock.domain.exception.user.IncorrectCurrentPasswordException;
+import com.aliCheikh.stock.domain.exception.user.InvalidPasswordException;
+import com.aliCheikh.stock.domain.exception.user.InvalidUserEmailException;
+import com.aliCheikh.stock.domain.exception.user.InvalidUserNameException;
+import com.aliCheikh.stock.domain.exception.user.LastActiveOwnerException;
+import com.aliCheikh.stock.domain.exception.user.OwnerPasswordResetNotAllowedException;
+import com.aliCheikh.stock.domain.exception.user.UserNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -80,7 +88,7 @@ public class ApiExceptionHandler {
                 .map(error -> Map.of(
                         "field", error.getField(),
                         "message", String.valueOf(error.getDefaultMessage()),
-                        "rejectedValue", String.valueOf(error.getRejectedValue())
+                        "rejectedValue", safeRejectedValue(error.getField(), error.getRejectedValue())
                 ))
                 .toList());
 
@@ -99,7 +107,8 @@ public class ApiExceptionHandler {
                 .map(violation -> Map.of(
                         "field", violation.getPropertyPath().toString(),
                         "message", violation.getMessage(),
-                        "rejectedValue", String.valueOf(violation.getInvalidValue())
+                        "rejectedValue", safeRejectedValue(
+                                violation.getPropertyPath().toString(), violation.getInvalidValue())
                 ))
                 .toList());
 
@@ -282,6 +291,72 @@ public class ApiExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ProblemDetail handleUserNotFound(UserNotFoundException exception) {
+        return problem(
+                HttpStatus.NOT_FOUND,
+                "user-not-found",
+                "Utilisateur introuvable",
+                exception.getMessage(),
+                "USER_NOT_FOUND"
+        );
+    }
+
+    @ExceptionHandler(DuplicateUserEmailException.class)
+    public ProblemDetail handleDuplicateUserEmail(DuplicateUserEmailException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "user-email-already-used",
+                "Email déjà utilisé",
+                exception.getMessage(),
+                "USER_EMAIL_ALREADY_USED"
+        );
+    }
+
+    @ExceptionHandler(LastActiveOwnerException.class)
+    public ProblemDetail handleLastActiveOwner(LastActiveOwnerException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "last-active-owner",
+                "Dernier propriétaire actif",
+                exception.getMessage(),
+                "LAST_ACTIVE_OWNER"
+        );
+    }
+
+    @ExceptionHandler(OwnerPasswordResetNotAllowedException.class)
+    public ProblemDetail handleOwnerPasswordReset(OwnerPasswordResetNotAllowedException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "owner-password-reset-forbidden",
+                "Réinitialisation indisponible",
+                exception.getMessage(),
+                "OWNER_PASSWORD_RESET_FORBIDDEN"
+        );
+    }
+
+    @ExceptionHandler(IncorrectCurrentPasswordException.class)
+    public ProblemDetail handleIncorrectCurrentPassword(IncorrectCurrentPasswordException exception) {
+        return problem(
+                HttpStatus.UNAUTHORIZED,
+                "incorrect-current-password",
+                "Mot de passe actuel incorrect",
+                exception.getMessage(),
+                "CURRENT_PASSWORD_INCORRECT"
+        );
+    }
+
+    @ExceptionHandler({InvalidUserEmailException.class, InvalidUserNameException.class, InvalidPasswordException.class})
+    public ProblemDetail handleInvalidUserData(DomainException exception) {
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                "invalid-user-data",
+                "Données utilisateur invalides",
+                exception.getMessage(),
+                "INVALID_USER_DATA"
+        );
+    }
+
     @ExceptionHandler(DomainException.class)
     public ProblemDetail handleDomainException(DomainException exception) {
         return problem(
@@ -317,5 +392,12 @@ public class ApiExceptionHandler {
         problem.setProperty("code", code);
 
         return problem;
+    }
+
+    private String safeRejectedValue(String field, Object rejectedValue) {
+        if (field.toLowerCase().contains("password")) {
+            return "[REDACTED]";
+        }
+        return String.valueOf(rejectedValue);
     }
 }

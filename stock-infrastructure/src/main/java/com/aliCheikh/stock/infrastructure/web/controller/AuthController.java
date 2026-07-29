@@ -1,7 +1,13 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
-import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
-import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
+import com.aliCheikh.stock.application.dto.ChangeOwnPasswordCommand;
+import com.aliCheikh.stock.application.usecase.AuthenticateUserUseCase;
+import com.aliCheikh.stock.application.usecase.ChangeOwnPasswordUseCase;
+import com.aliCheikh.stock.application.usecase.GetUserUseCase;
+import com.aliCheikh.stock.domain.exception.user.UserNotFoundException;
+import com.aliCheikh.stock.domain.model.user.User;
+import com.aliCheikh.stock.domain.model.user.UserEmail;
+import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.infrastructure.security.JwtService;
 import com.aliCheikh.stock.infrastructure.security.RefreshTokenService;
 import com.aliCheikh.stock.infrastructure.web.dto.ChangePasswordRequest;
@@ -14,7 +20,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,19 +34,22 @@ import java.util.UUID;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    private final PasswordEncoder passwordEncoder;
-    private final UserJpaRepository userJpaRepository;
+    private final AuthenticateUserUseCase authenticateUserUseCase;
+    private final GetUserUseCase getUserUseCase;
+    private final ChangeOwnPasswordUseCase changeOwnPasswordUseCase;
     private final JwtService jwtService;
     private final Boolean cookieSecure;
     private final RefreshTokenService refreshTokenService;
 
-    public AuthController(PasswordEncoder passwordEncoder,
-                          UserJpaRepository userJpaRepository,
+    public AuthController(AuthenticateUserUseCase authenticateUserUseCase,
+                          GetUserUseCase getUserUseCase,
+                          ChangeOwnPasswordUseCase changeOwnPasswordUseCase,
                           JwtService jwtService,
                           RefreshTokenService refreshTokenService,
                           @Value("${app.security.cookie.secure:false}") Boolean cookieSecure) {
-        this.passwordEncoder = passwordEncoder;
-        this.userJpaRepository = userJpaRepository;
+        this.authenticateUserUseCase = authenticateUserUseCase;
+        this.getUserUseCase = getUserUseCase;
+        this.changeOwnPasswordUseCase = changeOwnPasswordUseCase;
         this.jwtService = jwtService;
         this.cookieSecure = cookieSecure;
         this.refreshTokenService = refreshTokenService;
@@ -49,27 +57,24 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<LoginResponse> me(Authentication authentication) {
-        UUID userId = (UUID) authentication.getPrincipal();
-        UserJpaEntity user = userJpaRepository.findById(userId).orElse(null);
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        return ResponseEntity.ok(new LoginResponse(
-                user.getId(), user.getEmail(), user.getRole().name(), user.isPasswordTemporary()));
+        User user = findUser((UUID) authentication.getPrincipal());
+        return user == null
+                ? ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+                : ResponseEntity.ok(toLoginResponse(user));
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-        String email = loginRequest.email().trim().toLowerCase();
-        UserJpaEntity user = userJpaRepository.findByEmail(email).orElse(null);
-        if (user == null || !passwordEncoder.matches(loginRequest.password(), user.getPasswordHash()) || !user.isActive()) {
+        User user = authenticateUserUseCase
+                .execute(UserEmail.of(loginRequest.email()), loginRequest.password())
+                .orElse(null);
+        if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
-        String refreshToken = refreshTokenService.issue(user.getId());
-        ResponseCookie cookie = buildAccessCookie(accessToken);
-
+        String accessToken = jwtService.generateAccessToken(user.getId().getValue(), user.getRole().name());
+        String refreshToken = refreshTokenService.issue(user.getId().getValue());
+        ResponseCookie accessCookie = buildAccessCookie(accessToken);
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(cookieSecure)
@@ -78,40 +83,33 @@ public class AuthController {
                 .maxAge(Duration.ofDays(7))
                 .build();
 
-        LoginResponse body = new LoginResponse(user.getId(), user.getEmail(), user.getRole().name(), user.isPasswordTemporary());
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(body);
-
+                .body(toLoginResponse(user));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+    public ResponseEntity<LoginResponse> refresh(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken) {
         if (refreshToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        UserJpaEntity user = refreshTokenService.validate(refreshToken)
-                .flatMap(userJpaRepository::findById)
-                .orElse(null);
-
+        User user = refreshTokenService.validate(refreshToken).map(this::findUser).orElse(null);
         if (user == null || !user.isActive()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
-        ResponseCookie accessCookie = buildAccessCookie(accessToken);
-
+        String accessToken = jwtService.generateAccessToken(user.getId().getValue(), user.getRole().name());
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
-                .build();
-
-
+                .header(HttpHeaders.SET_COOKIE, buildAccessCookie(accessToken).toString())
+                .body(toLoginResponse(user));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+    public ResponseEntity<Void> logout(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken) {
         if (refreshToken != null) {
             refreshTokenService.revoke(refreshToken);
         }
@@ -122,7 +120,6 @@ public class AuthController {
                 .path("/")
                 .maxAge(0)
                 .build();
-
         ResponseCookie clearedRefresh = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
@@ -137,17 +134,32 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest, Authentication authentication) {
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
-        UserJpaEntity user = userJpaRepository.findById(userId).orElse(null);
-        if (user == null || !passwordEncoder.matches(changePasswordRequest.currentPassword(), user.getPasswordHash())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-
-        }
-        user.changePassword(passwordEncoder.encode(changePasswordRequest.newPassword()));
-        userJpaRepository.save(user);
+        changeOwnPasswordUseCase.execute(new ChangeOwnPasswordCommand(
+                UserId.of(userId),
+                request.currentPassword(),
+                request.newPassword()));
         return ResponseEntity.noContent().build();
+    }
 
+    private User findUser(UUID userId) {
+        try {
+            return getUserUseCase.execute(UserId.of(userId));
+        } catch (UserNotFoundException exception) {
+            return null;
+        }
+    }
+
+    private LoginResponse toLoginResponse(User user) {
+        return new LoginResponse(
+                user.getId().getValue(),
+                user.getDisplayName(),
+                user.getEmail().getValue(),
+                user.getRole().name(),
+                user.isPasswordChangeRequired());
     }
 
     private ResponseCookie buildAccessCookie(String accessToken) {
@@ -159,6 +171,4 @@ public class AuthController {
                 .maxAge(Duration.ofMinutes(15))
                 .build();
     }
-
-
 }

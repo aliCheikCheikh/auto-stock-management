@@ -1,5 +1,9 @@
 package com.aliCheikh.stock.infrastructure.security;
 
+import com.aliCheikh.stock.application.usecase.GetUserUseCase;
+import com.aliCheikh.stock.domain.exception.user.UserNotFoundException;
+import com.aliCheikh.stock.domain.model.user.User;
+import com.aliCheikh.stock.domain.model.user.UserId;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,9 +21,11 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String TOKEN_COOKIE_NAME = "access_token";
     private final JwtService jwtService;
+    private final GetUserUseCase getUserUseCase;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, GetUserUseCase getUserUseCase) {
         this.jwtService = jwtService;
+        this.getUserUseCase = getUserUseCase;
     }
 
     @Override
@@ -30,15 +36,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 AuthenticatedUser user = jwtService.parse(token);
+                User currentUser = getUserUseCase.execute(UserId.of(user.userId()));
+                if (!currentUser.isActive()) {
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
-                var authority = new SimpleGrantedAuthority("ROLE_" + user.role());
+                var authority = new SimpleGrantedAuthority("ROLE_" + currentUser.getRole().name());
                 var authentication = new UsernamePasswordAuthenticationToken(user.userId(),
                         null,
                         List.of(authority));
+                authentication.setDetails(new UserAccessState(currentUser.isPasswordChangeRequired()));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-
-
-            } catch (JwtException e) {
+            } catch (JwtException | UserNotFoundException exception) {
                 SecurityContextHolder.clearContext();
             }
         }

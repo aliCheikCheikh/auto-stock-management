@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
 import com.aliCheikh.stock.domain.model.user.UserRole;
+import com.jayway.jsonpath.JsonPath;
 import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.repository.RefreshTokenJpaRepository;
 import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
@@ -28,8 +29,10 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -43,8 +46,7 @@ class UserManagementIntegrationTest {
     private static final String SELLER_EMAIL = "seller@test.local";
     private static final String SELLER_PASSWORD = "SellerPass123!";
     private static final String NEW_SELLER_EMAIL = "new-seller@test.local";
-    private static final String NEW_SELLER_TEMP_PASSWORD = "TempSeller123!";
-    private static final String RESET_TEMP_PASSWORD = "ResetTemp123!";
+    private static final String NEW_SELLER_NAME = "Amina Mahamat";
 
     @Container
     static final PostgreSQLContainer<?> postgres =
@@ -84,22 +86,27 @@ class UserManagementIntegrationTest {
     void owner_creates_a_seller_who_can_login_but_must_change_password() throws Exception {
         Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
 
-        mockMvc.perform(post("/api/v1/users")
+        MvcResult creation = mockMvc.perform(post("/api/v1/users")
                         .cookie(ownerCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"%s","temporaryPassword":"%s"}
-                                """.formatted(NEW_SELLER_EMAIL, NEW_SELLER_TEMP_PASSWORD)))
+                                {"displayName":"%s","email":"%s"}
+                                """.formatted(NEW_SELLER_NAME, NEW_SELLER_EMAIL)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").value(NEW_SELLER_EMAIL))
-                .andExpect(jsonPath("$.role").value("SELLER"));
+                .andExpect(jsonPath("$.user.email").value(NEW_SELLER_EMAIL))
+                .andExpect(jsonPath("$.user.displayName").value(NEW_SELLER_NAME))
+                .andExpect(jsonPath("$.user.role").value("SELLER"))
+                .andReturn();
+
+        String temporaryPassword = JsonPath.read(
+                creation.getResponse().getContentAsString(), "$.temporaryPassword");
 
         // Le nouveau vendeur peut se connecter, mais son mot de passe est temporaire.
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"email":"%s","password":"%s"}
-                                """.formatted(NEW_SELLER_EMAIL, NEW_SELLER_TEMP_PASSWORD)))
+                                """.formatted(NEW_SELLER_EMAIL, temporaryPassword)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passwordTemporary").value(true));
     }
@@ -112,8 +119,8 @@ class UserManagementIntegrationTest {
                         .cookie(sellerCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"%s","temporaryPassword":"%s"}
-                                """.formatted(NEW_SELLER_EMAIL, NEW_SELLER_TEMP_PASSWORD)))
+                                {"displayName":"%s","email":"%s"}
+                                """.formatted(NEW_SELLER_NAME, NEW_SELLER_EMAIL)))
                 .andExpect(status().isForbidden());
     }
 
@@ -125,20 +132,20 @@ class UserManagementIntegrationTest {
                         .cookie(ownerCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"%s","temporaryPassword":"%s"}
-                                """.formatted(SELLER_EMAIL, NEW_SELLER_TEMP_PASSWORD)))
+                                {"displayName":"%s","email":"%s"}
+                                """.formatted(NEW_SELLER_NAME, SELLER_EMAIL)))
                 .andExpect(status().isConflict());
     }
 
     @Test
-    void creating_a_user_with_a_too_short_password_is_bad_request() throws Exception {
+    void creating_a_user_without_a_display_name_is_bad_request() throws Exception {
         Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
 
         mockMvc.perform(post("/api/v1/users")
                         .cookie(ownerCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"%s","temporaryPassword":"short"}
+                                {"displayName":" ","email":"%s"}
                                 """.formatted(NEW_SELLER_EMAIL)))
                 .andExpect(status().isBadRequest());
     }
@@ -146,10 +153,10 @@ class UserManagementIntegrationTest {
     @Test
     void creating_a_user_without_authentication_is_unauthorized() throws Exception {
         mockMvc.perform(post("/api/v1/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email":"%s","temporaryPassword":"%s"}
-                                """.formatted(NEW_SELLER_EMAIL, NEW_SELLER_TEMP_PASSWORD)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                                {"displayName":"%s","email":"%s"}
+                                """.formatted(NEW_SELLER_NAME, NEW_SELLER_EMAIL)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -161,6 +168,7 @@ class UserManagementIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[*].email", hasItems(OWNER_EMAIL, SELLER_EMAIL)))
+                .andExpect(jsonPath("$[0].displayName").exists())
                 .andExpect(jsonPath("$[0].passwordHash").doesNotExist());
     }
 
@@ -207,6 +215,42 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    void deactivation_invalidates_an_access_cookie_immediately() throws Exception {
+        Cookie sellerCookie = login(SELLER_EMAIL, SELLER_PASSWORD);
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+        UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(delete("/api/v1/users/{id}", sellerId).cookie(ownerCookie))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/categories").cookie(sellerCookie))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void owner_can_rename_and_reactivate_a_seller() throws Exception {
+        Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
+        UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
+
+        mockMvc.perform(patch("/api/v1/users/{id}/display-name", sellerId)
+                        .cookie(ownerCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"displayName":"Moussa Saleh"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Moussa Saleh"));
+
+        mockMvc.perform(delete("/api/v1/users/{id}", sellerId).cookie(ownerCookie))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/users/{id}/reactivate", sellerId).cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.displayName").value("Moussa Saleh"));
+    }
+
+    @Test
     void deactivating_the_owner_is_rejected() throws Exception {
         Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
         UUID ownerId = userRepository.findByEmail(OWNER_EMAIL).orElseThrow().getId();
@@ -237,13 +281,14 @@ class UserManagementIntegrationTest {
         Cookie ownerCookie = login(OWNER_EMAIL, OWNER_PASSWORD);
         UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
 
-        mockMvc.perform(post("/api/v1/users/{id}/reset-password", sellerId)
-                        .cookie(ownerCookie)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"temporaryPassword":"%s"}
-                                """.formatted(RESET_TEMP_PASSWORD)))
-                .andExpect(status().isNoContent());
+        MvcResult reset = mockMvc.perform(post("/api/v1/users/{id}/reset-password", sellerId)
+                        .cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.temporaryPassword").isNotEmpty())
+                .andReturn();
+        String resetTemporaryPassword = JsonPath.read(
+                reset.getResponse().getContentAsString(), "$.temporaryPassword");
 
         // L'ancien mot de passe ne marche plus.
         mockMvc.perform(post("/api/v1/auth/login")
@@ -258,7 +303,7 @@ class UserManagementIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"email":"%s","password":"%s"}
-                                """.formatted(SELLER_EMAIL, RESET_TEMP_PASSWORD)))
+                                """.formatted(SELLER_EMAIL, resetTemporaryPassword)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.passwordTemporary").value(true));
     }
@@ -269,11 +314,7 @@ class UserManagementIntegrationTest {
         UUID ownerId = userRepository.findByEmail(OWNER_EMAIL).orElseThrow().getId();
 
         mockMvc.perform(post("/api/v1/users/{id}/reset-password", ownerId)
-                        .cookie(ownerCookie)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"temporaryPassword":"%s"}
-                                """.formatted(RESET_TEMP_PASSWORD)))
+                        .cookie(ownerCookie))
                 .andExpect(status().isConflict());
     }
 
@@ -283,11 +324,7 @@ class UserManagementIntegrationTest {
         UUID sellerId = userRepository.findByEmail(SELLER_EMAIL).orElseThrow().getId();
 
         mockMvc.perform(post("/api/v1/users/{id}/reset-password", sellerId)
-                        .cookie(sellerCookie)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"temporaryPassword":"%s"}
-                                """.formatted(RESET_TEMP_PASSWORD)))
+                        .cookie(sellerCookie))
                 .andExpect(status().isForbidden());
     }
 
