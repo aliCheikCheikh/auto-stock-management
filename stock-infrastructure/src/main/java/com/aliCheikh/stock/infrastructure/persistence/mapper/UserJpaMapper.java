@@ -16,11 +16,28 @@ public class UserJpaMapper {
 
         return new User(
                 UserId.of(entity.getId()),
-                entity.getUsername(),
+                entity.getDisplayName(),
                 UserEmail.of(entity.getEmail()),
                 entity.getRole(),
                 entity.isActive(),
                 entity.isPasswordTemporary()
         );
+    }
+
+    public UserJpaEntity toNewEntity(User user) {
+        Objects.requireNonNull(user, "user cannot be null");
+        return UserJpaEntity.newAccount(
+                user.getId().getValue(),
+                user.getDisplayName(),
+                user.getEmail().getValue(),
+                user.getRole(),
+                user.isActive(),
+                user.isPasswordChangeRequired());
+    }
+
+    public void updateEntity(User user, UserJpaEntity entity) {
+        Objects.requireNonNull(user, "user cannot be null");
+        Objects.requireNonNull(entity, "entity cannot be null");
+        entity.applyProfile(user.getDisplayName(), user.isActive(), user.isPasswordChangeRequired());
     }
 }
