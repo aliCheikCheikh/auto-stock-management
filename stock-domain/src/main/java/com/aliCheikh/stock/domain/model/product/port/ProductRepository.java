@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.domain.model.product.port;
 
+import com.aliCheikh.stock.domain.model.category.CategoryId;
 import com.aliCheikh.stock.domain.model.product.Product;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 
@@ -22,4 +23,12 @@ public interface ProductRepository {
     long countActive();
 
     boolean existsByName(String name);
+
+    /**
+     * Indique si au moins un produit est rangé dans cette catégorie.
+     *
+     * <p>La question porte sur les produits, elle appartient donc à leur port : une catégorie ne
+     * connaît pas ce qui la référence.</p>
+     */
+    boolean existsByCategoryId(CategoryId categoryId);
 }

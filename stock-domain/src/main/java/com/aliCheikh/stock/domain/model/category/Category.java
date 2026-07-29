@@ -4,25 +4,42 @@ import com.aliCheikh.stock.domain.exception.category.InvalidCategoryNameExceptio
 
 import java.util.Objects;
 
+/**
+ * Famille de pièces sous laquelle le magasin range ses produits.
+ *
+ * <p>Le nom est normalisé (espaces de bordure retirés) dès la construction : sans forme canonique,
+ * « Freinage » et « Freinage  » cohabiteraient et l'unicité ne voudrait plus rien dire.</p>
+ */
 public class Category {
+
     private final CategoryId categoryId;
     private String name;
 
     public Category(CategoryId categoryId, String name) {
         this.categoryId = Objects.requireNonNull(categoryId, "categoryId cannot be null");
-        this.name = validateName(name); // On utilise la méthode de validation
+        this.name = requireUsableName(name);
     }
 
+    /** Nouvelle catégorie créée par le patron. */
+    public static Category create(CategoryId categoryId, String name) {
+        return new Category(categoryId, name);
+    }
+
+    /**
+     * Renomme la catégorie.
+     *
+     * <p>Les produits la référencent par identité, jamais par son nom : un renommage ne rompt donc
+     * aucune association.</p>
+     */
     public void rename(String newName) {
-        this.name = validateName(newName); // Le même invariant est protégé ici !
+        this.name = requireUsableName(newName);
     }
 
-    // Le gardien de l'invariant centralisé
-    private String validateName(String nameToValidate) {
-        if (nameToValidate == null || nameToValidate.isBlank()) {
-            throw new InvalidCategoryNameException(nameToValidate);
+    private static String requireUsableName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new InvalidCategoryNameException(name);
         }
-        return nameToValidate;
+        return name.trim();
     }
 
     public CategoryId getCategoryId() {
@@ -41,13 +58,17 @@ public class Category {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
         Category category = (Category) o;
         return categoryId.equals(category.categoryId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(categoryId);
+        return categoryId.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }
