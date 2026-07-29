@@ -24,6 +24,9 @@ public class StockMovement {
     private final LocalDateTime occurredAt;
     private final SaleId saleId;
 
+    /** Opération métier à l'origine de ce mouvement : réception, transfert ou vente. */
+    private final OperationId operationId;
+
 
     private StockMovement(MovementId movementId,
                           ProductId productId,
@@ -33,7 +36,8 @@ public class StockMovement {
                           int quantity,
                           UserId performedBy,
                           LocalDateTime occurredAt,
-                          SaleId saleId) {
+                          SaleId saleId,
+            OperationId operationId) {
         this.movementId = movementId;
         this.productId = productId;
         this.sourceLocationId = sourceLocationId;
@@ -43,10 +47,11 @@ public class StockMovement {
         this.performedBy = performedBy;
         this.occurredAt = occurredAt;
         this.saleId = saleId;
+        this.operationId = Objects.requireNonNull(operationId, "operationId cannot be null");
 
     }
 
-    public static StockMovement createEntry(ProductId productId, LocationId destinationLocationId, int quantity, UserId userId) {
+    public static StockMovement createEntry(ProductId productId, LocationId destinationLocationId, int quantity, UserId userId, OperationId operationId) {
 
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
@@ -62,12 +67,13 @@ public class StockMovement {
                 MovementType.ENTRY,
                 quantity, userId,
                 LocalDateTime.now(),
-                null);
+                null,
+                operationId);
 
     }
 
 
-    public static StockMovement createExit(ProductId productId, LocationId sourceLocationId, int quantity, UserId userId, SaleId saleId) {
+    public static StockMovement createExit(ProductId productId, LocationId sourceLocationId, int quantity, UserId userId, SaleId saleId, OperationId operationId) {
 
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
@@ -86,11 +92,12 @@ public class StockMovement {
                 quantity,
                 userId,
                 LocalDateTime.now(),
-                saleId);
+                saleId,
+                operationId);
 
     }
 
-    public static StockMovement createTransfer(ProductId productId, LocationId sourceLocationId, LocationId destinationLocationId, int quantity, UserId userId) {
+    public static StockMovement createTransfer(ProductId productId, LocationId sourceLocationId, LocationId destinationLocationId, int quantity, UserId userId, OperationId operationId) {
 
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
@@ -117,7 +124,8 @@ public class StockMovement {
                 quantity,
                 userId,
                 LocalDateTime.now(),
-                null);
+                null,
+                operationId);
 
     }
 
@@ -136,7 +144,8 @@ public class StockMovement {
             int quantity,
             UserId performedBy,
             LocalDateTime occurredAt,
-            SaleId saleId
+            SaleId saleId,
+            OperationId operationId
     ) {
         Objects.requireNonNull(movementId, "movementId cannot be null");
         Objects.requireNonNull(productId, "productId cannot be null");
@@ -156,7 +165,8 @@ public class StockMovement {
                 quantity,
                 performedBy,
                 occurredAt,
-                saleId
+                saleId,
+                operationId
         );
     }
 
@@ -271,6 +281,11 @@ public class StockMovement {
 
     public Optional<SaleId> getSaleId() {
         return Optional.ofNullable(saleId);
+    }
+
+    /** L'opération à l'origine de ce mouvement. Tous les mouvements d'une même opération la partagent. */
+    public OperationId getOperationId() {
+        return operationId;
     }
 
     @Override

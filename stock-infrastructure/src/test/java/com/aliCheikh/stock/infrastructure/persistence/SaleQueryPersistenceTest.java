@@ -14,6 +14,7 @@ import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.domain.model.user.UserRole;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleJpaRepositoryAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleQueryJpaAdapter;
+import com.aliCheikh.stock.infrastructure.persistence.adapter.UserDisplayNameResolver;
 import com.aliCheikh.stock.infrastructure.persistence.entity.CategoryJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.ProductJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
@@ -48,7 +49,10 @@ import static org.assertj.core.api.Assertions.within;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({SaleJpaRepositoryAdapter.class,
         SaleJpaMapper.class,
-        SaleQueryJpaAdapter.class})
+        SaleQueryJpaAdapter.class,
+        // L'adapter de lecture nomme désormais le vendeur : sans ce
+        // collaborateur, le contexte de la tranche ne démarre pas.
+        UserDisplayNameResolver.class})
 public class SaleQueryPersistenceTest {
 
     @Container

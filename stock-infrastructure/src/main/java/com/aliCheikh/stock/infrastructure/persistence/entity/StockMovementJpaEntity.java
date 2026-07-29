@@ -45,6 +45,10 @@ public class StockMovementJpaEntity {
     @Column(name = "sale_id")
     private UUID saleId;
 
+    /** Opération métier à l'origine du mouvement : sert à regrouper l'historique. */
+    @Column(name = "operation_id", nullable = false)
+    private UUID operationId;
+
     protected StockMovementJpaEntity() {
     }
 
@@ -57,7 +61,8 @@ public class StockMovementJpaEntity {
             int quantity,
             UUID performedBy,
             LocalDateTime occurredAt,
-            UUID saleId
+            UUID saleId,
+            UUID operationId
     ) {
         this.id = Objects.requireNonNull(id, "id cannot be null");
         this.productId = Objects.requireNonNull(productId, "productId cannot be null");
@@ -73,6 +78,7 @@ public class StockMovementJpaEntity {
         this.performedBy = Objects.requireNonNull(performedBy, "performedBy cannot be null");
         this.occurredAt = Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         this.saleId = saleId;
+        this.operationId = Objects.requireNonNull(operationId, "operationId cannot be null");
     }
 
     public static StockMovementJpaEntity of(
@@ -84,7 +90,8 @@ public class StockMovementJpaEntity {
             int quantity,
             UUID performedBy,
             LocalDateTime occurredAt,
-            UUID saleId
+            UUID saleId,
+            UUID operationId
     ) {
         return new StockMovementJpaEntity(
                 id,
@@ -95,7 +102,8 @@ public class StockMovementJpaEntity {
                 quantity,
                 performedBy,
                 occurredAt,
-                saleId);
+                saleId,
+                operationId);
     }
 
     public UUID getId() {
@@ -128,6 +136,10 @@ public class StockMovementJpaEntity {
 
     public LocalDateTime getOccurredAt() {
         return occurredAt;
+    }
+
+    public UUID getOperationId() {
+        return operationId;
     }
 
     public UUID getSaleId() {

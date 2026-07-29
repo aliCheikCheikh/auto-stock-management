@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.application.usecase.ListStockMovementsUseCase;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
@@ -74,9 +75,10 @@ class StockMovementControllerTest {
                 MovementType.TRANSFER,
                 5,
                 UserId.of(userId),
+                "Ahmat",
                 executedAt,
-                null
-        );
+                null,
+                OperationId.generate());
 
         given(listStockMovementsUseCase.execute(any(ListStockMovementsQuery.class)))
                 .willReturn(new PageResult<>(
@@ -97,6 +99,9 @@ class StockMovementControllerTest {
                 .andExpect(jsonPath("$.content[0].locationId").value(sourceLocationId.toString()))
                 .andExpect(jsonPath("$.content[0].destinationLocationId").value(destinationLocationId.toString()))
                 .andExpect(jsonPath("$.content[0].type").value("TRANSFER"))
+                // L'utilisateur attend un nom, pas un identifiant : « c'est Ahmat qui a fait ça ».
+                .andExpect(jsonPath("$.content[0].executedByName").value("Ahmat"))
+                .andExpect(jsonPath("$.content[0].operationId").isNotEmpty())
                 .andExpect(jsonPath("$.content[0].quantity").value(5))
                 .andExpect(jsonPath("$.content[0].executedBy").value(userId.toString()))
                 .andExpect(jsonPath("$.content[0].executedAt").value("2026-05-15T12:00:00"))

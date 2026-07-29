@@ -66,6 +66,8 @@ public final class SaleWebMapper {
         return new SaleResponse(
                 result.saleId().getValue(),
                 result.sellerId().getValue(),
+                // La création renvoie l'auteur de l'appel : le front connaît déjà son propre nom.
+                null,
                 result.lines().stream()
                         .map(SaleWebMapper::toSaleLineResponse)
                         .toList(),
@@ -81,6 +83,7 @@ public final class SaleWebMapper {
         return new SaleResponse(
                 sale.getSaleId().getValue(),
                 sale.getSoldBy().getValue(),
+                null,
                 sale.getLines().stream()
                         .map(SaleWebMapper::toSaleLineResponse)
                         .toList(),
@@ -100,6 +103,7 @@ public final class SaleWebMapper {
         return new SaleResponse(
                 saleView.saleId().getValue(),
                 saleView.sellerId().getValue(),
+                saleView.sellerName(),
                 saleView.lines().stream()
                         .map(SaleWebMapper::toSaleLineResponse)
                         .toList(),

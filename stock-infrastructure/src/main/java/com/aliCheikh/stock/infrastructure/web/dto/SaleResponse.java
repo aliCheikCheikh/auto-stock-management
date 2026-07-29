@@ -12,6 +12,7 @@ import java.util.UUID;
  */
 public record SaleResponse(UUID saleId,
                            UUID sellerId,
+                           String sellerName,
                            List<SaleLineResponse> lines,
                            MoneyResponse totalAmount,
                            LocalDateTime createdAt,

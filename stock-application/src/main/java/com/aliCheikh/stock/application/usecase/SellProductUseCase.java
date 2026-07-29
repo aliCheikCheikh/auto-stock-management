@@ -12,6 +12,7 @@ import com.aliCheikh.stock.domain.exception.customer.CustomerNotFoundException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.model.customer.port.CustomerRepository;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.Product;
@@ -119,6 +120,10 @@ public class SellProductUseCase {
         List<DomainEvent> eventsToPublish = new ArrayList<>();
         Set<ProductId> alertedProducts = new LinkedHashSet<>();
 
+        // Une vente peut puiser dans plusieurs emplacements et produire autant de sorties :
+        // toutes appartiennent à la même opération.
+        OperationId operationId = OperationId.generate();
+
         for (PreparedLine preparedLine : preparedLines) {
             Product product = preparedLine.product();
 
@@ -133,7 +138,8 @@ public class SellProductUseCase {
                         location.getLocationId(),
                         allocation.getQuantity(),
                         command.sellerId(),
-                        sale.getSaleId()
+                        sale.getSaleId(),
+                        operationId
                 ));
             }
 

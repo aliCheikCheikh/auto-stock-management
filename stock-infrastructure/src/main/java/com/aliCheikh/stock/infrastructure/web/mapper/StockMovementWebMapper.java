@@ -66,8 +66,10 @@ public final class StockMovementWebMapper {
                 movement.type(),
                 movement.quantity(),
                 movement.executedBy().getValue(),
+                movement.executedByName(),
                 movement.executedAt(),
-                movement.saleId() == null ? null : movement.saleId().getValue()
+                movement.saleId() == null ? null : movement.saleId().getValue(),
+                movement.operationId().getValue()
         );
     }
 

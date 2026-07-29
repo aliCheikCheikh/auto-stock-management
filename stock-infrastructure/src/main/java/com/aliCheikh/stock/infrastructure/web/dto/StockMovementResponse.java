@@ -13,7 +13,9 @@ public record StockMovementResponse(
         MovementType type,
         int quantity,
         UUID executedBy,
+        String executedByName,
         LocalDateTime executedAt,
-        UUID saleId
+        UUID saleId,
+        UUID operationId
 ) {
 }

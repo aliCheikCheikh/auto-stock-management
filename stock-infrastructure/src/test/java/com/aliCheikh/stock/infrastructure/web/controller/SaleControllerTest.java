@@ -355,6 +355,7 @@ class SaleControllerTest {
     void should_return_sale_page() throws Exception {
         SaleView saleView = new SaleView(SaleId.of(saleId),
                 UserId.of(userId),
+                "Ahmat",
                 List.of(singleLine),
                 unitPrice.multiply(4),
                 createdAt);

@@ -10,6 +10,7 @@ import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferReason;
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.movement.port.StockMovementRepository;
 import com.aliCheikh.stock.domain.model.product.Product;
@@ -113,7 +114,10 @@ public class TransferStockUseCase {
                 command.sourceLocationId(),
                 command.destinationLocationId(),
                 command.quantity(),
-                command.userId()
+                command.userId(),
+                // Un transfert ne produit qu'un mouvement, mais il reste une opération à part
+                // entière : le marquer garde l'historique homogène.
+                OperationId.generate()
         );
 
         stockMovementRepository.save(transferMovement);

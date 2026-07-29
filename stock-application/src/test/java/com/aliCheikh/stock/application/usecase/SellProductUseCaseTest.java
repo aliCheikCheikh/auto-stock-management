@@ -211,6 +211,11 @@ class SellProductUseCaseTest {
         assertThat(movements).anySatisfy(movement ->
                 assertExitMovement(movement, productId, backstock.getLocationId(), 1, savedSale));
 
+        // Une vente puisant dans deux emplacements reste une seule opération : sinon l'historique
+        // afficherait deux ventes distinctes pour un seul passage en caisse.
+        assertThat(movements).extracting(StockMovement::getOperationId)
+                .containsOnly(movements.get(0).getOperationId());
+
         List<DomainEvent> events = capturePublishedEvents();
         ShopFloorLow shopFloorLow = findEvent(events, ShopFloorLow.class);
         assertThat(shopFloorLow.productId()).isEqualTo(productId);

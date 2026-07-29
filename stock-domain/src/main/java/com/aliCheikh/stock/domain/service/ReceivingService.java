@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.domain.service;
 
 import com.aliCheikh.stock.domain.exception.stock.StorageNotFoundException;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.movement.StockMovement;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
@@ -21,6 +22,10 @@ public class ReceivingService {
     public List<StockMovement> receive(List<ReceivingEntry> entries, UserId userId) {
         List<StockMovement> generatedMovements = new ArrayList<>();
 
+        // Une réception est une opération unique, même lorsqu'elle porte sur plusieurs produits :
+        // tous ses mouvements partagent la même identité pour être regroupés à la lecture.
+        OperationId operationId = OperationId.generate();
+
         // 1. For each ReceivingEntry:
         for (ReceivingEntry entry : entries) {
 
@@ -38,7 +43,8 @@ public class ReceivingService {
                     entry.productId(),
                     entry.locationId(),
                     entry.quantity(),
-                    userId
+                    userId,
+                    operationId
             );
 
             generatedMovements.add(movement);
