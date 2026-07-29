@@ -96,7 +96,10 @@ class MovementOperationMigrationTest {
                     INSERT INTO app_user (id, username, display_name, role)
                     VALUES ('%s', 'vendeur.historique', 'Ahmat', 'SELLER')
                     """.formatted(sellerId));
-            statement.execute("INSERT INTO category (id, name) VALUES ('%s', 'Freinage')".formatted(categoryId));
+            // V7 sème déjà les familles par défaut, dont « Freinage » : le nom doit être
+            // propre au test, sinon l'insertion viole l'unicité posée par V14.
+            statement.execute("INSERT INTO category (id, name) VALUES ('%s', 'Test-%s')"
+                    .formatted(categoryId, categoryId));
             statement.execute("""
                     INSERT INTO product (id, name, reference, category_id, minimum_global_threshold,
                                          unit_price_amount, unit_price_currency, active)
