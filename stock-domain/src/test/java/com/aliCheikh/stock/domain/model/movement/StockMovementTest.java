@@ -1,5 +1,7 @@
 package com.aliCheikh.stock.domain.model.movement;
 
+import com.aliCheikh.stock.domain.model.movement.OperationId;
+
 import com.aliCheikh.stock.domain.exception.movement.InvalidMovementException;
 import com.aliCheikh.stock.domain.exception.movement.InvalidQuantityMovementException;
 import com.aliCheikh.stock.domain.exception.movement.MovementErrorReason;
@@ -22,7 +24,7 @@ public class StockMovementTest {
         int quantity = 10;
         //WHEN & THEN
         assertThatThrownBy(() -> {
-            StockMovement.createEntry(productId, destinationId, quantity, userdId);
+            StockMovement.createEntry(productId, destinationId, quantity, userdId, OperationId.generate());
         }).isInstanceOf(InvalidMovementException.class).extracting(ex -> ((InvalidMovementException) ex).getMovementErrorReason()).isEqualTo(MovementErrorReason.ENTRY_MISSING_DESTINATION);
     }
 
@@ -34,7 +36,7 @@ public class StockMovementTest {
         UserId userId = UserId.generate();
         SaleId saleId = SaleId.generate();
         assertThatThrownBy(() -> {
-            StockMovement.createExit(productId, sourceId, quantity, userId, saleId);
+            StockMovement.createExit(productId, sourceId, quantity, userId, saleId, OperationId.generate());
         }).isInstanceOf(InvalidMovementException.class).extracting(ex -> ((InvalidMovementException) ex).getMovementErrorReason()).isEqualTo(MovementErrorReason.EXIT_MISSING_SOURCE);
     }
 
@@ -48,7 +50,7 @@ public class StockMovementTest {
         int quantity = 10;
         UserId userId = UserId.generate();
         assertThatThrownBy(() -> {
-            StockMovement.createTransfer(productId, sourceId, destinationId, quantity, userId);
+            StockMovement.createTransfer(productId, sourceId, destinationId, quantity, userId, OperationId.generate());
         }).isInstanceOf((InvalidMovementException.class)).extracting(ex -> ((InvalidMovementException) ex).getMovementErrorReason()).isEqualTo(MovementErrorReason.TRANSFER_SAME_SOURCE_DESTINATION);
 
     }
@@ -60,7 +62,7 @@ public class StockMovementTest {
         int invalidQuantity = -5;
         UserId userId = UserId.generate();
         assertThatThrownBy(() -> {
-            StockMovement.createEntry(productId, destinationId, invalidQuantity, userId);
+            StockMovement.createEntry(productId, destinationId, invalidQuantity, userId, OperationId.generate());
         }).isInstanceOf(InvalidQuantityMovementException.class).hasMessageContaining("must be strictly positive").extracting(ex -> ((InvalidQuantityMovementException) ex).getFaultQuantity()).isEqualTo(invalidQuantity);
 
     }
