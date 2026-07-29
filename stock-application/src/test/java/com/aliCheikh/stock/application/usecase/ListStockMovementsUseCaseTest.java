@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
@@ -52,9 +53,10 @@ class ListStockMovementsUseCaseTest {
                 MovementType.TRANSFER,
                 5,
                 UserId.generate(),
+                "Ahmat",
                 LocalDateTime.of(2026, 5, 15, 12, 0),
-                null
-        );
+                null,
+                OperationId.generate());
         PageResult<StockMovementView> expectedPage = new PageResult<>(
                 List.of(movement),
                 0,

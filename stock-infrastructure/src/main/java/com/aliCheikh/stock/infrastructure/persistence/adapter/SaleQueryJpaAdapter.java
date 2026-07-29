@@ -22,17 +22,25 @@ import org.springframework.stereotype.Repository;
 import java.util.Comparator;
 import java.util.Currency;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 @Repository
 public class SaleQueryJpaAdapter implements ListSalesQueryPort {
 
     private final SaleQueryJpaRepository saleQueryJpaRepository;
+    private final UserDisplayNameResolver userDisplayNameResolver;
 
-    public SaleQueryJpaAdapter(SaleQueryJpaRepository saleQueryJpaRepository) {
+    public SaleQueryJpaAdapter(SaleQueryJpaRepository saleQueryJpaRepository,
+                               UserDisplayNameResolver userDisplayNameResolver) {
         this.saleQueryJpaRepository = Objects.requireNonNull(
                 saleQueryJpaRepository,
                 "saleQueryJpaRepository cannot be null"
+        );
+        this.userDisplayNameResolver = Objects.requireNonNull(
+                userDisplayNameResolver,
+                "userDisplayNameResolver cannot be null"
         );
     }
 
@@ -46,9 +54,13 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
                 PageRequest.of(query.page(), query.size(), toSort(query.sort()))
         );
 
+        // Un seul appel pour toute la page : résoudre le vendeur ligne par ligne serait un N+1.
+        Map<UUID, String> sellerNames = userDisplayNameResolver.resolve(
+                page.getContent().stream().map(SaleJpaEntity::getSoldBy).toList());
+
         return new PageResult<>(
                 page.getContent().stream()
-                        .map(this::toView)
+                        .map(entity -> toView(entity, sellerNames))
                         .toList(),
                 query.page(),
                 query.size(),
@@ -107,10 +119,11 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
         };
     }
 
-    private SaleView toView(SaleJpaEntity entity) {
+    private SaleView toView(SaleJpaEntity entity, Map<UUID, String> sellerNames) {
         return new SaleView(
                 SaleId.of(entity.getId()),
                 UserId.of(entity.getSoldBy()),
+                sellerNames.get(entity.getSoldBy()),
                 entity.getSaleLines().stream()
                         .sorted(Comparator.comparingInt(SaleLineJpaEntity::getLineNumber))
                         .map(this::toLineView)

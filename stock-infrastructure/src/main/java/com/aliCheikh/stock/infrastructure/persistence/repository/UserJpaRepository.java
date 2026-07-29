@@ -21,4 +21,18 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select user from UserJpaEntity user where user.role = 'OWNER' and user.active = true")
     List<UserJpaEntity> findActiveOwnersForUpdate();
+
+    /**
+     * Noms affichables d'un lot d'utilisateurs.
+     *
+     * <p>Résoudre l'auteur ligne par ligne dans un historique produirait un N+1 : on récupère donc
+     * tous les noms d'une page en une seule requête, et seulement les deux colonnes utiles.</p>
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT u.id AS id, u.displayName AS displayName
+            FROM UserJpaEntity u
+            WHERE u.id IN :ids
+            """)
+    java.util.List<com.aliCheikh.stock.infrastructure.persistence.projection.UserDisplayNameProjection>
+            findDisplayNames(@org.springframework.data.repository.query.Param("ids") java.util.Collection<java.util.UUID> ids);
 }

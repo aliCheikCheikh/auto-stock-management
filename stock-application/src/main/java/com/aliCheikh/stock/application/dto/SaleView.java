@@ -11,6 +11,8 @@ import java.util.Objects;
 
 public record SaleView(SaleId saleId,
                        UserId sellerId,
+                       /** Nom affichable du vendeur, pour que l'historique désigne une personne. */
+                       String sellerName,
                        List<SaleLineDto> lines,
                        Money totalAmount,
                        LocalDateTime createdAt) {

@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -27,11 +29,17 @@ import java.util.UUID;
 public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
 
     private final StockMovementJpaRepository stockMovementJpaRepository;
+    private final UserDisplayNameResolver userDisplayNameResolver;
 
-    public StockMovementQueryJpaAdapter(StockMovementJpaRepository stockMovementJpaRepository) {
+    public StockMovementQueryJpaAdapter(StockMovementJpaRepository stockMovementJpaRepository,
+                                        UserDisplayNameResolver userDisplayNameResolver) {
         this.stockMovementJpaRepository = Objects.requireNonNull(
                 stockMovementJpaRepository,
                 "stockMovementJpaRepository cannot be null"
+        );
+        this.userDisplayNameResolver = Objects.requireNonNull(
+                userDisplayNameResolver,
+                "userDisplayNameResolver cannot be null"
         );
     }
 
@@ -44,9 +52,14 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
                 PageRequest.of(query.page(), query.size(), toSort(query.sort()))
         );
 
+        // Les noms des auteurs sont résolus en une requête pour toute la page : les chercher
+        // ligne par ligne produirait un N+1.
+        Map<UUID, String> authorNames = userDisplayNameResolver.resolve(
+                page.getContent().stream().map(StockMovementJpaEntity::getPerformedBy).toList());
+
         return new PageResult<>(
                 page.getContent().stream()
-                        .map(this::toView)
+                        .map(entity -> toView(entity, authorNames))
                         .toList(),
                 query.page(),
                 query.size(),
@@ -123,7 +136,7 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
         };
     }
 
-    private StockMovementView toView(StockMovementJpaEntity entity) {
+    private StockMovementView toView(StockMovementJpaEntity entity, Map<UUID, String> authorNames) {
         UUID locationId = entity.getSourceLocationId() != null
                 ? entity.getSourceLocationId()
                 : entity.getDestinationLocationId();
@@ -138,8 +151,10 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
                 entity.getMovementType(),
                 entity.getQuantity(),
                 UserId.of(entity.getPerformedBy()),
+                authorNames.get(entity.getPerformedBy()),
                 entity.getOccurredAt(),
-                entity.getSaleId() == null ? null : SaleId.of(entity.getSaleId())
+                entity.getSaleId() == null ? null : SaleId.of(entity.getSaleId()),
+                OperationId.of(entity.getOperationId())
         );
     }
 }

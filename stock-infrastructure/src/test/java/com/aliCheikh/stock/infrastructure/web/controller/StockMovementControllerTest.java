@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.application.usecase.ListStockMovementsUseCase;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
+import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
@@ -74,9 +75,10 @@ class StockMovementControllerTest {
                 MovementType.TRANSFER,
                 5,
                 UserId.of(userId),
+                "Ahmat",
                 executedAt,
-                null
-        );
+                null,
+                OperationId.generate());
 
         given(listStockMovementsUseCase.execute(any(ListStockMovementsQuery.class)))
                 .willReturn(new PageResult<>(
