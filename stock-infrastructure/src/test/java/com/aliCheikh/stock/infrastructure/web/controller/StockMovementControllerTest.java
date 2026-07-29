@@ -99,6 +99,9 @@ class StockMovementControllerTest {
                 .andExpect(jsonPath("$.content[0].locationId").value(sourceLocationId.toString()))
                 .andExpect(jsonPath("$.content[0].destinationLocationId").value(destinationLocationId.toString()))
                 .andExpect(jsonPath("$.content[0].type").value("TRANSFER"))
+                // L'utilisateur attend un nom, pas un identifiant : « c'est Ahmat qui a fait ça ».
+                .andExpect(jsonPath("$.content[0].executedByName").value("Ahmat"))
+                .andExpect(jsonPath("$.content[0].operationId").isNotEmpty())
                 .andExpect(jsonPath("$.content[0].quantity").value(5))
                 .andExpect(jsonPath("$.content[0].executedBy").value(userId.toString()))
                 .andExpect(jsonPath("$.content[0].executedAt").value("2026-05-15T12:00:00"))

@@ -85,4 +85,45 @@ public class ReceivingServiceTest {
         assertThat(backStockMovement.getProductId()).isEqualTo(productId);
         assertThat(backStockMovement.getSourceLocationId()).isEmpty();
     }
+
+    @Test
+    public void all_movements_of_one_reception_share_the_same_operation() {
+        ProductId productId = ProductId.generate();
+        UserId userId = UserId.generate();
+        ShopId shopId = ShopId.generate();
+
+        StorageLocation shopFloor = new StorageLocation(LocationId.generate(), shopId, LocationType.SHOP_FLOOR, "Shop Floor", 3);
+        StorageLocation backStock = new StorageLocation(LocationId.generate(), shopId, LocationType.BACKSTOCK, "Backstock", 3);
+
+        when(storageLocationRepository.findById(shopFloor.getLocationId())).thenReturn(Optional.of(shopFloor));
+        when(storageLocationRepository.findById(backStock.getLocationId())).thenReturn(Optional.of(backStock));
+
+        List<StockMovement> movements = receivingService.receive(List.of(
+                ReceivingEntry.of(productId, shopFloor.getLocationId(), 15),
+                ReceivingEntry.of(productId, backStock.getLocationId(), 35)
+        ), userId);
+
+        // Sans marqueur commun, l'historique afficherait deux réceptions au lieu d'une.
+        assertThat(movements).hasSize(2);
+        assertThat(movements).extracting(StockMovement::getOperationId).containsOnly(movements.get(0).getOperationId());
+    }
+
+    @Test
+    public void two_receptions_do_not_share_their_operation() {
+        ProductId productId = ProductId.generate();
+        UserId userId = UserId.generate();
+        ShopId shopId = ShopId.generate();
+
+        StorageLocation shopFloor = new StorageLocation(LocationId.generate(), shopId, LocationType.SHOP_FLOOR, "Shop Floor", 3);
+        when(storageLocationRepository.findById(shopFloor.getLocationId())).thenReturn(Optional.of(shopFloor));
+
+        List<ReceivingEntry> entries = List.of(ReceivingEntry.of(productId, shopFloor.getLocationId(), 5));
+
+        // Deux réceptions successives du même vendeur, sur le même emplacement : elles doivent
+        // rester distinctes, ce qu'un regroupement déduit de la date et de l'auteur ne garantirait pas.
+        StockMovement first = receivingService.receive(entries, userId).get(0);
+        StockMovement second = receivingService.receive(entries, userId).get(0);
+
+        assertThat(first.getOperationId()).isNotEqualTo(second.getOperationId());
+    }
 }
