@@ -17,6 +17,12 @@ class PasswordRulesTest {
     }
 
     @Test
+    void a_password_cannot_exceed_the_maximum_length() {
+        assertThatThrownBy(() -> passwordRules.ensureAcceptable("a".repeat(73)))
+                .isInstanceOf(InvalidPasswordException.class);
+    }
+
+    @Test
     void an_acceptable_password_is_kept_private_by_the_rule() {
         assertThatCode(() -> passwordRules.ensureAcceptable("Suffisant123!"))
                 .doesNotThrowAnyException();

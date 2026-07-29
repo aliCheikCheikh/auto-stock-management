@@ -4,7 +4,8 @@ import com.aliCheikh.stock.domain.exception.DomainException;
 
 public final class InvalidPasswordException extends DomainException {
 
-    public InvalidPasswordException(int minimumLength) {
-        super("Le mot de passe doit contenir au moins " + minimumLength + " caractères.");
+    public InvalidPasswordException(int minimumLength, int maximumLength) {
+        super("Le mot de passe doit contenir entre "
+                + minimumLength + " et " + maximumLength + " caractères.");
     }
 }
