@@ -22,6 +22,9 @@ public class UserJpaEntity {
     @Column(name = "username", nullable = false, unique = true, length = 255)
     private String username;
 
+    @Column(name = "display_name", nullable = false, length = 100)
+    private String displayName;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 50)
     private UserRole role;
@@ -48,16 +51,35 @@ public class UserJpaEntity {
     private UserJpaEntity(UUID id, String username, UserRole role) {
         this.id = Objects.requireNonNull(id, "id cannot be null");
         this.username = Objects.requireNonNull(username, "username cannot be null");
+        this.displayName = username;
+        this.email = username + "-" + id.toString().substring(0, 8) + "@legacy.local";
         this.role = Objects.requireNonNull(role, "role cannot be null");
     }
 
     private UserJpaEntity(UUID id, String username, String email, String passwordHash, UserRole role) {
         this.id = Objects.requireNonNull(id, "id cannot be null");
         this.username = Objects.requireNonNull(username, "username cannot be null");
+        this.displayName = username;
         this.email = Objects.requireNonNull(email, "email cannot be null");
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash cannot be null");
         this.role = Objects.requireNonNull(role, "role cannot be null");
         this.passwordTemporary = true;
+    }
+
+    private UserJpaEntity(UUID id,
+                          String displayName,
+                          String email,
+                          UserRole role,
+                          boolean active,
+                          boolean passwordTemporary) {
+        this.id = Objects.requireNonNull(id, "id cannot be null");
+        this.displayName = Objects.requireNonNull(displayName, "displayName cannot be null");
+        this.email = Objects.requireNonNull(email, "email cannot be null");
+        // Conservé pour la compatibilité du schéma historique ; l'identité de connexion est l'email.
+        this.username = email;
+        this.role = Objects.requireNonNull(role, "role cannot be null");
+        this.active = active;
+        this.passwordTemporary = passwordTemporary;
     }
 
     public static UserJpaEntity of(UUID id, String username, UserRole role) {
@@ -68,19 +90,28 @@ public class UserJpaEntity {
         return new UserJpaEntity(id, username, email, passwordHash, role);
     }
 
+    public static UserJpaEntity newAccount(UUID id,
+                                           String displayName,
+                                           String email,
+                                           UserRole role,
+                                           boolean active,
+                                           boolean passwordTemporary) {
+        return new UserJpaEntity(id, displayName, email, role, active, passwordTemporary);
+    }
+
+    public void applyProfile(String displayName, boolean active, boolean passwordTemporary) {
+        this.displayName = Objects.requireNonNull(displayName, "displayName cannot be null");
+        this.active = active;
+        this.passwordTemporary = passwordTemporary;
+    }
+
+    public void replaceProtectedPassword(String protectedPassword) {
+        this.passwordHash = Objects.requireNonNull(protectedPassword, "protectedPassword cannot be null");
+    }
+
     public void changePassword(String newPasswordHash) {
         this.passwordHash = Objects.requireNonNull(newPasswordHash, "passwordHash cannot be null");
         this.passwordTemporary = false;
-    }
-
-    public void deactivate() {
-        this.active = false;
-    }
-
-    // Repose un mot de passe temporaire : l'utilisateur devra le changer au prochain login.
-    public void resetPassword(String newPasswordHash) {
-        this.passwordHash = Objects.requireNonNull(newPasswordHash, "passwordHash cannot be null");
-        this.passwordTemporary = true;
     }
 
     public UUID getId() {
@@ -89,6 +120,10 @@ public class UserJpaEntity {
 
     public String getUsername() {
         return username;
+    }
+
+    public String getDisplayName() {
+        return displayName;
     }
 
     public UserRole getRole() {

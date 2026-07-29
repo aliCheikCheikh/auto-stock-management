@@ -84,8 +84,8 @@ class CreditSaleEndToEndTest {
         // password_temporary vaut TRUE par défaut : TemporaryPasswordFilter refuserait alors toute
         // requête hors authentification. Ce vendeur est un compte déjà activé.
         jdbcTemplate.update("""
-                INSERT INTO app_user (id, username, role, password_temporary, active)
-                VALUES (?, ?, 'SELLER', false, true)
+                INSERT INTO app_user (id, username, display_name, role, password_temporary, active)
+                VALUES (?, ?, 'Vendeur', 'SELLER', false, true)
                 """, sellerId, "vendeur." + sellerId);
         jdbcTemplate.update("INSERT INTO category (id, name) VALUES (?, ?)", categoryId, "Freinage " + categoryId);
         jdbcTemplate.update("""

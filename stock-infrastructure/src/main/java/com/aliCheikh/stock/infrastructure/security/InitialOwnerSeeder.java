@@ -1,59 +1,49 @@
 package com.aliCheikh.stock.infrastructure.security;
 
-import com.aliCheikh.stock.domain.model.user.UserRole;
-import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
-import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
+import com.aliCheikh.stock.application.dto.ProvisionFirstOwnerCommand;
+import com.aliCheikh.stock.application.usecase.ProvisionFirstOwnerUseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
-
 @Component
-public class InitialOwnerSeeder implements ApplicationRunner {
+@Profile("dev")
+public final class InitialOwnerSeeder implements ApplicationRunner {
+
     private static final Logger log = LoggerFactory.getLogger(InitialOwnerSeeder.class);
 
-    private final UserJpaRepository userJpaRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final ProvisionFirstOwnerUseCase provisionFirstOwner;
+    private final String ownerDisplayName;
     private final String ownerEmail;
     private final String ownerPassword;
 
-    public InitialOwnerSeeder(UserJpaRepository userJpaRepository,
-                              PasswordEncoder passwordEncoder,
+    public InitialOwnerSeeder(ProvisionFirstOwnerUseCase provisionFirstOwner,
+                              @Value("${INITIAL_OWNER_DISPLAY_NAME:}") String ownerDisplayName,
                               @Value("${INITIAL_OWNER_EMAIL:}") String ownerEmail,
                               @Value("${INITIAL_OWNER_PASSWORD:}") String ownerPassword) {
-        this.userJpaRepository = userJpaRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.provisionFirstOwner = provisionFirstOwner;
+        this.ownerDisplayName = ownerDisplayName;
         this.ownerEmail = ownerEmail;
         this.ownerPassword = ownerPassword;
     }
 
     @Override
-    public void run(ApplicationArguments args) throws Exception {
-        if (ownerEmail.isBlank() || ownerPassword.isBlank()) {
-            log.info("Seeding owner ignoré : INITIAL_OWNER_PASSWORD/EMAIL non définis");
+    public void run(ApplicationArguments arguments) {
+        if (ownerDisplayName.isBlank() || ownerEmail.isBlank() || ownerPassword.isBlank()) {
+            log.info("Amorçage du propriétaire ignoré : configuration de développement incomplète.");
             return;
         }
 
-        String email = ownerEmail.trim().toLowerCase();
-
-        if (userJpaRepository.findByEmail(email).isPresent()) {
-            log.info("Owner déjà présent, seeding ignoré");
-            return;
-        }
-
-        UserJpaEntity owner = UserJpaEntity.withCredentials(UUID.randomUUID(),
-                email,
-                email,
-                passwordEncoder.encode(ownerPassword),
-                UserRole.OWNER);
-        userJpaRepository.save(owner);
-        log.info("Owner initial créé ppur l'email {}.", email);
-
-
+        provisionFirstOwner.execute(new ProvisionFirstOwnerCommand(
+                        ownerDisplayName,
+                        ownerEmail,
+                        ownerPassword))
+                .ifPresentOrElse(
+                        owner -> log.info("Premier propriétaire de développement créé."),
+                        () -> log.info("Amorçage ignoré : le registre des utilisateurs n'est pas vide."));
     }
 }

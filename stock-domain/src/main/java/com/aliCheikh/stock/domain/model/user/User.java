@@ -4,66 +4,108 @@ import com.aliCheikh.stock.domain.exception.user.InvalidUserNameException;
 
 import java.util.Objects;
 
-public class User {
-    private final UserId userId;
-    private String userName;
-    private UserRole userRole;
+/** Une personne autorisée à travailler dans le magasin. */
+public final class User {
 
-    public User(UserId userId, String userName, UserRole userRole) {
-        this.userId = Objects.requireNonNull(userId, "userId cannot be null");
-        this.userName = validateUserName(userName);
-        this.userRole = validateUserRole(userRole);
+    public static final int MAX_DISPLAY_NAME_LENGTH = 100;
+
+    private final UserId id;
+    private String displayName;
+    private final UserEmail email;
+    private final UserRole role;
+    private boolean active;
+    private boolean passwordChangeRequired;
+
+    public User(UserId id,
+                String displayName,
+                UserEmail email,
+                UserRole role,
+                boolean active,
+                boolean passwordChangeRequired) {
+        this.id = Objects.requireNonNull(id, "L'identifiant de l'utilisateur est obligatoire.");
+        this.displayName = validateDisplayName(displayName);
+        this.email = Objects.requireNonNull(email, "L'email de l'utilisateur est obligatoire.");
+        this.role = Objects.requireNonNull(role, "Le rôle de l'utilisateur est obligatoire.");
+        this.active = active;
+        this.passwordChangeRequired = passwordChangeRequired;
     }
 
-    public void rename(String newName) {
-        this.userName = validateUserName(newName);
+    public static User newSeller(String displayName, UserEmail email) {
+        return new User(UserId.generate(), displayName, email, UserRole.SELLER, true, true);
     }
 
-    public void changeUserRole(UserRole newUserRole) {
-        this.userRole = validateUserRole(newUserRole);
+    public static User newOwner(String displayName, UserEmail email) {
+        return new User(UserId.generate(), displayName, email, UserRole.OWNER, true, true);
     }
 
+    public void rename(String newDisplayName) {
+        displayName = validateDisplayName(newDisplayName);
+    }
 
-    private String validateUserName(String nameToValidate) {
-        if (nameToValidate == null || nameToValidate.isBlank()) {
-            throw new InvalidUserNameException(nameToValidate);
+    public void deactivate() {
+        active = false;
+    }
+
+    public void reactivate() {
+        active = true;
+    }
+
+    public void requirePasswordChange() {
+        passwordChangeRequired = true;
+    }
+
+    public void confirmPasswordChange() {
+        passwordChangeRequired = false;
+    }
+
+    public boolean isOwner() {
+        return role == UserRole.OWNER;
+    }
+
+    private String validateDisplayName(String value) {
+        if (value == null || value.isBlank() || value.trim().length() > MAX_DISPLAY_NAME_LENGTH) {
+            throw new InvalidUserNameException(value, MAX_DISPLAY_NAME_LENGTH);
         }
-        return nameToValidate;
+        return value.trim();
     }
 
-    private UserRole validateUserRole(UserRole roleToValidate) {
-        return Objects.requireNonNull(roleToValidate, "userRole cannot be null");
+    public UserId getId() {
+        return id;
     }
 
-    // --- Getters ---
-    public UserId getUserId() {
-        return userId;
+    public String getDisplayName() {
+        return displayName;
     }
 
-    public String getUserName() {
-        return userName;
+    public UserEmail getEmail() {
+        return email;
     }
 
-    public UserRole getUserRole() {
-        return userRole;
+    public UserRole getRole() {
+        return role;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public boolean isPasswordChangeRequired() {
+        return passwordChangeRequired;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
+    public boolean equals(Object other) {
+        if (this == other) {
             return true;
         }
-
-        if (o == null || getClass() != o.getClass()) {
+        if (!(other instanceof User user)) {
             return false;
         }
-
-        User user = (User) o;
-        return userId.equals(user.userId);
+        return id.equals(user.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId);
+        return id.hashCode();
     }
 }
