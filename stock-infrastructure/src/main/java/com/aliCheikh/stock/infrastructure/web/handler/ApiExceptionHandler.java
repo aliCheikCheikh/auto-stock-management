@@ -10,6 +10,8 @@ import com.aliCheikh.stock.domain.exception.product.DuplicateProductReferenceExc
 import com.aliCheikh.stock.domain.exception.product.InactiveProductException;
 import com.aliCheikh.stock.domain.exception.product.ProductNotFoundException;
 import com.aliCheikh.stock.domain.exception.sale.CreditSaleRequiresCustomerException;
+import com.aliCheikh.stock.domain.exception.sale.PaymentExceedsAmountDueException;
+import com.aliCheikh.stock.domain.exception.sale.SaleAlreadySettledException;
 import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.exception.stock.InsufficientStockException;
 import com.aliCheikh.stock.domain.exception.stock.InvalidStockTransferException;
@@ -219,6 +221,28 @@ public class ApiExceptionHandler {
                 "Invalid phone number",
                 exception.getMessage(),
                 "INVALID_PHONE_NUMBER"
+        );
+    }
+
+    @ExceptionHandler(SaleAlreadySettledException.class)
+    public ProblemDetail handleSaleAlreadySettled(SaleAlreadySettledException exception) {
+        return problem(
+                HttpStatus.CONFLICT,
+                "sale-already-settled",
+                "Sale already settled",
+                exception.getMessage(),
+                "SALE_ALREADY_SETTLED"
+        );
+    }
+
+    @ExceptionHandler(PaymentExceedsAmountDueException.class)
+    public ProblemDetail handlePaymentExceedsAmountDue(PaymentExceedsAmountDueException exception) {
+        return problem(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "payment-exceeds-amount-due",
+                "Payment exceeds the outstanding balance",
+                exception.getMessage(),
+                "PAYMENT_EXCEEDS_AMOUNT_DUE"
         );
     }
 

@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.SaleView;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
 import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
+import com.aliCheikh.stock.application.usecase.RecordPaymentUseCase;
 import com.aliCheikh.stock.application.usecase.SellProductUseCase;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
@@ -59,6 +60,9 @@ class SaleControllerTest {
 
     @MockitoBean
     private ListSalesUseCase listSalesUseCase;
+
+    @MockitoBean
+    private RecordPaymentUseCase recordPaymentUseCase;
 
     @MockitoBean
     private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;

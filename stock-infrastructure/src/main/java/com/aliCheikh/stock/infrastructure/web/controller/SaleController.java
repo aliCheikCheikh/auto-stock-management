@@ -4,14 +4,18 @@ import com.aliCheikh.stock.application.dto.ListSalesQuery;
 import com.aliCheikh.stock.application.dto.PageResult;
 import com.aliCheikh.stock.application.dto.SaleView;
 import com.aliCheikh.stock.application.dto.SellProductCommand;
+import com.aliCheikh.stock.application.dto.RecordPaymentResult;
 import com.aliCheikh.stock.application.dto.SellProductResult;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
+import com.aliCheikh.stock.application.usecase.RecordPaymentUseCase;
 import com.aliCheikh.stock.application.usecase.SellProductUseCase;
 import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.sale.port.SaleRepository;
 import com.aliCheikh.stock.infrastructure.web.dto.CreateSaleRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfSaleResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.PaymentResponse;
+import com.aliCheikh.stock.infrastructure.web.dto.RecordPaymentRequest;
 import com.aliCheikh.stock.infrastructure.web.dto.SaleResponse;
 import com.aliCheikh.stock.infrastructure.web.mapper.SaleWebMapper;
 import jakarta.validation.Valid;
@@ -36,15 +40,18 @@ public class SaleController {
     private final SellProductUseCase sellProductUseCase;
     private final SaleRepository saleRepository;
     private final ListSalesUseCase listSalesUseCase;
+    private final RecordPaymentUseCase recordPaymentUseCase;
 
     public SaleController(
             SellProductUseCase sellProductUseCase,
             SaleRepository saleRepository,
-            ListSalesUseCase listSalesUseCase
+            ListSalesUseCase listSalesUseCase,
+            RecordPaymentUseCase recordPaymentUseCase
     ) {
         this.sellProductUseCase = sellProductUseCase;
         this.saleRepository = saleRepository;
         this.listSalesUseCase = listSalesUseCase;
+        this.recordPaymentUseCase = recordPaymentUseCase;
     }
 
     @PostMapping
@@ -56,6 +63,23 @@ public class SaleController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(SaleWebMapper.toResponse(result));
+    }
+
+    /**
+     * Encaisse un remboursement sur une vente à crédit.
+     *
+     * <p>L'auteur de l'encaissement est déterminé par le serveur à partir du jeton, jamais fourni
+     * par le client : c'est une information de traçabilité sur de l'argent.</p>
+     */
+    @PostMapping("/{saleId}/payments")
+    public ResponseEntity<PaymentResponse> recordPayment(@PathVariable UUID saleId,
+                                                         @Valid @RequestBody RecordPaymentRequest request,
+                                                         Authentication authentication) {
+        UUID receivedBy = (UUID) authentication.getPrincipal();
+        RecordPaymentResult result = recordPaymentUseCase.record(
+                SaleWebMapper.toCommand(saleId, request, receivedBy));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(PaymentResponse.from(result));
     }
 
     @GetMapping("/{saleId}")

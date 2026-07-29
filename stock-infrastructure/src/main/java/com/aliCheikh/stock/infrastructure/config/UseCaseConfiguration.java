@@ -16,6 +16,7 @@ import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
 import com.aliCheikh.stock.application.usecase.GetCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
 import com.aliCheikh.stock.application.usecase.SearchCustomersUseCase;
+import com.aliCheikh.stock.application.usecase.RecordPaymentUseCase;
 import com.aliCheikh.stock.application.usecase.RegisterCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
 import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
@@ -122,6 +123,15 @@ public class UseCaseConfiguration {
             Clock clock
     ) {
         return new ListOutstandingDebtsUseCase(outstandingDebtQueryPort, clock);
+    }
+
+    @Bean
+    public RecordPaymentUseCase recordPaymentUseCase(
+            SaleRepository saleRepository,
+            TransactionRunner transactionRunner,
+            Clock clock
+    ) {
+        return new RecordPaymentUseCase(saleRepository, transactionRunner, clock);
     }
 
     /** Horloge système, injectée pour rendre les calculs d'ancienneté testables. */
