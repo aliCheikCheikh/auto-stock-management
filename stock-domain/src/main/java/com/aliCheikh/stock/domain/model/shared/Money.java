@@ -20,6 +20,11 @@ public final class Money {
         return new Money(amount, currency);
     }
 
+    /** Montant nul dans une devise donnée : le neutre d'une somme vide. */
+    public static Money zero(Currency currency) {
+        return new Money(BigDecimal.ZERO, currency);
+    }
+
     public Money add(Money other) {
         Objects.requireNonNull(other, "other money cannot be null");
 
