@@ -9,20 +9,25 @@ import java.util.Objects;
 /**
  * Un encaissement rattaché à une vente : l'acompte du jour de la vente, ou un remboursement ultérieur.
  *
- * <p>Value Object appartenant à l'agrégat {@link Sale} : un paiement n'a pas d'existence propre en
- * dehors de la vente qu'il solde. Il est immuable — on n'annule pas un encaissement, on en
- * enregistre un autre.</p>
+ * <p>Entité interne à l'agrégat {@link Sale} : elle n'a pas d'existence hors de la vente qu'elle
+ * solde, mais elle possède une <b>identité propre</b>. Deux encaissements du même montant, le même
+ * jour, par le même vendeur restent deux faits distincts — les confondre reviendrait à perdre un
+ * versement. C'est aussi ce qui permet de les réécrire sans les recréer.</p>
+ *
+ * <p>Immuable : on n'annule pas un encaissement, on en enregistre un autre.</p>
  *
  * <p>L'auteur et la date sont conservés parce qu'il s'agit d'argent : savoir qui a encaissé quoi et
  * quand est une exigence de traçabilité, pas un confort.</p>
  */
 public final class Payment {
 
+    private final PaymentId paymentId;
     private final Money amount;
     private final UserId receivedBy;
     private final LocalDateTime receivedAt;
 
-    private Payment(Money amount, UserId receivedBy, LocalDateTime receivedAt) {
+    private Payment(PaymentId paymentId, Money amount, UserId receivedBy, LocalDateTime receivedAt) {
+        this.paymentId = Objects.requireNonNull(paymentId, "paymentId cannot be null");
         this.amount = Objects.requireNonNull(amount, "amount cannot be null");
         this.receivedBy = Objects.requireNonNull(receivedBy, "receivedBy cannot be null");
         this.receivedAt = Objects.requireNonNull(receivedAt, "receivedAt cannot be null");
@@ -32,8 +37,21 @@ public final class Payment {
         }
     }
 
-    public static Payment of(Money amount, UserId receivedBy, LocalDateTime receivedAt) {
-        return new Payment(amount, receivedBy, receivedAt);
+    /** Nouvel encaissement, dont l'identité est générée. */
+    public static Payment record(Money amount, UserId receivedBy, LocalDateTime receivedAt) {
+        return new Payment(PaymentId.generate(), amount, receivedBy, receivedAt);
+    }
+
+    /** Encaissement relu depuis la persistance, dont l'identité est conservée. */
+    public static Payment rehydrate(PaymentId paymentId,
+                                    Money amount,
+                                    UserId receivedBy,
+                                    LocalDateTime receivedAt) {
+        return new Payment(paymentId, amount, receivedBy, receivedAt);
+    }
+
+    public PaymentId getPaymentId() {
+        return paymentId;
     }
 
     public Money getAmount() {
@@ -57,14 +75,12 @@ public final class Payment {
             return false;
         }
         Payment other = (Payment) o;
-        return amount.equals(other.amount)
-                && receivedBy.equals(other.receivedBy)
-                && receivedAt.equals(other.receivedAt);
+        return paymentId.equals(other.paymentId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(amount, receivedBy, receivedAt);
+        return paymentId.hashCode();
     }
 
     @Override

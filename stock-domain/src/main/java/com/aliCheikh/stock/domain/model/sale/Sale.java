@@ -112,7 +112,7 @@ public class Sale {
 
         // Un acompte nul ne produit aucun paiement : le client repart sans avoir rien versé.
         List<Payment> initialPayments = effectiveAmountPaid.isPositive()
-                ? List.of(Payment.of(effectiveAmountPaid, sellerId, occurredAt))
+                ? List.of(Payment.record(effectiveAmountPaid, sellerId, occurredAt))
                 : List.of();
 
         return new Sale(
@@ -147,7 +147,7 @@ public class Sale {
                                  Money totalAmount,
                                  List<SaleLineDto> lines) {
         return rehydrate(saleId, soldBy, occurredAt, totalAmount, lines, null,
-                List.of(Payment.of(totalAmount, soldBy, occurredAt)));
+                List.of(Payment.record(totalAmount, soldBy, occurredAt)));
     }
 
     /** Reconstruit une vente déjà persistée, sans rejouer la génération d'identifiant ni l'horodatage. */
@@ -192,7 +192,7 @@ public class Sale {
         }
 
         // Payment garantit déjà qu'un encaissement est strictement positif.
-        Payment payment = Payment.of(amount, receivedBy, receivedAt);
+        Payment payment = Payment.record(amount, receivedBy, receivedAt);
 
         // subtract lève CurrencyMismatchException si les devises diffèrent.
         if (amountDue.subtract(amount).isNegative()) {
