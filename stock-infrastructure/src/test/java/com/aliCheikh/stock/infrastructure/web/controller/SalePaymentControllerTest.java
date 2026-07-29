@@ -32,11 +32,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Encaissement d'un remboursement — tranche web. */
+/**
+ * Encaissement d'un remboursement — tranche web.
+ *
+ * <p>L'authentification est posée avec {@code .principal(...)} et non via le contexte de sécurité :
+ * la chaîne de filtres étant désactivée sur cette tranche, aucun filtre ne chargerait le contexte
+ * dans la requête et le paramètre {@code Authentication} du contrôleur resterait nul.</p>
+ */
 @WebMvcTest(SaleController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class SalePaymentControllerTest {
@@ -84,7 +89,7 @@ class SalePaymentControllerTest {
                 false));
 
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
-                        .with(authentication(cashier(cashierId)))
+                        .principal(cashier(cashierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"amount\": 12000}"))
                 .andExpect(status().isCreated())
@@ -104,7 +109,7 @@ class SalePaymentControllerTest {
                 xaf(50_000), xaf(1_000), xaf(49_000), false));
 
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
-                        .with(authentication(cashier(cashierId)))
+                        .principal(cashier(cashierId))
                         .contentType(MediaType.APPLICATION_JSON)
                         // Un identifiant glissé dans le corps ne doit avoir aucun effet.
                         .content("{\"amount\": 1000, \"receivedBy\": \"11111111-1111-1111-1111-111111111111\"}"))
@@ -123,7 +128,7 @@ class SalePaymentControllerTest {
                 .willThrow(new PaymentExceedsAmountDueException(xaf(99_000), xaf(18_000)));
 
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
-                        .with(authentication(cashier(UUID.randomUUID())))
+                        .principal(cashier(UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"amount\": 99000}"))
                 .andExpect(status().isUnprocessableEntity())
@@ -138,7 +143,7 @@ class SalePaymentControllerTest {
                 .willThrow(new SaleAlreadySettledException(SaleId.of(saleId)));
 
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
-                        .with(authentication(cashier(UUID.randomUUID())))
+                        .principal(cashier(UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"amount\": 1000}"))
                 .andExpect(status().isConflict())
@@ -150,7 +155,7 @@ class SalePaymentControllerTest {
         UUID saleId = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
-                        .with(authentication(cashier(UUID.randomUUID())))
+                        .principal(cashier(UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"amount\": 0}"))
                 .andExpect(status().isBadRequest());

@@ -23,7 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -81,8 +81,12 @@ class CreditSaleEndToEndTest {
         UUID categoryId = UUID.randomUUID();
         UUID locationId = UUID.randomUUID();
 
-        jdbcTemplate.update("INSERT INTO app_user (id, username, role) VALUES (?, ?, 'SELLER')",
-                sellerId, "vendeur." + sellerId);
+        // password_temporary vaut TRUE par défaut : TemporaryPasswordFilter refuserait alors toute
+        // requête hors authentification. Ce vendeur est un compte déjà activé.
+        jdbcTemplate.update("""
+                INSERT INTO app_user (id, username, role, password_temporary, active)
+                VALUES (?, ?, 'SELLER', false, true)
+                """, sellerId, "vendeur." + sellerId);
         jdbcTemplate.update("INSERT INTO category (id, name) VALUES (?, ?)", categoryId, "Freinage " + categoryId);
         jdbcTemplate.update("""
                 INSERT INTO product (id, name, reference, category_id, minimum_global_threshold,
