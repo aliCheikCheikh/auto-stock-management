@@ -35,5 +35,11 @@ public class SaleJpaRepositoryAdapter implements SaleRepository {
         return saleJpaRepository.findById(saleId.getValue()).map(saleJpaMapper::toDomain);
     }
 
+    @Override
+    public Optional<Sale> findByIdForUpdate(SaleId saleId) {
+        Objects.requireNonNull(saleId, "saleId cannot be null");
+        return saleJpaRepository.findByIdForUpdate(saleId.getValue()).map(saleJpaMapper::toDomain);
+    }
+
 
 }

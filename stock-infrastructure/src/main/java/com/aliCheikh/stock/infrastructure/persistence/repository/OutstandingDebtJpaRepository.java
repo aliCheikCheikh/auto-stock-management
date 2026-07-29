@@ -17,25 +17,36 @@ import java.util.UUID;
  */
 public interface OutstandingDebtJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
 
+    /**
+     * Le montant encaissé est agrégé depuis le ledger des paiements : une vente sans aucun
+     * encaissement reste retenue, d'où la jointure externe et le {@code COALESCE}.
+     */
     String SELECT_OUTSTANDING = """
-            SELECT s.id                AS saleId,
-                   s.occurred_at       AS occurredAt,
-                   c.id                AS customerId,
-                   c.given_name        AS customerGivenName,
-                   c.father_name       AS customerFatherName,
-                   c.phone_number      AS customerPhoneNumber,
-                   s.total_amount      AS totalAmount,
-                   s.total_currency    AS currency,
-                   s.amount_paid       AS amountPaid
+            SELECT s.id                          AS saleId,
+                   s.occurred_at                 AS occurredAt,
+                   c.id                          AS customerId,
+                   c.given_name                  AS customerGivenName,
+                   c.father_name                 AS customerFatherName,
+                   c.phone_number                AS customerPhoneNumber,
+                   s.total_amount                AS totalAmount,
+                   s.total_currency              AS currency,
+                   COALESCE(SUM(p.amount), 0)    AS amountPaid
             FROM sale s
             JOIN customer c ON c.id = s.customer_id
-            WHERE s.amount_paid < s.total_amount
+            LEFT JOIN payment p ON p.sale_id = s.id
             """;
 
-    @Query(value = SELECT_OUTSTANDING + " ORDER BY s.occurred_at ASC", nativeQuery = true)
+    String GROUP_AND_FILTER = """
+            GROUP BY s.id, s.occurred_at, c.id, c.given_name, c.father_name,
+                     c.phone_number, s.total_amount, s.total_currency
+            HAVING COALESCE(SUM(p.amount), 0) < s.total_amount
+            ORDER BY s.occurred_at ASC
+            """;
+
+    @Query(value = SELECT_OUTSTANDING + GROUP_AND_FILTER, nativeQuery = true)
     List<OutstandingDebtProjection> findAllOutstanding();
 
-    @Query(value = SELECT_OUTSTANDING + " AND s.customer_id = :customerId ORDER BY s.occurred_at ASC",
+    @Query(value = SELECT_OUTSTANDING + " WHERE s.customer_id = :customerId " + GROUP_AND_FILTER,
             nativeQuery = true)
     List<OutstandingDebtProjection> findOutstandingByCustomer(@Param("customerId") UUID customerId);
 }
