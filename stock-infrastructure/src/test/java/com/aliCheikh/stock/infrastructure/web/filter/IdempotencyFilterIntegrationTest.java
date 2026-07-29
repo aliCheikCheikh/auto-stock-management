@@ -7,7 +7,10 @@ import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.sale.SaleLineDto;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.user.UserId;
+import com.aliCheikh.stock.domain.model.user.UserRole;
+import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
+import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
 import com.aliCheikh.stock.infrastructure.security.JwtService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,6 +78,9 @@ class IdempotencyFilterIntegrationTest {
     @Autowired
     private IdempotencyRecordJpaRepository idempotencyRepository;
 
+    @Autowired
+    private UserJpaRepository userRepository;
+
     @MockitoBean
     private SellProductUseCase sellProductUseCase;
 
@@ -85,6 +91,16 @@ class IdempotencyFilterIntegrationTest {
     void setUp() {
         given(sellProductUseCase.sell(any())).willReturn(stubbedSaleResult());
         idempotencyRepository.deleteAll();
+        userRepository.deleteAll();
+
+        UserJpaEntity seller = UserJpaEntity.withCredentials(
+                SELLER_ID,
+                "seller@test.local",
+                "seller@test.local",
+                "unused-protected-password",
+                UserRole.SELLER);
+        seller.changePassword("unused-protected-password");
+        userRepository.save(seller);
     }
 
     @Test
@@ -146,7 +162,7 @@ class IdempotencyFilterIntegrationTest {
     }
 
     private Cookie authCookie() {
-        String token = jwtService.generateAccessToken(UUID.randomUUID(), "SELLER");
+        String token = jwtService.generateAccessToken(SELLER_ID, "SELLER");
         return new Cookie("access_token", token);
     }
 }
