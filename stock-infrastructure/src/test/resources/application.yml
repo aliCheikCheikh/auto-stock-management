@@ -1,0 +1,7 @@
+app:
+  security:
+    jwt:
+      secret: test-secret-reserve-aux-tests-0123456789-abcdef
+spring:
+  jpa:
+    open-in-view: false

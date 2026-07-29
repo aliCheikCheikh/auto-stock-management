@@ -3,6 +3,8 @@ package com.aliCheikh.stock.application.usecase;
 import com.aliCheikh.stock.application.dto.ChangeOwnPasswordCommand;
 import com.aliCheikh.stock.application.dto.CreateSellerCommand;
 import com.aliCheikh.stock.application.dto.CreatedUser;
+import com.aliCheikh.stock.application.dto.ProvisionFirstOwnerCommand;
+import com.aliCheikh.stock.application.dto.RecoverOwnerAccessCommand;
 import com.aliCheikh.stock.application.dto.TemporaryPassword;
 import com.aliCheikh.stock.application.port.PasswordProtection;
 import com.aliCheikh.stock.application.port.TemporaryPasswordGenerator;
@@ -13,6 +15,7 @@ import com.aliCheikh.stock.domain.exception.user.DuplicateUserEmailException;
 import com.aliCheikh.stock.domain.exception.user.IncorrectCurrentPasswordException;
 import com.aliCheikh.stock.domain.exception.user.LastActiveOwnerException;
 import com.aliCheikh.stock.domain.exception.user.OwnerPasswordResetNotAllowedException;
+import com.aliCheikh.stock.domain.exception.user.OwnerRecoveryNotAllowedException;
 import com.aliCheikh.stock.domain.model.user.User;
 import com.aliCheikh.stock.domain.model.user.UserEmail;
 import com.aliCheikh.stock.domain.model.user.UserId;
@@ -115,12 +118,68 @@ class UserManagementUseCaseTest {
     }
 
     @Test
-    void owner_password_reset_is_reserved_for_server_recovery() {
+    void owner_password_reset_is_not_available_from_seller_management() {
         User owner = User.newOwner("Patron", UserEmail.of("owner@example.com"));
         users.save(owner);
 
         assertThatThrownBy(() -> resetSellerPasswordUseCase().execute(owner.getId()))
                 .isInstanceOf(OwnerPasswordResetNotAllowedException.class);
+    }
+
+    @Test
+    void first_owner_is_provisioned_only_when_no_user_exists() {
+        ProvisionFirstOwnerUseCase provisionFirstOwner = provisionFirstOwnerUseCase();
+
+        Optional<User> firstAttempt = provisionFirstOwner.execute(
+                new ProvisionFirstOwnerCommand("Patron", "OWNER@EXAMPLE.COM", "Initial123!"));
+        Optional<User> secondAttempt = provisionFirstOwner.execute(
+                new ProvisionFirstOwnerCommand("Autre", "other@example.com", "Another123!"));
+
+        assertThat(firstAttempt).isPresent();
+        assertThat(firstAttempt.orElseThrow().isOwner()).isTrue();
+        assertThat(firstAttempt.orElseThrow().getEmail().getValue()).isEqualTo("owner@example.com");
+        assertThat(credentials.findProtectedPassword(firstAttempt.orElseThrow().getId()))
+                .contains("protected:Initial123!");
+        assertThat(secondAttempt).isEmpty();
+        assertThat(users.findAll()).hasSize(1);
+    }
+
+    @Test
+    void first_owner_is_not_provisioned_when_a_seller_already_exists() {
+        users.save(User.newSeller("Vendeur", UserEmail.of("seller@example.com")));
+
+        Optional<User> result = provisionFirstOwnerUseCase().execute(
+                new ProvisionFirstOwnerCommand("Patron", "owner@example.com", "Initial123!"));
+
+        assertThat(result).isEmpty();
+        assertThat(users.findAll()).hasSize(1).noneMatch(User::isOwner);
+    }
+
+    @Test
+    void owner_recovery_reactivates_access_and_revokes_existing_sessions() {
+        User owner = User.newOwner("Patron", UserEmail.of("owner@example.com"));
+        owner.confirmPasswordChange();
+        owner.deactivate();
+        users.save(owner);
+        credentials.replaceProtectedPassword(owner.getId(), "protected:OldPassword123!");
+
+        User recovered = recoverOwnerAccessUseCase().execute(
+                new RecoverOwnerAccessCommand(" OWNER@EXAMPLE.COM ", "Recovery456!"));
+
+        assertThat(recovered.isActive()).isTrue();
+        assertThat(recovered.isPasswordChangeRequired()).isTrue();
+        assertThat(credentials.findProtectedPassword(owner.getId())).contains("protected:Recovery456!");
+        assertThat(sessionRevoker.revokedUserIds).containsExactly(owner.getId());
+    }
+
+    @Test
+    void seller_access_cannot_be_recovered_as_owner_access() {
+        User seller = User.newSeller("Vendeur", UserEmail.of("seller@example.com"));
+        users.save(seller);
+
+        assertThatThrownBy(() -> recoverOwnerAccessUseCase().execute(
+                new RecoverOwnerAccessCommand("seller@example.com", "Recovery456!")))
+                .isInstanceOf(OwnerRecoveryNotAllowedException.class);
     }
 
     @Test
@@ -188,6 +247,25 @@ class UserManagementUseCaseTest {
 
     private ChangeOwnPasswordUseCase changeOwnPasswordUseCase() {
         return new ChangeOwnPasswordUseCase(
+                users,
+                credentials,
+                passwordProtection,
+                new PasswordRules(),
+                sessionRevoker,
+                transactionRunner);
+    }
+
+    private ProvisionFirstOwnerUseCase provisionFirstOwnerUseCase() {
+        return new ProvisionFirstOwnerUseCase(
+                users,
+                credentials,
+                passwordProtection,
+                new PasswordRules(),
+                transactionRunner);
+    }
+
+    private RecoverOwnerAccessUseCase recoverOwnerAccessUseCase() {
+        return new RecoverOwnerAccessUseCase(
                 users,
                 credentials,
                 passwordProtection,

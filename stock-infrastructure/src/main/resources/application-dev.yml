@@ -15,12 +15,8 @@ app:
     jwt:
       secret: ${JWT_SECRET:dev-secret-a-changer-en-prod-0123456789-abcdefghij}
 
-# Compte d'amorçage — profil dev UNIQUEMENT.
-# Sans ces valeurs, InitialOwnerSeeder ne fait rien et une base fraîche reste inaccessible :
-# plus aucun compte ne permet de se connecter. En production, elles proviennent obligatoirement
-# de l'environnement (.env / GitHub Secrets) et ne doivent jamais avoir de valeur par défaut.
-# Valeurs littérales, sans placeholder : une propriété qui se référencerait elle-même
-# (${INITIAL_OWNER_EMAIL:...}) provoquerait une résolution circulaire. Inutile de toute façon,
-# les variables d'environnement primant déjà sur les fichiers application-*.yml.
+# Compte d'amorçage local. Le composant associé n'existe que sous le profil dev
+# et refuse de créer un compte dès que le registre des utilisateurs n'est plus vide.
+INITIAL_OWNER_DISPLAY_NAME: Propriétaire
 INITIAL_OWNER_EMAIL: owner@local.dev
 INITIAL_OWNER_PASSWORD: dev-owner-password

@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.port.TemporaryPasswordGenerator;
 import com.aliCheikh.stock.application.port.TransactionRunner;
 import com.aliCheikh.stock.application.port.UserCredentialStore;
 import com.aliCheikh.stock.application.port.UserSessionRevoker;
+import com.aliCheikh.stock.domain.exception.user.OwnerPasswordResetNotAllowedException;
 import com.aliCheikh.stock.domain.exception.user.UserNotFoundException;
 import com.aliCheikh.stock.domain.model.user.User;
 import com.aliCheikh.stock.domain.model.user.UserId;
@@ -44,6 +45,9 @@ public final class ResetSellerPasswordUseCase {
     private TemporaryPassword reset(UserId userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+        if (user.isOwner()) {
+            throw new OwnerPasswordResetNotAllowedException(userId);
+        }
         user.requirePasswordChange();
 
         String temporaryPassword = passwordGenerator.generate();

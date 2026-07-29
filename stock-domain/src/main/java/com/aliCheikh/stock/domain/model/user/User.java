@@ -1,7 +1,6 @@
 package com.aliCheikh.stock.domain.model.user;
 
 import com.aliCheikh.stock.domain.exception.user.InvalidUserNameException;
-import com.aliCheikh.stock.domain.exception.user.OwnerPasswordResetNotAllowedException;
 
 import java.util.Objects;
 
@@ -52,9 +51,6 @@ public final class User {
     }
 
     public void requirePasswordChange() {
-        if (role == UserRole.OWNER) {
-            throw new OwnerPasswordResetNotAllowedException(id);
-        }
         passwordChangeRequired = true;
     }
 

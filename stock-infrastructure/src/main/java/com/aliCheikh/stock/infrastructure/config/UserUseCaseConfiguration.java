@@ -11,7 +11,9 @@ import com.aliCheikh.stock.application.usecase.CreateSellerUseCase;
 import com.aliCheikh.stock.application.usecase.DeactivateUserUseCase;
 import com.aliCheikh.stock.application.usecase.GetUserUseCase;
 import com.aliCheikh.stock.application.usecase.ListUsersUseCase;
+import com.aliCheikh.stock.application.usecase.ProvisionFirstOwnerUseCase;
 import com.aliCheikh.stock.application.usecase.ReactivateUserUseCase;
+import com.aliCheikh.stock.application.usecase.RecoverOwnerAccessUseCase;
 import com.aliCheikh.stock.application.usecase.RenameUserUseCase;
 import com.aliCheikh.stock.application.usecase.ResetSellerPasswordUseCase;
 import com.aliCheikh.stock.domain.model.user.port.UserRepository;
@@ -119,6 +121,38 @@ public class UserUseCaseConfiguration {
             UserSessionRevoker sessionRevoker,
             TransactionRunner transactionRunner) {
         return new ChangeOwnPasswordUseCase(
+                userRepository,
+                credentialStore,
+                passwordProtection,
+                passwordRules,
+                sessionRevoker,
+                transactionRunner);
+    }
+
+    @Bean
+    public ProvisionFirstOwnerUseCase provisionFirstOwnerUseCase(
+            UserRepository userRepository,
+            UserCredentialStore credentialStore,
+            PasswordProtection passwordProtection,
+            PasswordRules passwordRules,
+            TransactionRunner transactionRunner) {
+        return new ProvisionFirstOwnerUseCase(
+                userRepository,
+                credentialStore,
+                passwordProtection,
+                passwordRules,
+                transactionRunner);
+    }
+
+    @Bean
+    public RecoverOwnerAccessUseCase recoverOwnerAccessUseCase(
+            UserRepository userRepository,
+            UserCredentialStore credentialStore,
+            PasswordProtection passwordProtection,
+            PasswordRules passwordRules,
+            UserSessionRevoker sessionRevoker,
+            TransactionRunner transactionRunner) {
+        return new RecoverOwnerAccessUseCase(
                 userRepository,
                 credentialStore,
                 passwordProtection,

@@ -1,7 +1,6 @@
 package com.aliCheikh.stock.domain.model.user;
 
 import com.aliCheikh.stock.domain.exception.user.InvalidUserNameException;
-import com.aliCheikh.stock.domain.exception.user.OwnerPasswordResetNotAllowedException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,10 +57,12 @@ class UserTest {
     }
 
     @Test
-    void an_owner_password_cannot_be_reset_from_user_management() {
+    void an_owner_can_be_required_to_change_their_password() {
         User owner = User.newOwner("Patron", UserEmail.of("owner@example.com"));
+        owner.confirmPasswordChange();
 
-        assertThatThrownBy(owner::requirePasswordChange)
-                .isInstanceOf(OwnerPasswordResetNotAllowedException.class);
+        owner.requirePasswordChange();
+
+        assertThat(owner.isPasswordChangeRequired()).isTrue();
     }
 }

@@ -8,7 +8,7 @@ public final class OwnerPasswordResetNotAllowedException extends DomainException
     private final UserId ownerId;
 
     public OwnerPasswordResetNotAllowedException(UserId ownerId) {
-        super("Le mot de passe d'un propriétaire ne peut être réinitialisé que par la procédure de secours du serveur.");
+        super("La réinitialisation temporaire est réservée aux vendeurs.");
         this.ownerId = ownerId;
     }
 
