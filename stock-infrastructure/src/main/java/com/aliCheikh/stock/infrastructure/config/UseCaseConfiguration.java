@@ -1,5 +1,6 @@
 package com.aliCheikh.stock.infrastructure.config;
 
+import com.aliCheikh.stock.application.port.CreditSaleDetailQueryPort;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.application.port.ListSalesQueryPort;
 import com.aliCheikh.stock.application.port.CustomerSearchQueryPort;
@@ -17,6 +18,7 @@ import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.application.usecase.GetSessionContextUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
 import com.aliCheikh.stock.application.usecase.GetCustomerUseCase;
+import com.aliCheikh.stock.application.usecase.GetCreditSaleDetailUseCase;
 import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
 import com.aliCheikh.stock.application.usecase.SearchCustomersUseCase;
 import com.aliCheikh.stock.application.usecase.RecordPaymentUseCase;
@@ -126,6 +128,13 @@ public class UseCaseConfiguration {
             Clock clock
     ) {
         return new ListOutstandingDebtsUseCase(outstandingDebtQueryPort, clock);
+    }
+
+    @Bean
+    public GetCreditSaleDetailUseCase getCreditSaleDetailUseCase(
+            CreditSaleDetailQueryPort creditSaleDetailQueryPort
+    ) {
+        return new GetCreditSaleDetailUseCase(creditSaleDetailQueryPort);
     }
 
     @Bean
