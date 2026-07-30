@@ -16,6 +16,12 @@ public record StockMovementResponse(
         String executedByName,
         LocalDateTime executedAt,
         UUID saleId,
-        UUID operationId
+        UUID operationId,
+        /**
+         * Solde restant dû de la vente à l'origine du mouvement. {@code null} hors vente, zéro
+         * lorsque la vente est réglée : le front en déduit « payée » ou « à crédit — reste X »
+         * sans refaire le moindre calcul.
+         */
+        MoneyResponse saleAmountDue
 ) {
 }

@@ -9,6 +9,7 @@ import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
+import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.infrastructure.persistence.entity.StockMovementJpaEntity;
@@ -30,9 +31,11 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
 
     private final StockMovementJpaRepository stockMovementJpaRepository;
     private final UserDisplayNameResolver userDisplayNameResolver;
+    private final SaleSettlementResolver saleSettlementResolver;
 
     public StockMovementQueryJpaAdapter(StockMovementJpaRepository stockMovementJpaRepository,
-                                        UserDisplayNameResolver userDisplayNameResolver) {
+                                        UserDisplayNameResolver userDisplayNameResolver,
+                                        SaleSettlementResolver saleSettlementResolver) {
         this.stockMovementJpaRepository = Objects.requireNonNull(
                 stockMovementJpaRepository,
                 "stockMovementJpaRepository cannot be null"
@@ -40,6 +43,10 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
         this.userDisplayNameResolver = Objects.requireNonNull(
                 userDisplayNameResolver,
                 "userDisplayNameResolver cannot be null"
+        );
+        this.saleSettlementResolver = Objects.requireNonNull(
+                saleSettlementResolver,
+                "saleSettlementResolver cannot be null"
         );
     }
 
@@ -57,9 +64,14 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
         Map<UUID, String> authorNames = userDisplayNameResolver.resolve(
                 page.getContent().stream().map(StockMovementJpaEntity::getPerformedBy).toList());
 
+        // Même parti pour l'état de règlement : une seule requête pour toute la page, afin que
+        // l'historique puisse annoncer « payée » ou « à crédit » sans interroger chaque vente.
+        Map<UUID, Money> amountsDue = saleSettlementResolver.resolveAmountsDue(
+                page.getContent().stream().map(StockMovementJpaEntity::getSaleId).toList());
+
         return new PageResult<>(
                 page.getContent().stream()
-                        .map(entity -> toView(entity, authorNames))
+                        .map(entity -> toView(entity, authorNames, amountsDue))
                         .toList(),
                 query.page(),
                 query.size(),
@@ -136,7 +148,9 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
         };
     }
 
-    private StockMovementView toView(StockMovementJpaEntity entity, Map<UUID, String> authorNames) {
+    private StockMovementView toView(StockMovementJpaEntity entity,
+                                     Map<UUID, String> authorNames,
+                                     Map<UUID, Money> amountsDue) {
         UUID locationId = entity.getSourceLocationId() != null
                 ? entity.getSourceLocationId()
                 : entity.getDestinationLocationId();
@@ -154,7 +168,8 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
                 authorNames.get(entity.getPerformedBy()),
                 entity.getOccurredAt(),
                 entity.getSaleId() == null ? null : SaleId.of(entity.getSaleId()),
-                OperationId.of(entity.getOperationId())
+                OperationId.of(entity.getOperationId()),
+                entity.getSaleId() == null ? null : amountsDue.get(entity.getSaleId())
         );
     }
 }

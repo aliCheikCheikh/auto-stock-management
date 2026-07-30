@@ -5,6 +5,7 @@ import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
+import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
 
@@ -23,6 +24,14 @@ public record StockMovementView(
         LocalDateTime executedAt,
         SaleId saleId,
         /** Opération à l'origine du mouvement : les lignes qui la partagent se regroupent. */
-        OperationId operationId
+        OperationId operationId,
+        /**
+         * Solde restant dû de la vente à l'origine du mouvement, {@code null} si le mouvement
+         * n'est pas une sortie de vente. Zéro signifie « vente réglée ».
+         *
+         * <p>Un seul champ plutôt qu'un booléen accompagné d'un montant : le montant porte déjà
+         * l'information, et deux champs pourraient un jour se contredire.</p>
+         */
+        Money saleAmountDue
 ) {
 }
