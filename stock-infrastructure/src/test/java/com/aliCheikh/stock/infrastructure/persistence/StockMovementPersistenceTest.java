@@ -20,6 +20,7 @@ import com.aliCheikh.stock.domain.model.user.UserRole;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleJpaRepositoryAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.StockMovementQueryJpaAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.StockMovementJpaRepositoryAdapter;
+import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleSettlementResolver;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.UserDisplayNameResolver;
 import com.aliCheikh.stock.infrastructure.persistence.entity.CategoryJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.ProductJpaEntity;
@@ -64,9 +65,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         StockMovementJpaRepositoryAdapter.class,
         StockMovementQueryJpaAdapter.class,
         StockMovementJpaMapper.class,
-        // L'adapter de lecture nomme désormais l'auteur de chaque mouvement :
-        // sans ce collaborateur, le contexte de la tranche ne démarre pas.
-        UserDisplayNameResolver.class
+        // L'adapter de lecture nomme désormais l'auteur de chaque mouvement et annonce
+        // l'état de règlement des ventes : sans ces collaborateurs, le contexte de la
+        // tranche ne démarre pas.
+        UserDisplayNameResolver.class,
+        SaleSettlementResolver.class
 })
 class StockMovementPersistenceTest {
 
