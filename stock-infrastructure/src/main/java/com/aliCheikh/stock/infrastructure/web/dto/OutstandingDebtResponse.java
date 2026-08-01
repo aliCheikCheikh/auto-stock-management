@@ -1,7 +1,6 @@
 package com.aliCheikh.stock.infrastructure.web.dto;
 
 import com.aliCheikh.stock.application.dto.OutstandingDebtSummary;
-import com.aliCheikh.stock.domain.model.shared.Money;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -32,16 +31,10 @@ public record OutstandingDebtResponse(UUID saleId,
                 summary.customerGivenName(),
                 summary.customerFatherName(),
                 summary.customerPhoneNumber(),
-                toMoney(summary.totalAmount()),
-                toMoney(summary.amountPaid()),
-                toMoney(summary.amountDue()),
+                MoneyResponse.from(summary.totalAmount()),
+                MoneyResponse.from(summary.amountPaid()),
+                MoneyResponse.from(summary.amountDue()),
                 summary.daysOutstanding(),
                 summary.overdue());
-    }
-
-    private static MoneyResponse toMoney(Money money) {
-        return new MoneyResponse(
-                money.getAmount().toPlainString(),
-                money.getCurrency().getCurrencyCode());
     }
 }
