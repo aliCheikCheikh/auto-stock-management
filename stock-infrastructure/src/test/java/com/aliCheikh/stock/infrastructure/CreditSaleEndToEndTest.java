@@ -239,4 +239,141 @@ class CreditSaleEndToEndTest {
         mockMvc.perform(get("/api/v1/debts").with(authentication(seller())))
                 .andExpect(status().isForbidden());
     }
+
+    /**
+     * Le détail d'une créance vit sous {@code /debts} précisément pour hériter de cette règle sans
+     * ligne de configuration supplémentaire. Tant que rien ne le vérifie, l'argument n'est qu'une
+     * intention : un jour où {@code /debts/**} redeviendrait {@code /debts}, la route exposerait le
+     * nom et le téléphone du client à tout le personnel, en silence.
+     */
+    @Test
+    void a_seller_cannot_read_the_detail_of_a_debt() throws Exception {
+        mockMvc.perform(get("/api/v1/debts/{saleId}", UUID.randomUUID())
+                        .with(authentication(seller())))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * Le parcours que réclamait le patron : depuis la liste des créances, ouvrir une vente et voir
+     * quels produits ont été vendus, par qui, quand, ce qui a été versé et ce qui reste.
+     */
+    @Test
+    void the_owner_can_open_a_debt_and_see_what_was_sold_and_what_remains() throws Exception {
+        UUID customerId = createCustomer();
+
+        // 3 × 25 000 = 75 000, dont 25 000 versés au comptoir : il reste 50 000.
+        String saleBody = mockMvc.perform(post("/api/v1/sales")
+                        .with(authentication(seller()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "shopId": "%s",
+                                  "lines": [{"productId": "%s", "quantity": 3}],
+                                  "customerId": "%s",
+                                  "amountPaid": 25000
+                                }
+                                """.formatted(shopId, productId, customerId)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        UUID saleId = UUID.fromString(objectMapper.readTree(saleBody).get("saleId").asText());
+
+        mockMvc.perform(get("/api/v1/debts/{saleId}", saleId).with(authentication(owner())))
+                .andExpect(status().isOk())
+                // « Quel produit, en quelle quantité ? » — nommé, pas un identifiant.
+                .andExpect(jsonPath("$.lines[0].productName").value("Plaquettes " + productId))
+                .andExpect(jsonPath("$.lines[0].quantity").value(3))
+                .andExpect(jsonPath("$.lines[0].lineTotal.amount").value("75000.00"))
+                // « Vendu par qui, à qui, quand ? »
+                .andExpect(jsonPath("$.sellerName").value("Vendeur"))
+                .andExpect(jsonPath("$.customerGivenName").value("Ahmat"))
+                .andExpect(jsonPath("$.occurredAt").exists())
+                // « Combien versé, combien reste-t-il ? »
+                .andExpect(jsonPath("$.amountPaid.amount").value("25000.00"))
+                .andExpect(jsonPath("$.amountDue.amount").value("50000.00"))
+                .andExpect(jsonPath("$.settled").value(false))
+                // L'acompte du comptoir ouvre l'échéancier, avec le nom de qui l'a reçu.
+                .andExpect(jsonPath("$.payments.length()").value(1))
+                .andExpect(jsonPath("$.payments[0].amount.amount").value("25000.00"))
+                .andExpect(jsonPath("$.payments[0].receivedByName").value("Vendeur"));
+
+        // Et l'historique des mouvements annonce la même chose, sans quitter l'écran.
+        mockMvc.perform(get("/api/v1/stock-movements").with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.content[0].saleAmountDue.amount").value("50000.00"));
+    }
+
+    /** Une créance soldée reste consultable : c'est la preuve du règlement, pas un déchet. */
+    @Test
+    void the_detail_of_a_debt_survives_its_settlement() throws Exception {
+        UUID customerId = createCustomer();
+
+        String saleBody = mockMvc.perform(post("/api/v1/sales")
+                        .with(authentication(seller()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "shopId": "%s",
+                                  "lines": [{"productId": "%s", "quantity": 1}],
+                                  "customerId": "%s",
+                                  "amountPaid": 0
+                                }
+                                """.formatted(shopId, productId, customerId)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        UUID saleId = UUID.fromString(objectMapper.readTree(saleBody).get("saleId").asText());
+
+        // Rien n'a été versé au comptoir : la créance porte le total, et le ledger est vide.
+        mockMvc.perform(get("/api/v1/debts/{saleId}", saleId).with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amountDue.amount").value("25000.00"))
+                .andExpect(jsonPath("$.payments").isEmpty());
+
+        mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
+                        .with(authentication(seller()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": 25000}"))
+                .andExpect(status().isCreated());
+
+        // La vente a quitté la liste des créances, mais son détail reste opposable au client.
+        mockMvc.perform(get("/api/v1/debts").with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        mockMvc.perform(get("/api/v1/debts/{saleId}", saleId).with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.settled").value(true))
+                .andExpect(jsonPath("$.amountDue.amount").value("0.00"))
+                .andExpect(jsonPath("$.payments.length()").value(1));
+    }
+
+    /** Une vente au comptant n'est pas une créance : elle n'a rien à faire sur cet écran. */
+    @Test
+    void a_cash_sale_has_no_debt_detail() throws Exception {
+        String saleBody = mockMvc.perform(post("/api/v1/sales")
+                        .with(authentication(seller()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "shopId": "%s",
+                                  "lines": [{"productId": "%s", "quantity": 1}]
+                                }
+                                """.formatted(shopId, productId)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        UUID saleId = UUID.fromString(objectMapper.readTree(saleBody).get("saleId").asText());
+
+        mockMvc.perform(get("/api/v1/debts/{saleId}", saleId).with(authentication(owner())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("SALE_NOT_FOUND"));
+
+        // Mais l'historique annonce bien qu'elle a été réglée : zéro, et non « pas d'information ».
+        mockMvc.perform(get("/api/v1/stock-movements").with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.content[0].saleAmountDue.amount").value("0.00"));
+    }
 }

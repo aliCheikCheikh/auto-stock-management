@@ -179,6 +179,37 @@ class CreditSaleDetailPersistenceTest {
         assertThat(detail.amountDue()).isEqualTo(xaf("0"));
     }
 
+    /**
+     * Le client emporte la marchandise sans rien verser : aucune ligne n'existe dans le ledger.
+     *
+     * <p>C'est la branche {@code COALESCE(..., 0)} de la requête d'en-tête. Une jointure interne
+     * aux paiements aurait fait disparaître la créance entière — celle-là même qui compte le plus
+     * pour le patron, puisque rien n'a été encaissé.</p>
+     */
+    @Test
+    void should_describe_a_credit_sale_where_nothing_was_paid_at_the_counter() {
+        saveReferenceData();
+
+        Sale sale = Sale.create(
+                sellerId,
+                List.of(new SaleLineInput(brakePadsId, 2, xaf("40000"))),
+                customerId,
+                Money.zero(XAF));
+        saleAdapter.save(sale);
+        flushAndClear();
+
+        CreditSaleDetailView detail = detailAdapter
+                .findCreditSaleDetail(sale.getSaleId().getValue())
+                .orElseThrow();
+
+        assertThat(detail.lines()).hasSize(1);
+        assertThat(detail.payments()).isEmpty();
+        assertThat(detail.totalAmount()).isEqualTo(xaf("80000"));
+        assertThat(detail.amountPaid()).isEqualTo(xaf("0"));
+        assertThat(detail.amountDue()).isEqualTo(xaf("80000"));
+        assertThat(detail.settled()).isFalse();
+    }
+
     /** Une vente au comptant n'a pas de client : elle n'est pas une créance et n'a rien à exposer. */
     @Test
     void should_ignore_a_cash_sale() {
