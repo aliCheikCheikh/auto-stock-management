@@ -734,6 +734,28 @@ components:
           items: { $ref: '#/components/schemas/SaleLineResponse' }
         totalAmount: { $ref: '#/components/schemas/Money' }
         createdAt: { type: string, format: date-time }
+        sellerName:
+          type: string
+          nullable: true
+          description: |
+            Nom affichable du vendeur. Renseigné dans l'historique paginé ; `null` à la création
+            et sur la lecture unitaire, où l'auteur est l'appelant lui-même.
+        customerId:
+          type: string
+          format: uuid
+          nullable: true
+        amountPaid:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Money'
+        amountDue:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          description: |
+            Solde restant dû. `0` pour une vente réglée, positif pour une vente à crédit.
+            Renseigné à la création et dans l'historique paginé, afin que le front n'ait jamais
+            à recalculer un solde.
 
     SaleLineResponse:
       type: object

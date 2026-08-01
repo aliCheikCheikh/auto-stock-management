@@ -96,8 +96,9 @@ public final class SaleWebMapper {
     }
 
     /**
-     * Le modèle de lecture de l'historique ne porte pas le volet crédit : la consultation des
-     * créances passe par son endpoint dédié, qui joint déjà les informations du client.
+     * L'historique porte le solde restant dû, pour que l'écran des ventes dise sous quelle forme
+     * chacune a été encaissée sans interroger un second endpoint. Le client et le montant versé,
+     * eux, restent l'affaire de l'écran des créances, qui joint déjà les informations du client.
      */
     private static SaleResponse toResponse(SaleView saleView) {
         return new SaleResponse(
@@ -111,7 +112,7 @@ public final class SaleWebMapper {
                 saleView.createdAt(),
                 null,
                 null,
-                null
+                nullableMoneyToResponse(saleView.amountDue())
         );
     }
 
@@ -163,6 +164,11 @@ public final class SaleWebMapper {
                         page.totalPages()
                 )
         );
+    }
+
+    /** Une vente dont le règlement n'a pas pu être résolu n'affiche rien plutôt qu'un faux zéro. */
+    private static MoneyResponse nullableMoneyToResponse(Money money) {
+        return money == null ? null : moneyToResponse(money);
     }
 
     private static MoneyResponse moneyToResponse(Money money) {

@@ -14,6 +14,7 @@ import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.domain.model.user.UserRole;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleJpaRepositoryAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleQueryJpaAdapter;
+import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleSettlementResolver;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.UserDisplayNameResolver;
 import com.aliCheikh.stock.infrastructure.persistence.entity.CategoryJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.ProductJpaEntity;
@@ -52,7 +53,9 @@ import static org.assertj.core.api.Assertions.within;
         SaleQueryJpaAdapter.class,
         // L'adapter de lecture nomme désormais le vendeur : sans ce
         // collaborateur, le contexte de la tranche ne démarre pas.
-        UserDisplayNameResolver.class})
+        UserDisplayNameResolver.class,
+        // Idem pour le solde restant dû, que l'historique porte désormais.
+        SaleSettlementResolver.class})
 public class SaleQueryPersistenceTest {
 
     @Container
@@ -153,6 +156,8 @@ public class SaleQueryPersistenceTest {
 
         SaleView view = result.content().get(0);
         assertThat(view.saleId()).isEqualTo(sale.getSaleId());
+        // Vente réglée au comptoir : le solde est nul, l'écran dira « Payée ».
+        assertThat(view.amountDue().getAmount()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(view.sellerId()).isEqualTo(sellerId);
         assertThat(view.lines()).hasSize(2);
         assertThat(view.totalAmount()).isEqualTo(sale.getTotalAmount());
