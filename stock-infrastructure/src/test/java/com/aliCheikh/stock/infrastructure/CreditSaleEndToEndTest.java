@@ -150,9 +150,10 @@ class CreditSaleEndToEndTest {
         // La créance apparaît telle quelle dans la vue du patron.
         mockMvc.perform(get("/api/v1/debts").with(authentication(owner())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].saleId").value(saleId.toString()))
-                .andExpect(jsonPath("$[0].customerGivenName").value("Ahmat"))
-                .andExpect(jsonPath("$[0].amountDue.amount").value("30000.00"));
+                .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.content[0].customerGivenName").value("Ahmat"))
+                .andExpect(jsonPath("$.content[0].amountDue.amount").value("30000.00"))
+                .andExpect(jsonPath("$.content[0].settled").value(false));
 
         // Premier remboursement : la dette diminue, elle ne disparaît pas.
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
@@ -172,9 +173,24 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.amountDue.amount").value("0.00"))
                 .andExpect(jsonPath("$.settled").value(true));
 
+        // Elle quitte la liste des créances en cours...
         mockMvc.perform(get("/api/v1/debts").with(authentication(owner())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+
+        // ...sans disparaître pour autant. C'est ce que le patron reprochait au système.
+        mockMvc.perform(get("/api/v1/debts")
+                        .param("status", "SETTLED")
+                        .with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.content[0].settled").value(true))
+                .andExpect(jsonPath("$.content[0].amountDue.amount").value("0.00"))
+                .andExpect(jsonPath("$.content[0].settledAt").exists())
+                // Vendue et soldée le même jour : la créance n'a pas eu le temps de vieillir.
+                .andExpect(jsonPath("$.content[0].daysOutstanding").value(0))
+                .andExpect(jsonPath("$.content[0].overdue").value(false));
 
         // Les trois encaissements sont bien tracés en base, aucun n'a été écrasé.
         Integer payments = jdbcTemplate.queryForObject(
@@ -238,6 +254,88 @@ class CreditSaleEndToEndTest {
     void a_seller_cannot_read_the_debts_list() throws Exception {
         mockMvc.perform(get("/api/v1/debts").with(authentication(seller())))
                 .andExpect(status().isForbidden());
+    }
+
+    /** L'historique porte les mêmes données personnelles que la liste : même règle d'accès. */
+    @Test
+    void a_seller_cannot_read_the_settled_debts_history() throws Exception {
+        mockMvc.perform(get("/api/v1/debts")
+                        .param("status", "SETTLED")
+                        .with(authentication(seller())))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * L'historique d'un client sur sa fiche : ce qu'il doit encore, et ce qu'il a déjà réglé.
+     *
+     * <p>Les deux ventes sont créées dans le même ordre pour toutes les lectures, ce qui permet de
+     * vérifier que chaque statut retient bien la sienne — et que la pagination compte des ventes
+     * et non des encaissements.</p>
+     */
+    @Test
+    void the_owner_can_read_what_a_customer_owes_and_what_he_already_repaid() throws Exception {
+        UUID customerId = createCustomer();
+
+        UUID stillOwed = createCreditSale(customerId, 2, 0);
+        UUID repaid = createCreditSale(customerId, 1, 0);
+
+        mockMvc.perform(post("/api/v1/sales/{saleId}/payments", repaid)
+                        .with(authentication(seller()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": 25000}"))
+                .andExpect(status().isCreated());
+
+        // Par défaut, la fiche client montre ce qui reste dû.
+        mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
+                        .with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].saleId").value(stillOwed.toString()))
+                .andExpect(jsonPath("$.content[0].amountDue.amount").value("50000.00"));
+
+        // L'historique de règlement du même client.
+        mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
+                        .param("status", "SETTLED")
+                        .with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].saleId").value(repaid.toString()))
+                .andExpect(jsonPath("$.content[0].settledAt").exists());
+
+        // Les deux d'un seul tenant, et un comptage qui porte sur les ventes.
+        mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
+                        .param("status", "ALL")
+                        .with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(2));
+
+        // Une page d'un seul élément reste une page, pas une troncature silencieuse.
+        mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
+                        .param("status", "ALL")
+                        .param("size", "1")
+                        .with(authentication(owner())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.page.totalElements").value(2))
+                .andExpect(jsonPath("$.page.totalPages").value(2));
+    }
+
+    private UUID createCreditSale(UUID customerId, int quantity, int amountPaid) throws Exception {
+        String body = mockMvc.perform(post("/api/v1/sales")
+                        .with(authentication(seller()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "shopId": "%s",
+                                  "lines": [{"productId": "%s", "quantity": %d}],
+                                  "customerId": "%s",
+                                  "amountPaid": %d
+                                }
+                                """.formatted(shopId, productId, quantity, customerId, amountPaid)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        return UUID.fromString(objectMapper.readTree(body).get("saleId").asText());
     }
 
     /**
@@ -340,7 +438,7 @@ class CreditSaleEndToEndTest {
         // La vente a quitté la liste des créances, mais son détail reste opposable au client.
         mockMvc.perform(get("/api/v1/debts").with(authentication(owner())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.content").isEmpty());
 
         mockMvc.perform(get("/api/v1/debts/{saleId}", saleId).with(authentication(owner())))
                 .andExpect(status().isOk())

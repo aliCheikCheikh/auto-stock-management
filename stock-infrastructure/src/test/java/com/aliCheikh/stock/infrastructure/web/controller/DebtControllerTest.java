@@ -3,14 +3,18 @@ package com.aliCheikh.stock.infrastructure.web.controller;
 import com.aliCheikh.stock.application.dto.CreditSaleDetailView;
 import com.aliCheikh.stock.application.dto.CreditSaleLineView;
 import com.aliCheikh.stock.application.dto.CreditSalePaymentView;
-import com.aliCheikh.stock.application.dto.OutstandingDebtSummary;
+import com.aliCheikh.stock.application.dto.DebtStatus;
+import com.aliCheikh.stock.application.dto.DebtSummary;
+import com.aliCheikh.stock.application.dto.ListDebtsQuery;
+import com.aliCheikh.stock.application.dto.PageResult;
 import com.aliCheikh.stock.application.usecase.GetCreditSaleDetailUseCase;
-import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
+import com.aliCheikh.stock.application.usecase.ListDebtsUseCase;
 import com.aliCheikh.stock.domain.exception.sale.SaleNotFoundException;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -23,14 +27,18 @@ import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(OutstandingDebtController.class)
+@WebMvcTest(DebtController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class OutstandingDebtControllerTest {
+class DebtControllerTest {
 
     private static final Currency XAF = Currency.getInstance("XAF");
 
@@ -38,7 +46,7 @@ class OutstandingDebtControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ListOutstandingDebtsUseCase listOutstandingDebtsUseCase;
+    private ListDebtsUseCase listDebtsUseCase;
 
     @MockitoBean
     private GetCreditSaleDetailUseCase getCreditSaleDetailUseCase;
@@ -52,7 +60,7 @@ class OutstandingDebtControllerTest {
         UUID saleId = UUID.randomUUID();
         UUID customerId = UUID.randomUUID();
 
-        given(listOutstandingDebtsUseCase.listAll()).willReturn(List.of(new OutstandingDebtSummary(
+        given(listDebtsUseCase.execute(any())).willReturn(page(new DebtSummary(
                 saleId,
                 LocalDateTime.of(2026, 7, 20, 10, 30),
                 customerId,
@@ -62,25 +70,100 @@ class OutstandingDebtControllerTest {
                 xaf("50000"),
                 xaf("20000"),
                 xaf("30000"),
+                false,
+                null,
                 45,
                 true)));
 
         mockMvc.perform(get("/api/v1/debts"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].saleId").value(saleId.toString()))
-                .andExpect(jsonPath("$[0].customerGivenName").value("Ahmat"))
-                .andExpect(jsonPath("$[0].customerPhoneNumber").value("+23566123456"))
-                .andExpect(jsonPath("$[0].amountDue.amount").value("30000"))
-                .andExpect(jsonPath("$[0].amountDue.currency").value("XAF"));
+                .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.content[0].customerGivenName").value("Ahmat"))
+                .andExpect(jsonPath("$.content[0].customerPhoneNumber").value("+23566123456"))
+                .andExpect(jsonPath("$.content[0].amountDue.amount").value("30000"))
+                .andExpect(jsonPath("$.content[0].amountDue.currency").value("XAF"))
+                .andExpect(jsonPath("$.content[0].settled").value(false))
+                .andExpect(jsonPath("$.content[0].settledAt").doesNotExist())
+                .andExpect(jsonPath("$.page.totalElements").value(1));
     }
 
     @Test
-    void should_return_an_empty_list_when_nobody_owes_anything() throws Exception {
-        given(listOutstandingDebtsUseCase.listAll()).willReturn(List.of());
+    void should_return_an_empty_page_when_nobody_owes_anything() throws Exception {
+        given(listDebtsUseCase.execute(any())).willReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/api/v1/debts"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+    }
+
+    /**
+     * Sans paramètre, l'écran répond à la question qu'on lui posait déjà. L'historique est une
+     * demande explicite : il ne doit pas surgir d'une requête sans filtre.
+     */
+    @Test
+    void should_look_at_open_debts_when_no_status_is_asked_for() throws Exception {
+        given(listDebtsUseCase.execute(any())).willReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/v1/debts")).andExpect(status().isOk());
+
+        assertThat(capturedQuery().status()).isEqualTo(DebtStatus.OUTSTANDING);
+        assertThat(capturedQuery().customerId()).isNull();
+    }
+
+    @Test
+    void should_expose_a_settled_debt_with_the_day_it_was_repaid() throws Exception {
+        LocalDateTime settledAt = LocalDateTime.of(2026, 7, 28, 9, 15);
+
+        given(listDebtsUseCase.execute(any())).willReturn(page(new DebtSummary(
+                UUID.randomUUID(),
+                LocalDateTime.of(2026, 7, 20, 10, 30),
+                UUID.randomUUID(),
+                "Ahmat",
+                "Youssouf",
+                "+23566123456",
+                xaf("50000"),
+                xaf("50000"),
+                xaf("0"),
+                true,
+                settledAt,
+                8,
+                false)));
+
+        mockMvc.perform(get("/api/v1/debts").param("status", "SETTLED").param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].settled").value(true))
+                .andExpect(jsonPath("$.content[0].settledAt").value("2026-07-28T09:15:00"))
+                .andExpect(jsonPath("$.content[0].amountDue.amount").value("0"))
+                // Réglée en 8 jours : la créance a cessé de vieillir le jour du paiement.
+                .andExpect(jsonPath("$.content[0].daysOutstanding").value(8))
+                .andExpect(jsonPath("$.content[0].overdue").value(false));
+
+        assertThat(capturedQuery().status()).isEqualTo(DebtStatus.SETTLED);
+        assertThat(capturedQuery().size()).isEqualTo(5);
+    }
+
+    @Test
+    void should_reject_a_status_which_does_not_exist() throws Exception {
+        mockMvc.perform(get("/api/v1/debts").param("status", "PEUT_ETRE"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_reject_a_page_size_beyond_the_allowed_range() throws Exception {
+        mockMvc.perform(get("/api/v1/debts").param("size", "500"))
+                .andExpect(status().isBadRequest());
+    }
+
+    private ListDebtsQuery capturedQuery() {
+        ArgumentCaptor<ListDebtsQuery> captor = ArgumentCaptor.forClass(ListDebtsQuery.class);
+        verify(listDebtsUseCase, atLeastOnce()).execute(captor.capture());
+
+        return captor.getValue();
+    }
+
+    private static PageResult<DebtSummary> page(DebtSummary summary) {
+        return new PageResult<>(List.of(summary), 0, 20, 1, 1);
     }
 
     @Test

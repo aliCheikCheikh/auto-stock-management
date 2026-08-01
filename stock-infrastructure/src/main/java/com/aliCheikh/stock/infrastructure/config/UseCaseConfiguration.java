@@ -4,7 +4,7 @@ import com.aliCheikh.stock.application.port.CreditSaleDetailQueryPort;
 import com.aliCheikh.stock.application.port.EventPublisher;
 import com.aliCheikh.stock.application.port.ListSalesQueryPort;
 import com.aliCheikh.stock.application.port.CustomerSearchQueryPort;
-import com.aliCheikh.stock.application.port.OutstandingDebtQueryPort;
+import com.aliCheikh.stock.application.port.DebtQueryPort;
 import com.aliCheikh.stock.application.port.ProductSearchQueryPort;
 import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
@@ -19,7 +19,7 @@ import com.aliCheikh.stock.application.usecase.GetSessionContextUseCase;
 import com.aliCheikh.stock.application.usecase.ListCategoriesUseCase;
 import com.aliCheikh.stock.application.usecase.GetCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.GetCreditSaleDetailUseCase;
-import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
+import com.aliCheikh.stock.application.usecase.ListDebtsUseCase;
 import com.aliCheikh.stock.application.usecase.SearchCustomersUseCase;
 import com.aliCheikh.stock.application.usecase.RecordPaymentUseCase;
 import com.aliCheikh.stock.application.usecase.RegisterCustomerUseCase;
@@ -123,11 +123,11 @@ public class UseCaseConfiguration {
     }
 
     @Bean
-    public ListOutstandingDebtsUseCase listOutstandingDebtsUseCase(
-            OutstandingDebtQueryPort outstandingDebtQueryPort,
+    public ListDebtsUseCase listDebtsUseCase(
+            DebtQueryPort debtQueryPort,
             Clock clock
     ) {
-        return new ListOutstandingDebtsUseCase(outstandingDebtQueryPort, clock);
+        return new ListDebtsUseCase(debtQueryPort, clock);
     }
 
     @Bean

@@ -11,7 +11,7 @@ import java.util.UUID;
  * ({@code Object[]}) obligerait à connaître l'ordre du SELECT et casserait silencieusement à la
  * moindre réorganisation de la requête.</p>
  */
-public interface OutstandingDebtProjection {
+public interface DebtProjection {
 
     UUID getSaleId();
 
@@ -30,4 +30,7 @@ public interface OutstandingDebtProjection {
     String getCurrency();
 
     BigDecimal getAmountPaid();
+
+    /** Dernier encaissement, {@code null} si le client n'a jamais rien versé. */
+    LocalDateTime getLastPaymentAt();
 }
