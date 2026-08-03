@@ -8,6 +8,8 @@ import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.domain.model.movement.OperationId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
+import com.aliCheikh.stock.domain.model.sale.SaleId;
+import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
 import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
@@ -21,7 +23,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
@@ -78,7 +82,8 @@ class StockMovementControllerTest {
                 "Ahmat",
                 executedAt,
                 null,
-                OperationId.generate());
+                OperationId.generate(),
+                null);
 
         given(listStockMovementsUseCase.execute(any(ListStockMovementsQuery.class)))
                 .willReturn(new PageResult<>(
@@ -123,6 +128,68 @@ class StockMovementControllerTest {
         assertThat(query.type()).isNull();
         assertThat(query.from()).isNull();
         assertThat(query.to()).isNull();
+    }
+
+    /**
+     * « Cette vente, elle a été payée ou pas ? » — l'historique doit répondre sans quitter l'écran.
+     * Le solde restant porte l'information : zéro signifie réglée, une valeur positive signifie à
+     * crédit. Un booléen supplémentaire n'apporterait rien et pourrait le contredire.
+     */
+    @Test
+    void should_expose_the_remaining_balance_of_the_sale_behind_a_movement() throws Exception {
+        UUID saleId = UUID.randomUUID();
+
+        given(listStockMovementsUseCase.execute(any(ListStockMovementsQuery.class)))
+                .willReturn(new PageResult<>(List.of(saleMovement(saleId, xaf("30000"))), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/v1/stock-movements"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
+                .andExpect(jsonPath("$.content[0].saleAmountDue.amount").value("30000"))
+                .andExpect(jsonPath("$.content[0].saleAmountDue.currency").value("XAF"));
+    }
+
+    @Test
+    void should_expose_a_zero_balance_for_a_sale_paid_in_full() throws Exception {
+        given(listStockMovementsUseCase.execute(any(ListStockMovementsQuery.class)))
+                .willReturn(new PageResult<>(
+                        List.of(saleMovement(UUID.randomUUID(), xaf("0"))), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/v1/stock-movements"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].saleAmountDue.amount").value("0"));
+    }
+
+    /** Une réception ou un transfert ne naît d'aucune vente : aucun solde à annoncer. */
+    @Test
+    void should_omit_the_balance_when_the_movement_is_not_a_sale() throws Exception {
+        given(listStockMovementsUseCase.execute(any(ListStockMovementsQuery.class)))
+                .willReturn(new PageResult<>(
+                        List.of(saleMovement(null, null)), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/v1/stock-movements"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].saleAmountDue").doesNotExist());
+    }
+
+    private StockMovementView saleMovement(UUID saleId, Money amountDue) {
+        return new StockMovementView(
+                MovementId.of(movementId),
+                ProductId.of(productId),
+                LocationId.of(sourceLocationId),
+                null,
+                MovementType.EXIT,
+                2,
+                UserId.of(userId),
+                "Ahmat",
+                executedAt,
+                saleId == null ? null : SaleId.of(saleId),
+                OperationId.generate(),
+                amountDue);
+    }
+
+    private static Money xaf(String amount) {
+        return Money.create(new BigDecimal(amount), Currency.getInstance("XAF"));
     }
 
     @Test

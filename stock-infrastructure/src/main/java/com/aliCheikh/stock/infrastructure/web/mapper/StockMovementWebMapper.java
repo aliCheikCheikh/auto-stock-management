@@ -6,6 +6,7 @@ import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.stock.LocationId;
+import com.aliCheikh.stock.infrastructure.web.dto.MoneyResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.PageMetaResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.PageOfStockMovementResponse;
 import com.aliCheikh.stock.infrastructure.web.dto.StockMovementResponse;
@@ -69,7 +70,8 @@ public final class StockMovementWebMapper {
                 movement.executedByName(),
                 movement.executedAt(),
                 movement.saleId() == null ? null : movement.saleId().getValue(),
-                movement.operationId().getValue()
+                movement.operationId().getValue(),
+                MoneyResponse.from(movement.saleAmountDue())
         );
     }
 

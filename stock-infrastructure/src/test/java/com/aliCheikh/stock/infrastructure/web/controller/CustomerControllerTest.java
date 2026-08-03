@@ -1,7 +1,11 @@
 package com.aliCheikh.stock.infrastructure.web.controller;
 
+import com.aliCheikh.stock.application.dto.DebtStatus;
+import com.aliCheikh.stock.application.dto.DebtSummary;
+import com.aliCheikh.stock.application.dto.ListDebtsQuery;
+import com.aliCheikh.stock.application.dto.PageResult;
 import com.aliCheikh.stock.application.dto.RegisterCustomerCommand;
-import com.aliCheikh.stock.application.usecase.ListOutstandingDebtsUseCase;
+import com.aliCheikh.stock.application.usecase.ListDebtsUseCase;
 import com.aliCheikh.stock.application.usecase.GetCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.RegisterCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.SearchCustomersUseCase;
@@ -9,6 +13,7 @@ import com.aliCheikh.stock.domain.exception.customer.DuplicatePhoneNumberExcepti
 import com.aliCheikh.stock.domain.model.customer.Customer;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.customer.PhoneNumber;
+import com.aliCheikh.stock.domain.model.shared.Money;
 import com.aliCheikh.stock.infrastructure.persistence.repository.IdempotencyRecordJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,10 +24,17 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Currency;
+import java.util.List;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,7 +50,7 @@ class CustomerControllerTest {
     private RegisterCustomerUseCase registerCustomerUseCase;
 
     @MockitoBean
-    private ListOutstandingDebtsUseCase listOutstandingDebtsUseCase;
+    private ListDebtsUseCase listDebtsUseCase;
 
     @MockitoBean
     private GetCustomerUseCase getCustomerUseCase;
@@ -104,5 +116,61 @@ class CustomerControllerTest {
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CUSTOMER_PHONE_ALREADY_USED"));
+    }
+
+    /**
+     * La fiche d'un client pose la même question que l'écran global, sur un périmètre plus étroit.
+     * Elle doit donc filtrer de la même façon — et se restreindre au client de l'URL, faute de quoi
+     * elle exposerait les dettes de toute la boutique sur la fiche d'un seul.
+     */
+    @Test
+    void should_scope_the_debts_to_the_customer_in_the_path() throws Exception {
+        UUID customerId = UUID.randomUUID();
+        given(listDebtsUseCase.execute(any())).willReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty());
+
+        ArgumentCaptor<ListDebtsQuery> captor = ArgumentCaptor.forClass(ListDebtsQuery.class);
+        verify(listDebtsUseCase).execute(captor.capture());
+
+        assertThat(captor.getValue().customerId()).isEqualTo(customerId);
+        assertThat(captor.getValue().status()).isEqualTo(DebtStatus.OUTSTANDING);
+    }
+
+    @Test
+    void should_let_the_owner_read_a_customer_repayment_history() throws Exception {
+        UUID customerId = UUID.randomUUID();
+        LocalDateTime settledAt = LocalDateTime.of(2026, 7, 28, 9, 15);
+
+        given(listDebtsUseCase.execute(any())).willReturn(new PageResult<>(
+                List.of(new DebtSummary(
+                        UUID.randomUUID(),
+                        LocalDateTime.of(2026, 7, 20, 10, 30),
+                        customerId,
+                        "Ahmat",
+                        "Youssouf",
+                        "+23566123456",
+                        Money.create(new BigDecimal("50000"), Currency.getInstance("XAF")),
+                        Money.create(new BigDecimal("50000"), Currency.getInstance("XAF")),
+                        Money.create(BigDecimal.ZERO, Currency.getInstance("XAF")),
+                        true,
+                        settledAt,
+                        8,
+                        false)),
+                0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
+                        .param("status", "SETTLED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].settled").value(true))
+                .andExpect(jsonPath("$.content[0].settledAt").value("2026-07-28T09:15:00"));
+
+        ArgumentCaptor<ListDebtsQuery> captor = ArgumentCaptor.forClass(ListDebtsQuery.class);
+        verify(listDebtsUseCase).execute(captor.capture());
+
+        assertThat(captor.getValue().status()).isEqualTo(DebtStatus.SETTLED);
+        assertThat(captor.getValue().customerId()).isEqualTo(customerId);
     }
 }

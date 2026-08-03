@@ -358,7 +358,8 @@ class SaleControllerTest {
                 "Ahmat",
                 List.of(singleLine),
                 unitPrice.multiply(4),
-                createdAt);
+                createdAt,
+                unitPrice.multiply(1));
         given(listSalesUseCase.execute(any(ListSalesQuery.class))).willReturn(new PageResult<>(
                 List.of(saleView),
                 0,
@@ -381,6 +382,9 @@ class SaleControllerTest {
                 .andExpect(jsonPath("$.content[0].lines[0].quantity").value(4))
                 .andExpect(jsonPath("$.content[0].lines[0].unitPrice.amount").value("15.00"))
                 .andExpect(jsonPath("$.content[0].lines[0].subtotal.amount").value("60.00"))
+                // L'historique porte le solde : l'écran des ventes distingue une
+                // vente réglée d'une vente à crédit sans second appel.
+                .andExpect(jsonPath("$.content[0].amountDue.amount").value("15.00"))
                 .andExpect(jsonPath("$.content[0].totalAmount.amount").value("60.00"))
                 .andExpect(jsonPath("$.content[0].createdAt").value("2026-05-15T10:30:00"))
                 .andExpect(jsonPath("$.page.page").value(0))

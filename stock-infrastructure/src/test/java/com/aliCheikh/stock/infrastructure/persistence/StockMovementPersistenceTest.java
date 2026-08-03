@@ -4,6 +4,7 @@ import com.aliCheikh.stock.application.dto.ListStockMovementsQuery;
 import com.aliCheikh.stock.application.dto.PageResult;
 import com.aliCheikh.stock.application.dto.StockMovementView;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
+import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.movement.MovementId;
 import com.aliCheikh.stock.domain.model.movement.MovementType;
 import com.aliCheikh.stock.domain.model.movement.OperationId;
@@ -20,8 +21,10 @@ import com.aliCheikh.stock.domain.model.user.UserRole;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleJpaRepositoryAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.StockMovementQueryJpaAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.StockMovementJpaRepositoryAdapter;
+import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleSettlementResolver;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.UserDisplayNameResolver;
 import com.aliCheikh.stock.infrastructure.persistence.entity.CategoryJpaEntity;
+import com.aliCheikh.stock.infrastructure.persistence.entity.CustomerJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.ProductJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.ShopJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.StockMovementJpaEntity;
@@ -30,6 +33,7 @@ import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.mapper.SaleJpaMapper;
 import com.aliCheikh.stock.infrastructure.persistence.mapper.StockMovementJpaMapper;
 import com.aliCheikh.stock.infrastructure.persistence.repository.CategoryJpaRepository;
+import com.aliCheikh.stock.infrastructure.persistence.repository.CustomerJpaRepository;
 import com.aliCheikh.stock.infrastructure.persistence.repository.ProductJpaRepository;
 import com.aliCheikh.stock.infrastructure.persistence.repository.ShopJpaRepository;
 import com.aliCheikh.stock.infrastructure.persistence.repository.StockMovementJpaRepository;
@@ -64,9 +68,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         StockMovementJpaRepositoryAdapter.class,
         StockMovementQueryJpaAdapter.class,
         StockMovementJpaMapper.class,
-        // L'adapter de lecture nomme désormais l'auteur de chaque mouvement :
-        // sans ce collaborateur, le contexte de la tranche ne démarre pas.
-        UserDisplayNameResolver.class
+        // L'adapter de lecture nomme désormais l'auteur de chaque mouvement et annonce
+        // l'état de règlement des ventes : sans ces collaborateurs, le contexte de la
+        // tranche ne démarre pas.
+        UserDisplayNameResolver.class,
+        SaleSettlementResolver.class
 })
 class StockMovementPersistenceTest {
 
@@ -111,6 +117,9 @@ class StockMovementPersistenceTest {
     private UserJpaRepository userRepository;
 
     @Autowired
+    private CustomerJpaRepository customerRepository;
+
+    @Autowired
     private TestEntityManager entityManager;
 
     private CategoryId categoryId;
@@ -119,6 +128,7 @@ class StockMovementPersistenceTest {
     private LocationId sourceLocationId;
     private LocationId destinationLocationId;
     private UserId userId;
+    private CustomerId customerId;
     private Money unitPrice;
     private Sale sale;
 
@@ -130,6 +140,7 @@ class StockMovementPersistenceTest {
         sourceLocationId = LocationId.generate();
         destinationLocationId = LocationId.generate();
         userId = UserId.generate();
+        customerId = CustomerId.generate();
         unitPrice = Money.create(new BigDecimal("45.90"), Currency.getInstance("EUR"));
         sale = Sale.create(
                 userId,
@@ -259,7 +270,99 @@ class StockMovementPersistenceTest {
         assertThat(movement.saleId()).isNull();
     }
 
+    /**
+     * L'historique doit annoncer sous quelle forme la vente a été enregistrée : réglée, ou à
+     * crédit et pour combien.
+     *
+     * <p>Les trois formes sont lues en une seule page, car c'est ainsi qu'elles se présentent à
+     * l'écran — et parce que la résolution des soldes est justement groupée par page.</p>
+     */
+    @Test
+    void should_announce_the_settlement_state_of_the_sale_behind_each_movement() {
+        saveReferenceData();
+        saveSale();
+
+        // Vendue 91,80 €, dont 41,80 € versés au comptoir : il reste 50,00 €.
+        Sale creditSale = Sale.create(
+                userId,
+                List.of(new SaleLineInput(productId, 2, unitPrice)),
+                customerId,
+                eur("41.80"));
+        saleAdapter.save(creditSale);
+        flushAndClear();
+
+        StockMovement creditExit = StockMovement.createExit(
+                productId, sourceLocationId, 2, userId, creditSale.getSaleId(), OperationId.generate());
+        StockMovement paidExit = StockMovement.createExit(
+                productId, sourceLocationId, 1, userId, sale.getSaleId(), OperationId.generate());
+        StockMovement entry = StockMovement.createEntry(
+                productId, destinationLocationId, 10, userId, OperationId.generate());
+
+        adapter.saveAll(List.of(creditExit, paidExit, entry));
+        flushAndClear();
+
+        List<StockMovementView> movements = queryAdapter.findByQuery(allMovements()).content();
+
+        // Vente à crédit : le solde restant, et non un simple drapeau.
+        assertThat(viewOf(movements, creditExit).saleAmountDue()).isEqualTo(eur("50.00"));
+        // Vente réglée : zéro, ce qui est une réponse, pas une absence de réponse.
+        assertThat(viewOf(movements, paidExit).saleAmountDue()).isEqualTo(eur("0"));
+        // Une réception ne naît d'aucune vente : il n'y a rien à annoncer.
+        assertThat(viewOf(movements, entry).saleAmountDue()).isNull();
+    }
+
+    /**
+     * Le cas le plus courant du terrain : le client emporte la marchandise sans rien verser. Aucune
+     * ligne n'existe alors dans le ledger, et c'est la branche {@code COALESCE(..., 0)} de la
+     * requête qui répond — celle qu'une jointure interne aurait silencieusement fait disparaître.
+     */
+    @Test
+    void should_announce_the_full_total_when_nothing_was_paid_at_the_counter() {
+        saveReferenceData();
+
+        Sale unpaidSale = Sale.create(
+                userId,
+                List.of(new SaleLineInput(productId, 1, unitPrice)),
+                customerId,
+                Money.zero(Currency.getInstance("EUR")));
+        saleAdapter.save(unpaidSale);
+        flushAndClear();
+
+        StockMovement exit = StockMovement.createExit(
+                productId, sourceLocationId, 1, userId, unpaidSale.getSaleId(), OperationId.generate());
+        adapter.saveAll(List.of(exit));
+        flushAndClear();
+
+        List<StockMovementView> movements = queryAdapter.findByQuery(allMovements()).content();
+
+        assertThat(viewOf(movements, exit).saleAmountDue()).isEqualTo(eur("45.90"));
+    }
+
+    private static ListStockMovementsQuery allMovements() {
+        return new ListStockMovementsQuery(
+                0, 10, List.of("executedAt,asc"), null, null, null, null, null);
+    }
+
+    private static StockMovementView viewOf(List<StockMovementView> movements, StockMovement movement) {
+        return movements.stream()
+                .filter(view -> view.movementId().equals(movement.getMovementId()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static Money eur(String amount) {
+        return Money.create(new BigDecimal(amount), Currency.getInstance("EUR"));
+    }
+
     private void saveReferenceData() {
+        customerRepository.save(CustomerJpaEntity.of(
+                customerId.getValue(),
+                "Moussa",
+                "Youssouf",
+                "+23566123456",
+                null
+        ));
+
         categoryRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(),
                 "Brakes"

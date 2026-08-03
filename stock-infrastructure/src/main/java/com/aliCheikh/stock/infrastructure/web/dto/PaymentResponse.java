@@ -1,7 +1,6 @@
 package com.aliCheikh.stock.infrastructure.web.dto;
 
 import com.aliCheikh.stock.application.dto.RecordPaymentResult;
-import com.aliCheikh.stock.domain.model.shared.Money;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,17 +22,11 @@ public record PaymentResponse(UUID saleId,
     public static PaymentResponse from(RecordPaymentResult result) {
         return new PaymentResponse(
                 result.saleId().getValue(),
-                toMoney(result.amountPaid()),
+                MoneyResponse.from(result.amountPaid()),
                 result.receivedAt(),
-                toMoney(result.totalAmount()),
-                toMoney(result.totalCollected()),
-                toMoney(result.amountDue()),
+                MoneyResponse.from(result.totalAmount()),
+                MoneyResponse.from(result.totalCollected()),
+                MoneyResponse.from(result.amountDue()),
                 result.settled());
-    }
-
-    private static MoneyResponse toMoney(Money money) {
-        return new MoneyResponse(
-                money.getAmount().toPlainString(),
-                money.getCurrency().getCurrencyCode());
     }
 }

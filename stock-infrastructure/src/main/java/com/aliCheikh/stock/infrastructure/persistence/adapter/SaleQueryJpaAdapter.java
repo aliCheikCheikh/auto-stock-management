@@ -31,9 +31,11 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
 
     private final SaleQueryJpaRepository saleQueryJpaRepository;
     private final UserDisplayNameResolver userDisplayNameResolver;
+    private final SaleSettlementResolver saleSettlementResolver;
 
     public SaleQueryJpaAdapter(SaleQueryJpaRepository saleQueryJpaRepository,
-                               UserDisplayNameResolver userDisplayNameResolver) {
+                               UserDisplayNameResolver userDisplayNameResolver,
+                               SaleSettlementResolver saleSettlementResolver) {
         this.saleQueryJpaRepository = Objects.requireNonNull(
                 saleQueryJpaRepository,
                 "saleQueryJpaRepository cannot be null"
@@ -41,6 +43,10 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
         this.userDisplayNameResolver = Objects.requireNonNull(
                 userDisplayNameResolver,
                 "userDisplayNameResolver cannot be null"
+        );
+        this.saleSettlementResolver = Objects.requireNonNull(
+                saleSettlementResolver,
+                "saleSettlementResolver cannot be null"
         );
     }
 
@@ -58,9 +64,13 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
         Map<UUID, String> sellerNames = userDisplayNameResolver.resolve(
                 page.getContent().stream().map(SaleJpaEntity::getSoldBy).toList());
 
+        // Même parti que pour les noms d'auteurs : un seul appel pour la page.
+        Map<UUID, Money> amountsDue = saleSettlementResolver.resolveAmountsDue(
+                page.getContent().stream().map(SaleJpaEntity::getId).toList());
+
         return new PageResult<>(
                 page.getContent().stream()
-                        .map(entity -> toView(entity, sellerNames))
+                        .map(entity -> toView(entity, sellerNames, amountsDue))
                         .toList(),
                 query.page(),
                 query.size(),
@@ -119,7 +129,9 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
         };
     }
 
-    private SaleView toView(SaleJpaEntity entity, Map<UUID, String> sellerNames) {
+    private SaleView toView(SaleJpaEntity entity,
+                           Map<UUID, String> sellerNames,
+                           Map<UUID, Money> amountsDue) {
         return new SaleView(
                 SaleId.of(entity.getId()),
                 UserId.of(entity.getSoldBy()),
@@ -129,7 +141,8 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
                         .map(this::toLineView)
                         .toList(),
                 Money.create(entity.getTotalAmount(), Currency.getInstance(entity.getTotalCurrency())),
-                entity.getOccurredAt()
+                entity.getOccurredAt(),
+                amountsDue.get(entity.getId())
         );
     }
 

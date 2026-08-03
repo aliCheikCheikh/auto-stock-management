@@ -418,6 +418,107 @@ paths:
               schema:
                 $ref: '#/components/schemas/PageOfStockMovement'
 
+  # ───────────────────────────────────────────────────────────────
+  # Créances — ventes à crédit, en cours et soldées
+  #
+  # Réservées au patron : ces réponses portent le nom et le téléphone
+  # du client. La règle de sécurité couvre `/debts/**`, ce qui vaut
+  # aussi pour toute route ajoutée sous ce préfixe.
+  # ───────────────────────────────────────────────────────────────
+  /debts:
+    get:
+      tags: [ Créances ]
+      operationId: listDebts
+      summary: Créances de la boutique, en cours ou soldées.
+      description: |
+        Sans paramètre, répond à « qui me doit de l'argent » : les créances encore
+        ouvertes, de la plus ancienne à la plus récente — c'est celle-là qu'on relance.
+
+        `status=SETTLED` ouvre l'historique : les créances éteintes, du règlement le plus
+        récent au plus ancien. Une dette payée ne disparaît pas, c'est la preuve du
+        règlement le jour où le client conteste avoir payé.
+
+        Aucun paramètre de tri n'est accepté : l'ordre utile dépend du statut et relève
+        d'une décision métier, pas d'un réglage d'écran.
+      parameters:
+        - $ref: '#/components/parameters/DebtStatusParam'
+        - name: customerId
+          in: query
+          description: Restreint à un client. Absent, la requête couvre toute la boutique.
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfDebt'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /debts/{saleId}:
+    get:
+      tags: [ Créances ]
+      operationId: getCreditSaleDetail
+      summary: Détail d'une créance — quels produits, vendus par qui, réglés comment.
+      description: |
+        Ce qu'une liste de soldes ne dit pas : les produits vendus et leurs quantités, le
+        prix pratiqué le jour de la vente, le vendeur, le client, et l'échéancier complet
+        des encaissements avec le nom de qui les a reçus.
+
+        Le détail reste consultable après règlement complet. Le filtrer sur le solde
+        restant effacerait la preuve au moment précis où elle devient utile.
+
+        `404` pour une vente au comptant : sans client, ce n'est pas une créance, et la
+        distinguer d'une vente inexistante renseignerait l'appelant sur une vente qui ne
+        le regarde pas.
+      parameters:
+        - name: saleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditSaleDetail'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /customers/{customerId}/debts:
+    get:
+      tags: [ Créances ]
+      operationId: listCustomerDebts
+      summary: Créances d'un client, en cours ou soldées.
+      description: |
+        Même filtre, même pagination et même ordre que la vue globale : c'est la même
+        question posée sur un périmètre plus étroit. Deux comportements distincts pour la
+        même donnée obligeraient le patron à se souvenir de quel écran il vient.
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/DebtStatusParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfDebt'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
 # ───────────────────────────────────────────────────────────────
 # Components
 # ───────────────────────────────────────────────────────────────
@@ -459,6 +560,16 @@ components:
         minimum: 1
         maximum: 200
         default: 20
+
+    DebtStatusParam:
+      name: status
+      in: query
+      description: |
+        Filtre de règlement. `OUTSTANDING` par défaut : sans paramètre, l'écran répond à
+        la question qu'on lui posait déjà. L'historique est une demande explicite, pas un
+        effet de bord d'une requête sans filtre.
+      schema:
+        $ref: '#/components/schemas/DebtStatus'
 
     SortParam:
       name: sort
@@ -623,6 +734,28 @@ components:
           items: { $ref: '#/components/schemas/SaleLineResponse' }
         totalAmount: { $ref: '#/components/schemas/Money' }
         createdAt: { type: string, format: date-time }
+        sellerName:
+          type: string
+          nullable: true
+          description: |
+            Nom affichable du vendeur. Renseigné dans l'historique paginé ; `null` à la création
+            et sur la lecture unitaire, où l'auteur est l'appelant lui-même.
+        customerId:
+          type: string
+          format: uuid
+          nullable: true
+        amountPaid:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Money'
+        amountDue:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          description: |
+            Solde restant dû. `0` pour une vente réglée, positif pour une vente à crédit.
+            Renseigné à la création et dans l'historique paginé, afin que le front n'ait jamais
+            à recalculer un solde.
 
     SaleLineResponse:
       type: object
@@ -733,11 +866,139 @@ components:
         type: { $ref: '#/components/schemas/MovementType' }
         quantity: { type: integer, minimum: 1 }
         executedBy: { type: string, format: uuid }
+        executedByName:
+          type: string
+          nullable: true
+          description: '`null` si le compte de l''auteur a disparu.'
         executedAt: { type: string, format: date-time }
         saleId:
           type: string
           format: uuid
           description: Renseigné uniquement pour `type = EXIT` lié à une vente.
+        operationId:
+          type: string
+          format: uuid
+          description: |
+            Opération à l'origine du mouvement : les lignes qui la partagent se regroupent
+            dans l'historique.
+        saleAmountDue:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          nullable: true
+          description: |
+            Solde restant dû de la vente à l'origine du mouvement. Absent hors vente, zéro
+            si la vente a été réglée, positif si elle reste à crédit.
+
+            Un seul champ plutôt qu'un booléen accompagné d'un montant : le montant porte
+            déjà l'information, et deux champs finiraient par se contredire.
+
+    # ── Créances ───────────────────────────────────────────────
+    DebtStatus:
+      type: string
+      default: OUTSTANDING
+      enum: [ OUTSTANDING, SETTLED, ALL ]
+      description: |
+        `OUTSTANDING` : il reste quelque chose à encaisser.
+        `SETTLED` : la dette est éteinte, et reste consultable.
+        `ALL` : les deux, pour lire l'historique d'un client d'un seul tenant.
+
+    Debt:
+      type: object
+      required:
+        [ saleId, occurredAt, customerId, customerGivenName, totalAmount,
+          amountPaid, amountDue, settled, daysOutstanding, overdue ]
+      properties:
+        saleId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        customerId: { type: string, format: uuid }
+        customerGivenName: { type: string }
+        customerFatherName: { type: string, nullable: true }
+        customerPhoneNumber: { type: string, nullable: true }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        amountPaid:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: Somme des encaissements. Dérivée du ledger, jamais stockée.
+        amountDue:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: Total moins encaissé. Zéro sur une créance soldée.
+        settled:
+          type: boolean
+          description: Vrai dès que plus rien n'est dû.
+        settledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Date du règlement, `null` tant que la créance est ouverte. C'est celle du
+            dernier encaissement.
+        daysOutstanding:
+          type: integer
+          minimum: 0
+          description: |
+            Durée d'ouverture de la créance : jusqu'à aujourd'hui si elle est encore
+            vivante, jusqu'au règlement sinon. Une dette éteinte ne vieillit plus —
+            continuer à la compter afficherait « 180 jours » sur un dossier réglé en une
+            semaine.
+        overdue:
+          type: boolean
+          description: |
+            Dépassement du délai toléré (30 jours), mesuré sur `daysOutstanding` :
+            « en retard » pour une créance ouverte, « réglée hors délai » pour une
+            créance éteinte.
+
+    CreditSaleLine:
+      type: object
+      required: [ productId, productName, quantity, unitPrice, lineTotal ]
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        productReference: { type: string, nullable: true }
+        quantity: { type: integer, minimum: 1 }
+        unitPrice:
+          allOf: [ { $ref: '#/components/schemas/Money' } ]
+          description: Prix pratiqué le jour de la vente, pas le tarif du jour.
+        lineTotal: { $ref: '#/components/schemas/Money' }
+
+    CreditSalePayment:
+      type: object
+      required: [ paymentId, amount, receivedAt, receivedById ]
+      properties:
+        paymentId: { type: string, format: uuid }
+        amount: { $ref: '#/components/schemas/Money' }
+        receivedAt: { type: string, format: date-time }
+        receivedById: { type: string, format: uuid }
+        receivedByName:
+          type: string
+          nullable: true
+          description: '`null` si le compte de l''encaisseur a disparu.'
+
+    CreditSaleDetail:
+      type: object
+      required:
+        [ saleId, occurredAt, sellerId, customerId, customerGivenName, lines,
+          totalAmount, amountPaid, amountDue, settled, payments ]
+      properties:
+        saleId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        sellerId: { type: string, format: uuid }
+        sellerName: { type: string, nullable: true }
+        customerId: { type: string, format: uuid }
+        customerGivenName: { type: string }
+        customerFatherName: { type: string, nullable: true }
+        customerPhoneNumber: { type: string, nullable: true }
+        lines:
+          type: array
+          description: Dans l'ordre de saisie, celui du ticket remis au client.
+          items: { $ref: '#/components/schemas/CreditSaleLine' }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        amountPaid: { $ref: '#/components/schemas/Money' }
+        amountDue: { $ref: '#/components/schemas/Money' }
+        settled: { type: boolean }
+        payments:
+          type: array
+          description: |
+            Du plus ancien au plus récent. L'acompte du jour de la vente ouvre la liste :
+            c'est un encaissement comme un autre.
+          items: { $ref: '#/components/schemas/CreditSalePayment' }
 
     # ── Pagination générique ──────────────────────────────────
     PageMeta:
@@ -783,6 +1044,15 @@ components:
         content:
           type: array
           items: { $ref: '#/components/schemas/StockMovement' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+
+    PageOfDebt:
+      type: object
+      required: [ content, page ]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Debt' }
         page: { $ref: '#/components/schemas/PageMeta' }
 
     # ── RFC 7807 Problem Details ──────────────────────────────

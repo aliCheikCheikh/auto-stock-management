@@ -15,7 +15,14 @@ public record SaleView(SaleId saleId,
                        String sellerName,
                        List<SaleLineDto> lines,
                        Money totalAmount,
-                       LocalDateTime createdAt) {
+                       LocalDateTime createdAt,
+                       /**
+                        * Solde restant dû, dérivé du ledger des paiements : zéro pour une vente
+                        * réglée, positif pour une vente à crédit. L'historique doit dire sous
+                        * quelle forme la vente a été encaissée sans que le front recalcule quoi
+                        * que ce soit.
+                        */
+                       Money amountDue) {
     public SaleView {
         lines = List.copyOf(Objects.requireNonNull(lines, "lines cannot be null"));
     }

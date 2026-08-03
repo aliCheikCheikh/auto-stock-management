@@ -62,7 +62,8 @@ class ListSalesUseCaseTest {
                 "Ahmat",
                 List.of(singleLine),
                 unitPrice.multiply(4),
-                LocalDateTime.of(2026, 5, 20, 12, 30)
+                LocalDateTime.of(2026, 5, 20, 12, 30),
+                Money.create(BigDecimal.ZERO, Currency.getInstance("EUR"))
         );
 
         PageResult<SaleView> expectedPage = new PageResult<>(
