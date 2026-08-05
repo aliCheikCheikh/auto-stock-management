@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UUID> {
@@ -43,4 +44,20 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UU
 
     /** Utilisé pour refuser la suppression d'une catégorie encore rattachée à des produits. */
     boolean existsByCategoryId(UUID categoryId);
+
+    @Query("""
+            SELECT product
+            FROM ProductJpaEntity product
+            WHERE lower(trim(product.reference)) IN :normalizedReferences
+            """)
+    List<ProductJpaEntity> findByNormalizedReferences(
+            @Param("normalizedReferences") Set<String> normalizedReferences
+    );
+
+    @Query("""
+            SELECT product
+            FROM ProductJpaEntity product
+            WHERE lower(trim(product.name)) IN :normalizedNames
+            """)
+    List<ProductJpaEntity> findByNormalizedNames(@Param("normalizedNames") Set<String> normalizedNames);
 }
