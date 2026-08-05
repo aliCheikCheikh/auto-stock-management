@@ -1,5 +1,9 @@
 spring:
   application:
     name: auto-stock-management
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 2MB
   jpa:
     open-in-view: false

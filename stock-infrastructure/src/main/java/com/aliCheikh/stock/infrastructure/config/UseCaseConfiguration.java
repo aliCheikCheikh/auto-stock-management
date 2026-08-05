@@ -9,10 +9,18 @@ import com.aliCheikh.stock.application.port.ProductSearchQueryPort;
 import com.aliCheikh.stock.application.port.ProductStockQueryPort;
 import com.aliCheikh.stock.application.port.StockLevelQueryPort;
 import com.aliCheikh.stock.application.port.StockMovementQueryPort;
+import com.aliCheikh.stock.application.port.StockReceiptImportCategoryQueryPort;
+import com.aliCheikh.stock.application.port.StockReceiptImportExecutionLedger;
+import com.aliCheikh.stock.application.port.StockReceiptImportFailureReporter;
+import com.aliCheikh.stock.application.port.StockReceiptImportProductQueryPort;
+import com.aliCheikh.stock.application.port.StockReceiptImportReader;
 import com.aliCheikh.stock.application.port.TransactionRunner;
+import com.aliCheikh.stock.application.service.StockReceiptImportExecutionFingerprint;
+import com.aliCheikh.stock.application.service.StockReceiptImportRowPreparator;
 import com.aliCheikh.stock.application.usecase.CreateCategoryUseCase;
 import com.aliCheikh.stock.application.usecase.DeactivateProductUseCase;
 import com.aliCheikh.stock.application.usecase.DeleteCategoryUseCase;
+import com.aliCheikh.stock.application.usecase.ExecuteStockReceiptImportUseCase;
 import com.aliCheikh.stock.application.usecase.RenameCategoryUseCase;
 import com.aliCheikh.stock.application.usecase.GetProductStockLevelsUseCase;
 import com.aliCheikh.stock.application.usecase.GetSessionContextUseCase;
@@ -26,6 +34,7 @@ import com.aliCheikh.stock.application.usecase.RegisterCustomerUseCase;
 import com.aliCheikh.stock.application.usecase.ListSalesUseCase;
 import com.aliCheikh.stock.application.usecase.ListStockLevelsUseCase;
 import com.aliCheikh.stock.application.usecase.ListStockMovementsUseCase;
+import com.aliCheikh.stock.application.usecase.PrepareStockReceiptImportUseCase;
 import com.aliCheikh.stock.application.usecase.ReceiveStockUseCase;
 import com.aliCheikh.stock.application.usecase.SearchProductsUseCase;
 import com.aliCheikh.stock.application.usecase.SellProductUseCase;
@@ -78,6 +87,52 @@ public class UseCaseConfiguration {
                 storageLocationRepository,
                 eventPublisher,
                 transactionRunner
+        );
+    }
+
+    @Bean
+    public StockReceiptImportRowPreparator stockReceiptImportRowPreparator() {
+        return new StockReceiptImportRowPreparator();
+    }
+
+    @Bean
+    public PrepareStockReceiptImportUseCase prepareStockReceiptImportUseCase(
+            StockReceiptImportReader reader,
+            StockReceiptImportProductQueryPort productQueryPort,
+            StockReceiptImportCategoryQueryPort categoryQueryPort,
+            StorageLocationRepository storageLocationRepository,
+            StockReceiptImportRowPreparator rowPreparator
+    ) {
+        return new PrepareStockReceiptImportUseCase(
+                reader,
+                productQueryPort,
+                categoryQueryPort,
+                storageLocationRepository,
+                rowPreparator
+        );
+    }
+
+    @Bean
+    public StockReceiptImportExecutionFingerprint stockReceiptImportExecutionFingerprint() {
+        return new StockReceiptImportExecutionFingerprint();
+    }
+
+    @Bean
+    public ExecuteStockReceiptImportUseCase executeStockReceiptImportUseCase(
+            PrepareStockReceiptImportUseCase prepareUseCase,
+            ReceiveStockUseCase receiveStockUseCase,
+            StockReceiptImportExecutionLedger ledger,
+            StockReceiptImportFailureReporter failureReporter,
+            TransactionRunner transactionRunner,
+            StockReceiptImportExecutionFingerprint fingerprint
+    ) {
+        return new ExecuteStockReceiptImportUseCase(
+                prepareUseCase,
+                receiveStockUseCase,
+                ledger,
+                failureReporter,
+                transactionRunner,
+                fingerprint
         );
     }
 

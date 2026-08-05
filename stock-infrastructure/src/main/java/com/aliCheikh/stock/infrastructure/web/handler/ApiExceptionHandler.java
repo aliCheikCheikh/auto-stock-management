@@ -1,5 +1,9 @@
 package com.aliCheikh.stock.infrastructure.web.handler;
 
+import com.aliCheikh.stock.application.exception.InvalidStockReceiptImportFileException;
+import com.aliCheikh.stock.application.exception.InvalidStockReceiptImportSelectionException;
+import com.aliCheikh.stock.application.exception.StockReceiptImportExecutionConflictException;
+import com.aliCheikh.stock.application.exception.StockReceiptImportFileErrorCode;
 import com.aliCheikh.stock.domain.exception.DomainException;
 import com.aliCheikh.stock.domain.exception.category.CategoryInUseException;
 import com.aliCheikh.stock.domain.exception.category.CategoryNotFoundException;
@@ -34,6 +38,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.net.URI;
@@ -42,6 +47,63 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    @ExceptionHandler(InvalidStockReceiptImportFileException.class)
+    public ProblemDetail handleInvalidStockReceiptImportFile(
+            InvalidStockReceiptImportFileException exception
+    ) {
+        HttpStatus status = exception.code() == StockReceiptImportFileErrorCode.FILE_TOO_LARGE
+                ? HttpStatus.PAYLOAD_TOO_LARGE
+                : HttpStatus.BAD_REQUEST;
+        return problem(
+                status,
+                "invalid-stock-receipt-import-file",
+                "Fichier d'import invalide",
+                exception.getMessage(),
+                exception.code().name()
+        );
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleMaxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
+        return problem(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                "stock-receipt-import-file-too-large",
+                "Fichier d'import trop volumineux",
+                "Le fichier dépasse la taille maximale autorisée de 1 Mo.",
+                StockReceiptImportFileErrorCode.FILE_TOO_LARGE.name()
+        );
+    }
+
+    @ExceptionHandler(InvalidStockReceiptImportSelectionException.class)
+    public ProblemDetail handleInvalidStockReceiptImportSelection(
+            InvalidStockReceiptImportSelectionException exception
+    ) {
+        ProblemDetail problem = problem(
+                HttpStatus.BAD_REQUEST,
+                "invalid-stock-receipt-import-selection",
+                "Sélection d'import invalide",
+                exception.getMessage(),
+                "INVALID_IMPORT_SELECTION"
+        );
+        problem.setProperty("unknownLineNumbers", exception.unknownLineNumbers());
+        return problem;
+    }
+
+    @ExceptionHandler(StockReceiptImportExecutionConflictException.class)
+    public ProblemDetail handleStockReceiptImportExecutionConflict(
+            StockReceiptImportExecutionConflictException exception
+    ) {
+        ProblemDetail problem = problem(
+                HttpStatus.CONFLICT,
+                "stock-receipt-import-id-reused",
+                "Import déjà utilisé",
+                exception.getMessage(),
+                "IMPORT_ID_REUSED"
+        );
+        problem.setProperty("importId", exception.importId());
+        return problem;
+    }
 
     @ExceptionHandler(ProductNotFoundException.class)
     public ProblemDetail handleProductNotFound(ProductNotFoundException exception) {
