@@ -2,7 +2,6 @@ package com.aliCheikh.stock.infrastructure.persistence.repository;
 
 import com.aliCheikh.stock.infrastructure.persistence.entity.SaleJpaEntity;
 import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -22,11 +21,14 @@ public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
      * recherchée, et sans coût réel ici, les règlements concurrents sur une même dette étant
      * rarissimes dans une boutique à un comptoir.</p>
      *
-     * <p>Lignes et paiements sont chargés dans la même requête : tous deux sont nécessaires à la
-     * reconstruction de l'agrégat, et les récupérer séparément provoquerait un N+1.</p>
+     * <p>Les collections {@code saleLines} et {@code payments} ne doivent pas être jointes dans
+     * cette requête. Une jointure simultanée produit une ligne SQL par couple ligne de vente ×
+     * paiement ; comme les paiements sont ordonnés dans une {@link java.util.List}, Hibernate les
+     * duplique alors en mémoire et fausse le solde. Le mapper initialise les deux collections par
+     * deux lectures secondaires, toujours dans la transaction qui porte ce verrou. Il ne s'agit
+     * pas d'un N+1 : une seule vente est chargée par encaissement.</p>
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"saleLines", "payments"})
     @Query("SELECT s FROM SaleJpaEntity s WHERE s.id = :saleId")
     Optional<SaleJpaEntity> findByIdForUpdate(@Param("saleId") UUID saleId);
 }
