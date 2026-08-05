@@ -12,6 +12,7 @@ public record StockReceiptImportRowPreview(
         StockReceiptImportRowAction action,
         String reference,
         String name,
+        String categoryName,
         CategoryId categoryId,
         Money unitPrice,
         Integer minimumGlobalThreshold,
@@ -26,6 +27,7 @@ public record StockReceiptImportRowPreview(
         Objects.requireNonNull(action, "action cannot be null");
         Objects.requireNonNull(reference, "reference cannot be null");
         Objects.requireNonNull(name, "name cannot be null");
+        Objects.requireNonNull(categoryName, "categoryName cannot be null");
         distributions = List.copyOf(Objects.requireNonNull(distributions, "distributions cannot be null"));
         issues = List.copyOf(Objects.requireNonNull(issues, "issues cannot be null"));
         if (action == StockReceiptImportRowAction.REJECT && issues.isEmpty()) {

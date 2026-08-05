@@ -64,7 +64,8 @@ public final class StockReceiptImportRowPreparator {
                         "Cette référence appartient à un produit désactivé.");
             }
             return preview(
-                    row.lineNumber(), issues, existing.reference(), existing.name(), null,
+                    row.lineNumber(), issues, existing.reference(), existing.name(),
+                    row.categoryName().trim(), null,
                     null, null, existing.productId(), distributions,
                     StockReceiptImportRowAction.RECEIVE_EXISTING);
         }
@@ -75,7 +76,8 @@ public final class StockReceiptImportRowPreparator {
         Integer threshold = parseThreshold(row.minimumGlobalThreshold(), issues);
 
         return preview(
-                row.lineNumber(), issues, reference, name, categoryId, unitPrice, threshold,
+                row.lineNumber(), issues, reference, name, row.categoryName().trim(),
+                categoryId, unitPrice, threshold,
                 null, distributions, StockReceiptImportRowAction.CREATE_PRODUCT);
     }
 
@@ -237,6 +239,7 @@ public final class StockReceiptImportRowPreparator {
             List<StockReceiptImportIssue> issues,
             String reference,
             String name,
+            String categoryName,
             CategoryId categoryId,
             Money unitPrice,
             Integer threshold,
@@ -248,7 +251,7 @@ public final class StockReceiptImportRowPreparator {
                 ? readyAction
                 : StockReceiptImportRowAction.REJECT;
         return new StockReceiptImportRowPreview(
-                lineNumber, action, reference, name, categoryId, unitPrice, threshold,
+                lineNumber, action, reference, name, categoryName, categoryId, unitPrice, threshold,
                 productId, distributions, issues);
     }
 

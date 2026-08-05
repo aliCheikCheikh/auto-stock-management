@@ -168,6 +168,7 @@ class StockReceiptImportExecutionLedgerPersistenceTest {
                 StockReceiptImportRowAction.RECEIVE_EXISTING,
                 reference,
                 name,
+                "",
                 null,
                 null,
                 null,

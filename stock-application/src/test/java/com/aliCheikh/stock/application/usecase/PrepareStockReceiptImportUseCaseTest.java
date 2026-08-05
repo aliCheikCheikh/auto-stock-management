@@ -85,6 +85,7 @@ class PrepareStockReceiptImportUseCaseTest {
         assertThat(prepared.action()).isEqualTo(StockReceiptImportRowAction.CREATE_PRODUCT);
         assertThat(prepared.reference()).isEqualTo("REF-001");
         assertThat(prepared.name()).isEqualTo("Filtre à huile");
+        assertThat(prepared.categoryName()).isEqualTo("Moteur");
         assertThat(prepared.categoryId()).isEqualTo(categoryId);
         assertThat(prepared.unitPrice().getAmount()).isEqualByComparingTo(new BigDecimal("12500"));
         assertThat(prepared.minimumGlobalThreshold()).isEqualTo(5);
