@@ -37,6 +37,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +52,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class SellProductUseCaseTest {
+
+    private static final Instant BUSINESS_INSTANT = Instant.parse("2026-08-05T10:15:30Z");
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Ndjamena");
+    private static final Clock BUSINESS_CLOCK = Clock.fixed(BUSINESS_INSTANT, BUSINESS_ZONE);
+    private static final LocalDateTime BUSINESS_TIME = LocalDateTime.ofInstant(BUSINESS_INSTANT, BUSINESS_ZONE);
 
     private StockAllocationService stockAllocationService;
     private StorageLocationRepository storageLocationRepository;
@@ -89,7 +98,8 @@ class SellProductUseCaseTest {
                 productRepository,
                 customerRepository,
                 eventPublisher,
-                transactionRunner
+                transactionRunner,
+                BUSINESS_CLOCK
         );
 
         productId = ProductId.generate();
@@ -114,6 +124,7 @@ class SellProductUseCaseTest {
         assertThat(location.getStockLevel(productId)).isEqualTo(6);
 
         Sale savedSale = captureSavedSale();
+        assertThat(savedSale.getOccurredAt()).isEqualTo(BUSINESS_TIME);
         assertThat(savedSale.getSoldBy()).isEqualTo(sellerId);
         assertThat(savedSale.getLines()).hasSize(1);
         assertThat(savedSale.getLines().get(0).productId()).isEqualTo(productId);
@@ -121,6 +132,7 @@ class SellProductUseCaseTest {
 
         List<StockMovement> movements = captureSavedMovements();
         assertThat(movements).hasSize(1);
+        assertThat(movements.get(0).getOccurredAt()).isEqualTo(BUSINESS_TIME);
         assertExitMovement(movements.get(0), productId, location.getLocationId(), 4, savedSale);
 
         List<DomainEvent> events = capturePublishedEvents();
@@ -130,6 +142,7 @@ class SellProductUseCaseTest {
             assertThat(saleCompleted.saleId()).isEqualTo(savedSale.getSaleId());
             assertThat(saleCompleted.lineItemCount()).isEqualTo(1);
             assertThat(saleCompleted.soldBy()).isEqualTo(sellerId);
+            assertThat(saleCompleted.occurredAt()).isEqualTo(BUSINESS_TIME);
         });
         assertThat(events).noneMatch(LowStockAlert.class::isInstance);
         assertThat(events).noneMatch(ShopFloorLow.class::isInstance);

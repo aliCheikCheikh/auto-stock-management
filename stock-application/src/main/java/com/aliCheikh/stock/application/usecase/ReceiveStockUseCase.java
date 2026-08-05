@@ -24,6 +24,7 @@ import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.service.ReceivingEntry;
 import com.aliCheikh.stock.domain.service.ReceivingService;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ public class ReceiveStockUseCase {
     private final StorageLocationRepository storageLocationRepository;
     private final EventPublisher eventPublisher;
     private final TransactionRunner transactionRunner;
+    private final Clock clock;
 
     public ReceiveStockUseCase(
             ProductRepository productRepository,
@@ -47,7 +49,8 @@ public class ReceiveStockUseCase {
             StockMovementRepository stockMovementRepository,
             StorageLocationRepository storageLocationRepository,
             EventPublisher eventPublisher,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            Clock clock
     ) {
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
         this.receivingService = Objects.requireNonNull(receivingService, "receivingService cannot be null");
@@ -55,18 +58,21 @@ public class ReceiveStockUseCase {
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
         this.transactionRunner = Objects.requireNonNull(transactionRunner, "transactionRunner cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     public ReceiveStockResult execute(ReceiveStockCommand command) {
         Objects.requireNonNull(command, "command cannot be null");
         return transactionRunner.execute(() -> {
+            Instant acceptedAt = clock.instant();
+            LocalDateTime occurredAt = LocalDateTime.ofInstant(acceptedAt, clock.getZone());
             Product product = resolveProduct(command);
             List<ReceivingEntry> entries = toReceivingEntries(command, product);
-            List<StockMovement> movements = receivingService.receive(entries, command.userId());
+            List<StockMovement> movements = receivingService.receive(entries, command.userId(), occurredAt);
 
             stockMovementRepository.saveAll(movements);
 
-            publishEvents(command, product);
+            publishEvents(command, product, occurredAt);
 
             int totalReceived = command.distributions().stream()
                     .mapToInt(TargetLocation::quantity)
@@ -74,8 +80,6 @@ public class ReceiveStockUseCase {
             List<MovementId> movementIds = movements.stream()
                     .map(StockMovement::getMovementId)
                     .toList();
-            Instant acceptedAt = Instant.now();
-
             return new ReceiveStockResult(
                     product.getProductId(),
                     totalReceived,
@@ -120,7 +124,7 @@ public class ReceiveStockUseCase {
                 .toList();
     }
 
-    private void publishEvents(ReceiveStockCommand command, Product product) {
+    private void publishEvents(ReceiveStockCommand command, Product product, LocalDateTime occurredAt) {
         ReceptionSummary summary = summarizeReception(command);
         List<DomainEvent> eventsToPublish = new ArrayList<>();
 
@@ -129,7 +133,7 @@ public class ReceiveStockUseCase {
                 summary.totalReceived(),
                 summary.locationBreakdown(),
                 command.userId(),
-                LocalDateTime.now()
+                occurredAt
         ));
 
         int globalStock = calculateGlobalStock(product.getProductId(), command.shopId());
@@ -140,7 +144,7 @@ public class ReceiveStockUseCase {
                     product.getName(),
                     globalStock,
                     product.getMinimumGlobalThreshold(),
-                    LocalDateTime.now()
+                    occurredAt
             ));
         }
 

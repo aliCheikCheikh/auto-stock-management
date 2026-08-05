@@ -78,7 +78,8 @@ public class UseCaseConfiguration {
             StockMovementRepository stockMovementRepository,
             StorageLocationRepository storageLocationRepository,
             EventPublisher eventPublisher,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            Clock clock
     ) {
         return new ReceiveStockUseCase(
                 productRepository,
@@ -86,7 +87,8 @@ public class UseCaseConfiguration {
                 stockMovementRepository,
                 storageLocationRepository,
                 eventPublisher,
-                transactionRunner
+                transactionRunner,
+                clock
         );
     }
 
@@ -145,7 +147,8 @@ public class UseCaseConfiguration {
             ProductRepository productRepository,
             CustomerRepository customerRepository,
             EventPublisher eventPublisher,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            Clock clock
     ) {
         return new SellProductUseCase(
                 stockAllocationService,
@@ -155,7 +158,8 @@ public class UseCaseConfiguration {
                 productRepository,
                 customerRepository,
                 eventPublisher,
-                transactionRunner
+                transactionRunner,
+                clock
         );
     }
 
@@ -232,14 +236,16 @@ public class UseCaseConfiguration {
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
             EventPublisher eventPublisher,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            Clock clock
     ) {
         return new TransferStockUseCase(
                 storageLocationRepository,
                 stockMovementRepository,
                 productRepository,
                 eventPublisher,
-                transactionRunner
+                transactionRunner,
+                clock
         );
     }
 

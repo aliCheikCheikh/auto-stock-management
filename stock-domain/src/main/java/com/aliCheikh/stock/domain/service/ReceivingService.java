@@ -7,6 +7,7 @@ import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.model.user.UserId;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +20,8 @@ public class ReceivingService {
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
     }
 
-    public List<StockMovement> receive(List<ReceivingEntry> entries, UserId userId) {
+    public List<StockMovement> receive(List<ReceivingEntry> entries, UserId userId, LocalDateTime occurredAt) {
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         List<StockMovement> generatedMovements = new ArrayList<>();
 
         // Une réception est une opération unique, même lorsqu'elle porte sur plusieurs produits :
@@ -44,7 +46,8 @@ public class ReceivingService {
                     entry.locationId(),
                     entry.quantity(),
                     userId,
-                    operationId
+                    operationId,
+                    occurredAt
             );
 
             generatedMovements.add(movement);

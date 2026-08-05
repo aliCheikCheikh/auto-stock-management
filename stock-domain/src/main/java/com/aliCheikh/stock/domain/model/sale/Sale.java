@@ -91,9 +91,18 @@ public class Sale {
                               List<SaleLineInput> lineRequests,
                               CustomerId customerId,
                               Money amountPaid) {
+        return create(sellerId, lineRequests, customerId, amountPaid, LocalDateTime.now());
+    }
+
+    public static Sale create(UserId sellerId,
+                              List<SaleLineInput> lineRequests,
+                              CustomerId customerId,
+                              Money amountPaid,
+                              LocalDateTime occurredAt) {
         if (lineRequests == null || lineRequests.isEmpty()) {
             throw new InvalidSaleException(sellerId, "A sale must contain at least one line item");
         }
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
 
         List<SaleLineItem> internalLines = lineRequests.stream()
                 .map(request -> new SaleLineItem(request.productId(), request.quantity(), request.unitPrice()))
@@ -107,8 +116,6 @@ public class Sale {
         if (effectiveAmountPaid.isNegative()) {
             throw new InvalidSaleException(sellerId, "The amount paid cannot be negative");
         }
-
-        LocalDateTime occurredAt = LocalDateTime.now();
 
         // Un acompte nul ne produit aucun paiement : le client repart sans avoir rien versé.
         List<Payment> initialPayments = effectiveAmountPaid.isPositive()

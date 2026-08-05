@@ -63,7 +63,12 @@ public class StorageLocation {
     }
 
     public void decreaseStock(ProductId productId, int quantityToDecrease) {
+        decreaseStock(productId, quantityToDecrease, LocalDateTime.now());
+    }
+
+    public void decreaseStock(ProductId productId, int quantityToDecrease, LocalDateTime occurredAt) {
         Objects.requireNonNull(productId, "productId cannot be null");
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         StorageLocation.requireStrictlyPositiveQuantity(quantityToDecrease);
         StockLevel stockLevel = stockLevels.get(productId);
 
@@ -81,7 +86,7 @@ public class StorageLocation {
                     this.locationId,
                     newStockLevel.getQuantity(),
                     this.lowStockIndicator,
-                    LocalDateTime.now()
+                    occurredAt
             ));
         }
     }
