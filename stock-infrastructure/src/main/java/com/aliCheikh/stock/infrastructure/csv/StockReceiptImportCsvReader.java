@@ -47,14 +47,7 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
             BACKSTOCK_QUANTITY
     );
 
-    private static final CSVFormat FORMAT = CSVFormat.RFC4180.builder()
-            .setDelimiter(';')
-            .setHeader()
-            .setSkipHeaderRecord(true)
-            .setDuplicateHeaderMode(DuplicateHeaderMode.DISALLOW)
-            .setAllowMissingColumnNames(false)
-            .setIgnoreEmptyLines(false)
-            .get();
+    private static final List<Character> SUPPORTED_DELIMITERS = List.of(';', ',');
 
     @Override
     public List<StockReceiptImportRowData> read(StockReceiptImportFile file) {
@@ -68,7 +61,8 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
                     "Le fichier CSV est vide.");
         }
 
-        try (CSVParser parser = FORMAT.parse(new StringReader(csv))) {
+        CSVFormat format = format(detectDelimiter(csv));
+        try (CSVParser parser = format.parse(new StringReader(csv))) {
             validateHeaders(parser.getHeaderNames());
             return readRows(parser);
         } catch (InvalidStockReceiptImportFileException exception) {
@@ -80,6 +74,38 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
             throw invalid(StockReceiptImportFileErrorCode.MALFORMED_CSV,
                     "Le fichier CSV est mal formé. Vérifiez les séparateurs et les guillemets.", exception);
         }
+    }
+
+    private static char detectDelimiter(String csv) {
+        List<Character> matchingDelimiters = new ArrayList<>();
+
+        for (char delimiter : SUPPORTED_DELIMITERS) {
+            try (CSVParser parser = format(delimiter).parse(new StringReader(csv))) {
+                if (headersMatch(parser.getHeaderNames())) {
+                    matchingDelimiters.add(delimiter);
+                }
+            } catch (IllegalArgumentException | IOException | UncheckedIOException ignored) {
+                // This candidate does not describe a structurally valid header.
+            }
+        }
+
+        if (matchingDelimiters.size() != 1) {
+            throw invalid(StockReceiptImportFileErrorCode.INVALID_HEADER,
+                    "Les colonnes attendues sont : " + String.join(", ", EXPECTED_HEADERS)
+                            + ". Utilisez un séparateur point-virgule ou virgule.");
+        }
+        return matchingDelimiters.get(0);
+    }
+
+    private static CSVFormat format(char delimiter) {
+        return CSVFormat.RFC4180.builder()
+                .setDelimiter(delimiter)
+                .setHeader()
+                .setSkipHeaderRecord(true)
+                .setDuplicateHeaderMode(DuplicateHeaderMode.DISALLOW)
+                .setAllowMissingColumnNames(false)
+                .setIgnoreEmptyLines(false)
+                .get();
     }
 
     private static void validateFilename(String filename) {
@@ -103,12 +129,16 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
     }
 
     private static void validateHeaders(List<String> actualHeaders) {
-        Set<String> actualHeaderSet = new HashSet<>(actualHeaders);
-        Set<String> expectedHeaderSet = Set.copyOf(EXPECTED_HEADERS);
-        if (actualHeaders.size() != EXPECTED_HEADERS.size() || !actualHeaderSet.equals(expectedHeaderSet)) {
+        if (!headersMatch(actualHeaders)) {
             throw invalid(StockReceiptImportFileErrorCode.INVALID_HEADER,
                     "Les colonnes attendues sont : " + String.join(", ", EXPECTED_HEADERS) + ".");
         }
+    }
+
+    private static boolean headersMatch(List<String> actualHeaders) {
+        Set<String> actualHeaderSet = new HashSet<>(actualHeaders);
+        Set<String> expectedHeaderSet = Set.copyOf(EXPECTED_HEADERS);
+        return actualHeaders.size() == EXPECTED_HEADERS.size() && actualHeaderSet.equals(expectedHeaderSet);
     }
 
     private static List<StockReceiptImportRowData> readRows(CSVParser parser) {

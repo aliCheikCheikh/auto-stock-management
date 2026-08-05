@@ -47,6 +47,25 @@ class StockReceiptImportCsvReaderTest {
     }
 
     @Test
+    void shouldReadExcelCsvUsingCommaDelimiter() {
+        String csv = HEADERS.replace(';', ',') + "\n"
+                + "REF-007,\"Filtre, huile\",Filtres,\"12500,50\",5,10,20\n";
+
+        List<StockReceiptImportRowData> rows = reader.read(file(" modele-import-produits.csv", csv));
+
+        assertThat(rows).containsExactly(new StockReceiptImportRowData(
+                2,
+                "REF-007",
+                "Filtre, huile",
+                "Filtres",
+                "12500,50",
+                "5",
+                "10",
+                "20"
+        ));
+    }
+
+    @Test
     void shouldPreserveQuotedLineBreaksAndIgnoreBlankRecords() {
         String csv = HEADERS + "\r\n"
                 + "REF-1;\"Filtre\nhuile\";Filtres;12000;2;4;1\r\n"
@@ -80,6 +99,14 @@ class StockReceiptImportCsvReaderTest {
         assertError("produits.csv", HEADERS.replace(";categorie", ""), StockReceiptImportFileErrorCode.INVALID_HEADER);
         assertError("produits.csv", HEADERS + ";commentaire", StockReceiptImportFileErrorCode.INVALID_HEADER);
         assertError("produits.csv", HEADERS.replace("categorie", "reference"), StockReceiptImportFileErrorCode.INVALID_HEADER);
+    }
+
+    @Test
+    void shouldRejectUnsupportedDelimiter() {
+        String csv = HEADERS.replace(';', '\t') + "\n"
+                + "REF-1\tFiltre\tFiltres\t12000\t2\t4\t1\n";
+
+        assertError("produits.csv", csv, StockReceiptImportFileErrorCode.INVALID_HEADER);
     }
 
     @Test
