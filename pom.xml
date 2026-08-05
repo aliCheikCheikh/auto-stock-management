@@ -27,6 +27,11 @@
                 <artifactId>mockito-core</artifactId>
                 <version>5.17.0</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-csv</artifactId>
+                <version>${commons-csv.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
@@ -66,6 +71,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.5.13</spring-boot.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <commons-csv.version>1.14.1</commons-csv.version>
     </properties>
     <build>
         <pluginManagement>
