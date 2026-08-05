@@ -226,12 +226,6 @@ public class UseCaseConfiguration {
         return new DeleteCategoryUseCase(categoryRepository, productRepository, transactionRunner);
     }
 
-    /** Horloge système, injectée pour rendre les calculs d'ancienneté testables. */
-    @Bean
-    public Clock clock() {
-        return Clock.systemDefaultZone();
-    }
-
     @Bean
     public TransferStockUseCase transferStockUseCase(
             StorageLocationRepository storageLocationRepository,
