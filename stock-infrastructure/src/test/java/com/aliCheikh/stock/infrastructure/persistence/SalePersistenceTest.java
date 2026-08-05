@@ -1,6 +1,7 @@
 package com.aliCheikh.stock.infrastructure.persistence;
 
 import com.aliCheikh.stock.domain.model.category.CategoryId;
+import com.aliCheikh.stock.domain.model.customer.CustomerId;
 import com.aliCheikh.stock.domain.model.product.ProductId;
 import com.aliCheikh.stock.domain.model.sale.Sale;
 import com.aliCheikh.stock.domain.model.sale.SaleLineInput;
@@ -9,12 +10,14 @@ import com.aliCheikh.stock.domain.model.user.UserId;
 import com.aliCheikh.stock.domain.model.user.UserRole;
 import com.aliCheikh.stock.infrastructure.persistence.adapter.SaleJpaRepositoryAdapter;
 import com.aliCheikh.stock.infrastructure.persistence.entity.CategoryJpaEntity;
+import com.aliCheikh.stock.infrastructure.persistence.entity.CustomerJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.ProductJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.SaleJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.SaleLineJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.entity.UserJpaEntity;
 import com.aliCheikh.stock.infrastructure.persistence.mapper.SaleJpaMapper;
 import com.aliCheikh.stock.infrastructure.persistence.repository.CategoryJpaRepository;
+import com.aliCheikh.stock.infrastructure.persistence.repository.CustomerJpaRepository;
 import com.aliCheikh.stock.infrastructure.persistence.repository.ProductJpaRepository;
 import com.aliCheikh.stock.infrastructure.persistence.repository.SaleJpaRepository;
 import com.aliCheikh.stock.infrastructure.persistence.repository.UserJpaRepository;
@@ -74,6 +77,9 @@ class SalePersistenceTest {
     private ProductJpaRepository productRepository;
 
     @Autowired
+    private CustomerJpaRepository customerRepository;
+
+    @Autowired
     private UserJpaRepository userRepository;
 
     @Autowired
@@ -83,6 +89,7 @@ class SalePersistenceTest {
     private ProductId firstProductId;
     private ProductId secondProductId;
     private UserId sellerId;
+    private CustomerId customerId;
     private Money firstUnitPrice;
     private Money secondUnitPrice;
     private Sale sale;
@@ -93,6 +100,7 @@ class SalePersistenceTest {
         firstProductId = ProductId.generate();
         secondProductId = ProductId.generate();
         sellerId = UserId.generate();
+        customerId = CustomerId.generate();
         firstUnitPrice = Money.create(new BigDecimal("45.90"), Currency.getInstance("EUR"));
         secondUnitPrice = Money.create(new BigDecimal("12.50"), Currency.getInstance("EUR"));
         sale = Sale.create(
@@ -138,6 +146,39 @@ class SalePersistenceTest {
         );
     }
 
+    @Test
+    void should_load_a_locked_multi_line_sale_without_duplicating_its_initial_payment() {
+        saveReferenceData();
+        Sale creditSale = multiLineCreditSaleWithSeventyDue();
+        adapter.save(creditSale);
+        flushAndClear();
+
+        Sale reloaded = adapter.findByIdForUpdate(creditSale.getSaleId()).orElseThrow();
+
+        assertThat(reloaded.getLines()).hasSize(2);
+        assertThat(reloaded.getPayments()).hasSize(1);
+        assertThat(reloaded.getAmountPaid()).isEqualTo(eur("30.00"));
+        assertThat(reloaded.getAmountDue()).isEqualTo(eur("70.00"));
+    }
+
+    @Test
+    void should_persist_a_partial_payment_after_loading_a_locked_multi_line_sale() {
+        saveReferenceData();
+        Sale creditSale = multiLineCreditSaleWithSeventyDue();
+        adapter.save(creditSale);
+        flushAndClear();
+
+        Sale reloaded = adapter.findByIdForUpdate(creditSale.getSaleId()).orElseThrow();
+        reloaded.recordPayment(eur("15.00"), sellerId, reloaded.getOccurredAt().plusDays(1));
+        adapter.save(reloaded);
+        flushAndClear();
+
+        Sale persisted = adapter.findById(creditSale.getSaleId()).orElseThrow();
+        assertThat(persisted.getPayments()).hasSize(2);
+        assertThat(persisted.getAmountPaid()).isEqualTo(eur("45.00"));
+        assertThat(persisted.getAmountDue()).isEqualTo(eur("55.00"));
+    }
+
     private void saveReferenceData() {
         categoryRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(),
@@ -172,7 +213,31 @@ class SalePersistenceTest {
                 UserRole.SELLER
         ));
 
+        customerRepository.save(CustomerJpaEntity.of(
+                customerId.getValue(),
+                "Moussa",
+                "Mahamat",
+                "+23566000001",
+                null
+        ));
+
         flushAndClear();
+    }
+
+    private Sale multiLineCreditSaleWithSeventyDue() {
+        return Sale.create(
+                sellerId,
+                List.of(
+                        new SaleLineInput(firstProductId, 1, eur("60.00")),
+                        new SaleLineInput(secondProductId, 1, eur("40.00"))
+                ),
+                customerId,
+                eur("30.00")
+        );
+    }
+
+    private Money eur(String amount) {
+        return Money.create(new BigDecimal(amount), Currency.getInstance("EUR"));
     }
 
     private SaleLineJpaEntity findLineByNumber(SaleJpaEntity sale, int lineNumber) {
