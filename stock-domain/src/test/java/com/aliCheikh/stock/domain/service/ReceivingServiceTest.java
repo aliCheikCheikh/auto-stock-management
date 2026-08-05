@@ -11,6 +11,7 @@ import com.aliCheikh.stock.domain.model.user.UserId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 public class ReceivingServiceTest {
+
+    private static final LocalDateTime BUSINESS_TIME = LocalDateTime.of(2026, 8, 5, 11, 15, 30);
 
     private StorageLocationRepository storageLocationRepository;
     private ReceivingService receivingService;
@@ -49,7 +52,7 @@ public class ReceivingServiceTest {
         when(storageLocationRepository.findById(backStock.getLocationId())).thenReturn(Optional.of(backStock));
 
         // WHEN
-        List<StockMovement> movements = receivingService.receive(entries, userId);
+        List<StockMovement> movements = receivingService.receive(entries, userId, BUSINESS_TIME);
 
         // THEN
         // 1. Verify StorageLocations were modified in memory
@@ -62,6 +65,7 @@ public class ReceivingServiceTest {
 
         // 3. Verify movements were created correctly
         assertThat(movements).hasSize(2);
+        assertThat(movements).extracting(StockMovement::getOccurredAt).containsOnly(BUSINESS_TIME);
 
         // --- Verify movement for SHOP_FLOOR ---
         StockMovement shopFloorMovement = movements.stream()
@@ -101,7 +105,7 @@ public class ReceivingServiceTest {
         List<StockMovement> movements = receivingService.receive(List.of(
                 ReceivingEntry.of(productId, shopFloor.getLocationId(), 15),
                 ReceivingEntry.of(productId, backStock.getLocationId(), 35)
-        ), userId);
+        ), userId, BUSINESS_TIME);
 
         // Sans marqueur commun, l'historique afficherait deux réceptions au lieu d'une.
         assertThat(movements).hasSize(2);
@@ -121,8 +125,8 @@ public class ReceivingServiceTest {
 
         // Deux réceptions successives du même vendeur, sur le même emplacement : elles doivent
         // rester distinctes, ce qu'un regroupement déduit de la date et de l'auteur ne garantirait pas.
-        StockMovement first = receivingService.receive(entries, userId).get(0);
-        StockMovement second = receivingService.receive(entries, userId).get(0);
+        StockMovement first = receivingService.receive(entries, userId, BUSINESS_TIME).get(0);
+        StockMovement second = receivingService.receive(entries, userId, BUSINESS_TIME).get(0);
 
         assertThat(first.getOperationId()).isNotEqualTo(second.getOperationId());
     }

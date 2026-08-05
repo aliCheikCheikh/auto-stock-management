@@ -52,9 +52,14 @@ public class StockMovement {
     }
 
     public static StockMovement createEntry(ProductId productId, LocationId destinationLocationId, int quantity, UserId userId, OperationId operationId) {
+        return createEntry(productId, destinationLocationId, quantity, userId, operationId, LocalDateTime.now());
+    }
+
+    public static StockMovement createEntry(ProductId productId, LocationId destinationLocationId, int quantity, UserId userId, OperationId operationId, LocalDateTime occurredAt) {
 
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         StockMovement.requiredPositiveQuantity(quantity);
 
         if (destinationLocationId == null) {
@@ -66,7 +71,7 @@ public class StockMovement {
                 destinationLocationId,
                 MovementType.ENTRY,
                 quantity, userId,
-                LocalDateTime.now(),
+                occurredAt,
                 null,
                 operationId);
 
@@ -74,10 +79,15 @@ public class StockMovement {
 
 
     public static StockMovement createExit(ProductId productId, LocationId sourceLocationId, int quantity, UserId userId, SaleId saleId, OperationId operationId) {
+        return createExit(productId, sourceLocationId, quantity, userId, saleId, operationId, LocalDateTime.now());
+    }
+
+    public static StockMovement createExit(ProductId productId, LocationId sourceLocationId, int quantity, UserId userId, SaleId saleId, OperationId operationId, LocalDateTime occurredAt) {
 
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
         Objects.requireNonNull(saleId, "saleId cannot be null");
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         StockMovement.requiredPositiveQuantity(quantity);
 
         if (sourceLocationId == null) {
@@ -91,16 +101,21 @@ public class StockMovement {
                 MovementType.EXIT,
                 quantity,
                 userId,
-                LocalDateTime.now(),
+                occurredAt,
                 saleId,
                 operationId);
 
     }
 
     public static StockMovement createTransfer(ProductId productId, LocationId sourceLocationId, LocationId destinationLocationId, int quantity, UserId userId, OperationId operationId) {
+        return createTransfer(productId, sourceLocationId, destinationLocationId, quantity, userId, operationId, LocalDateTime.now());
+    }
+
+    public static StockMovement createTransfer(ProductId productId, LocationId sourceLocationId, LocationId destinationLocationId, int quantity, UserId userId, OperationId operationId, LocalDateTime occurredAt) {
 
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
+        Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         StockMovement.requiredPositiveQuantity(quantity);
 
         if (destinationLocationId == null) {
@@ -123,7 +138,7 @@ public class StockMovement {
                 MovementType.TRANSFER,
                 quantity,
                 userId,
-                LocalDateTime.now(),
+                occurredAt,
                 null,
                 operationId);
 
@@ -309,7 +324,6 @@ public class StockMovement {
 
 
 }
-
 
 
 

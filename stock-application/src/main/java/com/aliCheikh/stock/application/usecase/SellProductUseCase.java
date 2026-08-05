@@ -27,6 +27,7 @@ import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 import com.aliCheikh.stock.domain.service.AllocationResult;
 import com.aliCheikh.stock.domain.service.StockAllocationService;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -62,6 +63,7 @@ public class SellProductUseCase {
     private final CustomerRepository customerRepository;
     private final EventPublisher eventPublisher;
     private final TransactionRunner transactionRunner;
+    private final Clock clock;
 
     public SellProductUseCase(
             StockAllocationService stockAllocationService,
@@ -71,7 +73,8 @@ public class SellProductUseCase {
             ProductRepository productRepository,
             CustomerRepository customerRepository,
             EventPublisher eventPublisher,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            Clock clock
     ) {
         this.stockAllocationService = Objects.requireNonNull(stockAllocationService, "stockAllocationService cannot be null");
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
@@ -81,6 +84,7 @@ public class SellProductUseCase {
         this.customerRepository = Objects.requireNonNull(customerRepository, "customerRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
         this.transactionRunner = Objects.requireNonNull(transactionRunner, "transactionRunner cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     /**
@@ -96,6 +100,7 @@ public class SellProductUseCase {
     }
 
     private SellProductResult doSell(SellProductCommand command) {
+        LocalDateTime occurredAt = LocalDateTime.now(clock);
         List<StorageLocation> shopLocations = storageLocationRepository.findByShopId(command.shopId());
         Map<LocationId, StorageLocation> locationsById = shopLocations.stream()
                 .collect(Collectors.toMap(StorageLocation::getLocationId, location -> location));
@@ -113,7 +118,8 @@ public class SellProductUseCase {
                 command.sellerId(),
                 saleLineInputs,
                 command.customerId(),
-                command.amountPaid());
+                command.amountPaid(),
+                occurredAt);
 
         List<StockMovement> generatedMovements = new ArrayList<>();
         Set<StorageLocation> changedLocations = new LinkedHashSet<>();
@@ -130,7 +136,7 @@ public class SellProductUseCase {
             for (AllocationResult allocation : preparedLine.allocations()) {
                 StorageLocation location = locationsById.get(allocation.getLocationId());
 
-                location.decreaseStock(product.getProductId(), allocation.getQuantity());
+                location.decreaseStock(product.getProductId(), allocation.getQuantity(), occurredAt);
                 changedLocations.add(location);
 
                 generatedMovements.add(StockMovement.createExit(
@@ -139,7 +145,8 @@ public class SellProductUseCase {
                         allocation.getQuantity(),
                         command.sellerId(),
                         sale.getSaleId(),
-                        operationId
+                        operationId,
+                        occurredAt
                 ));
             }
 
@@ -151,7 +158,7 @@ public class SellProductUseCase {
                         product.getName(),
                         globalStock,
                         product.getMinimumGlobalThreshold(),
-                        LocalDateTime.now()
+                        occurredAt
                 ));
             }
         }
@@ -167,7 +174,7 @@ public class SellProductUseCase {
                 sale.getTotalAmount(),
                 sale.getLines().size(),
                 sale.getSoldBy(),
-                LocalDateTime.now()
+                occurredAt
         ));
 
         eventPublisher.publish(eventsToPublish);

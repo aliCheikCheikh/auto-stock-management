@@ -19,7 +19,9 @@ import com.aliCheikh.stock.domain.model.stock.LocationType;
 import com.aliCheikh.stock.domain.model.stock.StorageLocation;
 import com.aliCheikh.stock.domain.model.stock.ports.StorageLocationRepository;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
@@ -50,19 +52,22 @@ public class TransferStockUseCase {
     private final ProductRepository productRepository;
     private final EventPublisher eventPublisher;
     private final TransactionRunner transactionRunner;
+    private final Clock clock;
 
     public TransferStockUseCase(
             StorageLocationRepository storageLocationRepository,
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
             EventPublisher eventPublisher,
-            TransactionRunner transactionRunner
+            TransactionRunner transactionRunner,
+            Clock clock
     ) {
         this.storageLocationRepository = Objects.requireNonNull(storageLocationRepository, "storageLocationRepository cannot be null");
         this.stockMovementRepository = Objects.requireNonNull(stockMovementRepository, "stockMovementRepository cannot be null");
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository cannot be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
         this.transactionRunner = Objects.requireNonNull(transactionRunner, "transactionRunner cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
 
@@ -82,6 +87,8 @@ public class TransferStockUseCase {
     }
 
     private TransferStockResult doExecute(TransferStockCommand command) {
+        Instant acceptedAt = clock.instant();
+        LocalDateTime occurredAt = LocalDateTime.ofInstant(acceptedAt, clock.getZone());
         Product product = productRepository
                 .findById(command.productId())
                 .orElseThrow(() -> new ProductNotFoundException(command.productId()));
@@ -103,7 +110,7 @@ public class TransferStockUseCase {
             );
         }
 
-        source.decreaseStock(command.productId(), command.quantity());
+        source.decreaseStock(command.productId(), command.quantity(), occurredAt);
         destination.increaseStock(command.productId(), command.quantity());
 
         storageLocationRepository.save(source);
@@ -117,14 +124,15 @@ public class TransferStockUseCase {
                 command.userId(),
                 // Un transfert ne produit qu'un mouvement, mais il reste une opération à part
                 // entière : le marquer garde l'historique homogène.
-                OperationId.generate()
+                OperationId.generate(),
+                occurredAt
         );
 
         stockMovementRepository.save(transferMovement);
 
         return new TransferStockResult(
                 transferMovement.getMovementId(),
-                Instant.now()
+                acceptedAt
         );
     }
 

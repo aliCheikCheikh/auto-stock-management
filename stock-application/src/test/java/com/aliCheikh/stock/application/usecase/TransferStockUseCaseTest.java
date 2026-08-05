@@ -28,7 +28,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Currency;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -39,6 +42,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class TransferStockUseCaseTest {
+
+    private static final Instant BUSINESS_INSTANT = Instant.parse("2026-08-05T10:15:30Z");
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Ndjamena");
+    private static final Clock BUSINESS_CLOCK = Clock.fixed(BUSINESS_INSTANT, BUSINESS_ZONE);
+    private static final LocalDateTime BUSINESS_TIME = LocalDateTime.ofInstant(BUSINESS_INSTANT, BUSINESS_ZONE);
 
     private StorageLocationRepository storageLocationRepository;
     private StockMovementRepository stockMovementRepository;
@@ -66,7 +74,8 @@ class TransferStockUseCaseTest {
                 stockMovementRepository,
                 productRepository,
                 eventPublisher,
-                transactionRunner
+                transactionRunner,
+                BUSINESS_CLOCK
         );
     }
 
@@ -74,16 +83,14 @@ class TransferStockUseCaseTest {
     void should_transfer_stock_from_backstock_to_shop_floor_with_partial_source_depletion() {
         TransferFixture fixture = givenValidTransfer(10, 2, 4);
 
-        Instant before = Instant.now();
         TransferStockResult result = transferStockUseCase.execute(fixture.command());
-        Instant after = Instant.now();
 
         assertThat(fixture.source().getStockLevel(fixture.productId())).isEqualTo(6);
         assertThat(fixture.destination().getStockLevel(fixture.productId())).isEqualTo(6);
 
         StockMovement savedMovement = assertSavedTransferMovement(fixture, 4);
         assertThat(result.movementId()).isEqualTo(savedMovement.getMovementId());
-        assertThat(result.acceptedAt()).isBetween(before, after);
+        assertThat(result.acceptedAt()).isEqualTo(BUSINESS_INSTANT);
         assertLocationsAreSavedBeforeMovement(fixture.source(), fixture.destination());
         verifyNoInteractions(eventPublisher);
     }
@@ -99,7 +106,7 @@ class TransferStockUseCaseTest {
 
         StockMovement savedMovement = assertSavedTransferMovement(fixture, 10);
         assertThat(result.movementId()).isEqualTo(savedMovement.getMovementId());
-        assertThat(result.acceptedAt()).isNotNull();
+        assertThat(result.acceptedAt()).isEqualTo(BUSINESS_INSTANT);
         assertLocationsAreSavedBeforeMovement(fixture.source(), fixture.destination());
         verifyNoInteractions(eventPublisher);
     }
@@ -350,6 +357,7 @@ class TransferStockUseCaseTest {
                 .isPresent()
                 .contains(fixture.destination().getLocationId());
         assertThat(savedMovement.getSaleId()).isEmpty();
+        assertThat(savedMovement.getOccurredAt()).isEqualTo(BUSINESS_TIME);
 
         return savedMovement;
     }
