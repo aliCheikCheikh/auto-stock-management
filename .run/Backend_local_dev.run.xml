@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Backend local — dev" type="Application" factoryName="Application">
+  <configuration default="false" name="Local backend — dev" type="Application" factoryName="Application">
     <envs>
       <env name="SPRING_PROFILES_ACTIVE" value="dev" />
     </envs>

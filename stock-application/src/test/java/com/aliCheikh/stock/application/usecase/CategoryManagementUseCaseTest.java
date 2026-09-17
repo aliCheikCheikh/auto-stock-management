@@ -24,7 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/** Gestion des familles de pièces par le patron. */
+/** Category management use cases. */
 public class CategoryManagementUseCaseTest {
 
     private CategoryRepository categoryRepository;
@@ -48,7 +48,7 @@ public class CategoryManagementUseCaseTest {
         deleteCategory = new DeleteCategoryUseCase(categoryRepository, productRepository, transactionRunner);
     }
 
-    // --- Création ---
+    // Creation
 
     @Test
     public void should_create_a_category_with_a_trimmed_name() {
@@ -66,8 +66,7 @@ public class CategoryManagementUseCaseTest {
 
         createCategory.create("  Freinage  ");
 
-        // Sans normalisation préalable, le contrôle porterait sur une valeur qui ne sera
-        // jamais celle stockée.
+        // Check uniqueness against the normalized value that will be stored.
         ArgumentCaptor<String> checked = ArgumentCaptor.forClass(String.class);
         verify(categoryRepository).existsByName(checked.capture());
         assertThat(checked.getValue()).isEqualTo("Freinage");
@@ -111,7 +110,7 @@ public class CategoryManagementUseCaseTest {
         given(categoryRepository.findById(id)).willReturn(Optional.of(new Category(id, "freinage")));
         given(categoryRepository.existsByNameExcluding(any(), any())).willReturn(false);
 
-        // Corriger la casse de son propre nom ne doit pas être vu comme un doublon.
+        // A case-only rename is not a duplicate.
         renameCategory.rename(id, "Freinage");
 
         verify(categoryRepository).existsByNameExcluding("Freinage", id);
@@ -157,7 +156,7 @@ public class CategoryManagementUseCaseTest {
         given(categoryRepository.findById(id)).willReturn(Optional.of(new Category(id, "Freinage")));
         given(productRepository.existsByCategoryId(id)).willReturn(true);
 
-        // Supprimer laisserait des produits sans famille : le reclassement appartient au patron.
+        // Products must be reassigned before deleting their category.
         assertThatThrownBy(() -> deleteCategory.delete(id))
                 .isInstanceOf(CategoryInUseException.class);
 

@@ -12,11 +12,11 @@ public final class GetUserUseCase {
     private final UserRepository userRepository;
 
     public GetUserUseCase(UserRepository userRepository) {
-        this.userRepository = Objects.requireNonNull(userRepository, "Le registre des utilisateurs est obligatoire.");
+        this.userRepository = Objects.requireNonNull(userRepository, "User repository is required.");
     }
 
     public User execute(UserId userId) {
-        Objects.requireNonNull(userId, "L'identifiant de l'utilisateur est obligatoire.");
+        Objects.requireNonNull(userId, "User ID is required.");
         return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
     }
 }

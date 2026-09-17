@@ -101,7 +101,7 @@ class UserManagementIntegrationTest {
         String temporaryPassword = JsonPath.read(
                 creation.getResponse().getContentAsString(), "$.temporaryPassword");
 
-        // Le nouveau vendeur peut se connecter, mais son mot de passe est temporaire.
+        // New sellers may sign in but must replace their temporary password.
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -290,7 +290,7 @@ class UserManagementIntegrationTest {
         String resetTemporaryPassword = JsonPath.read(
                 reset.getResponse().getContentAsString(), "$.temporaryPassword");
 
-        // L'ancien mot de passe ne marche plus.
+        // The old password is rejected.
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -298,7 +298,7 @@ class UserManagementIntegrationTest {
                                 """.formatted(SELLER_EMAIL, SELLER_PASSWORD)))
                 .andExpect(status().isUnauthorized());
 
-        // Le nouveau mot de passe temporaire marche, et force un changement.
+        // The new temporary password is accepted and requires a password change.
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

@@ -29,16 +29,16 @@ public final class ChangeOwnPasswordUseCase {
                                     PasswordRules passwordRules,
                                     UserSessionRevoker sessionRevoker,
                                     TransactionRunner transactionRunner) {
-        this.userRepository = Objects.requireNonNull(userRepository, "Le registre des utilisateurs est obligatoire.");
-        this.credentialStore = Objects.requireNonNull(credentialStore, "Le gestionnaire des accès est obligatoire.");
-        this.passwordProtection = Objects.requireNonNull(passwordProtection, "La protection des mots de passe est obligatoire.");
-        this.passwordRules = Objects.requireNonNull(passwordRules, "Les règles de mot de passe sont obligatoires.");
-        this.sessionRevoker = Objects.requireNonNull(sessionRevoker, "La fermeture des sessions est obligatoire.");
-        this.transactionRunner = Objects.requireNonNull(transactionRunner, "La transaction est obligatoire.");
+        this.userRepository = Objects.requireNonNull(userRepository, "User repository is required.");
+        this.credentialStore = Objects.requireNonNull(credentialStore, "Credential store is required.");
+        this.passwordProtection = Objects.requireNonNull(passwordProtection, "Password protection is required.");
+        this.passwordRules = Objects.requireNonNull(passwordRules, "Password rules are required.");
+        this.sessionRevoker = Objects.requireNonNull(sessionRevoker, "Session revoker is required.");
+        this.transactionRunner = Objects.requireNonNull(transactionRunner, "Transaction runner is required.");
     }
 
     public User execute(ChangeOwnPasswordCommand command) {
-        Objects.requireNonNull(command, "Les informations de changement de mot de passe sont obligatoires.");
+        Objects.requireNonNull(command, "Password change details are required.");
         passwordRules.ensureAcceptable(command.newPassword());
         return transactionRunner.execute(() -> changePassword(command));
     }

@@ -23,7 +23,7 @@ public class CustomerJpaEntity {
     private String phoneNumber;
     @Column(name = "email", length = 200)
     private String email;
-    // Renseignée par le DEFAULT de la base : l'horodatage ne dépend pas de l'horloge applicative.
+    // The database DEFAULT supplies the timestamp independently of the application clock.
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

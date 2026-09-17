@@ -12,13 +12,9 @@ public interface SaleRepository {
     Optional<Sale> findById(SaleId saleId);
 
     /**
-     * Charge une vente en vue de la modifier, en garantissant un accès exclusif jusqu'à la fin de
-     * la transaction en cours.
-     *
-     * <p>Ce n'est pas un détail d'implémentation mais un <b>contrat</b> : encaisser suppose de lire
-     * le solde puis d'écrire un paiement. Sans exclusivité, deux règlements simultanés liraient le
-     * même solde, se croiraient tous deux dans les limites du montant dû, et la vente finirait
-     * sur-payée.</p>
+     * Loads a sale with exclusive access until the current transaction ends. Payment recording
+     * requires this contract to prevent concurrent payments from exceeding the outstanding
+     * balance.
      */
     Optional<Sale> findByIdForUpdate(SaleId saleId);
 }

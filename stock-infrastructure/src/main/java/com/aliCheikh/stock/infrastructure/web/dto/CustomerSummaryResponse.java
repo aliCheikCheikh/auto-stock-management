@@ -4,7 +4,7 @@ import com.aliCheikh.stock.application.dto.CustomerSearchView;
 
 import java.util.UUID;
 
-/** Client réduit aux informations d'un résultat de recherche. */
+/** Customer search result. */
 public record CustomerSummaryResponse(UUID customerId,
                                       String givenName,
                                       String fatherName,

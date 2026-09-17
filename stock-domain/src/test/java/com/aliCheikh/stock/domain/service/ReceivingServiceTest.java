@@ -107,7 +107,7 @@ public class ReceivingServiceTest {
                 ReceivingEntry.of(productId, backStock.getLocationId(), 35)
         ), userId, BUSINESS_TIME);
 
-        // Sans marqueur commun, l'historique afficherait deux réceptions au lieu d'une.
+        // One receipt must share a single operation ID.
         assertThat(movements).hasSize(2);
         assertThat(movements).extracting(StockMovement::getOperationId).containsOnly(movements.get(0).getOperationId());
     }
@@ -123,8 +123,7 @@ public class ReceivingServiceTest {
 
         List<ReceivingEntry> entries = List.of(ReceivingEntry.of(productId, shopFloor.getLocationId(), 5));
 
-        // Deux réceptions successives du même vendeur, sur le même emplacement : elles doivent
-        // rester distinctes, ce qu'un regroupement déduit de la date et de l'auteur ne garantirait pas.
+        // Successive receipts by the same user at the same location remain separate operations.
         StockMovement first = receivingService.receive(entries, userId, BUSINESS_TIME).get(0);
         StockMovement second = receivingService.receive(entries, userId, BUSINESS_TIME).get(0);
 

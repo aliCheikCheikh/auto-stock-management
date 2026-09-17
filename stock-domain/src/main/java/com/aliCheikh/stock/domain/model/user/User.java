@@ -4,7 +4,7 @@ import com.aliCheikh.stock.domain.exception.user.InvalidUserNameException;
 
 import java.util.Objects;
 
-/** Une personne autorisée à travailler dans le magasin. */
+/** User authorized to work in the shop. */
 public final class User {
 
     public static final int MAX_DISPLAY_NAME_LENGTH = 100;
@@ -22,10 +22,10 @@ public final class User {
                 UserRole role,
                 boolean active,
                 boolean passwordChangeRequired) {
-        this.id = Objects.requireNonNull(id, "L'identifiant de l'utilisateur est obligatoire.");
+        this.id = Objects.requireNonNull(id, "User ID is required.");
         this.displayName = validateDisplayName(displayName);
-        this.email = Objects.requireNonNull(email, "L'email de l'utilisateur est obligatoire.");
-        this.role = Objects.requireNonNull(role, "Le rôle de l'utilisateur est obligatoire.");
+        this.email = Objects.requireNonNull(email, "User email is required.");
+        this.role = Objects.requireNonNull(role, "User role is required.");
         this.active = active;
         this.passwordChangeRequired = passwordChangeRequired;
     }

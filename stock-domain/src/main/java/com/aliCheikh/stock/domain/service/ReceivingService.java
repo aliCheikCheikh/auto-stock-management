@@ -24,23 +24,18 @@ public class ReceivingService {
         Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         List<StockMovement> generatedMovements = new ArrayList<>();
 
-        // Une réception est une opération unique, même lorsqu'elle porte sur plusieurs produits :
-        // tous ses mouvements partagent la même identité pour être regroupés à la lecture.
+        // All movements in one receipt share an operation ID, including receipts with multiple
+        // products.
         OperationId operationId = OperationId.generate();
 
-        // 1. For each ReceivingEntry:
         for (ReceivingEntry entry : entries) {
 
-            // a. Retrieve StorageLocation
             StorageLocation location = storageLocationRepository.findById(entry.locationId()).orElseThrow(() -> new StorageNotFoundException(entry.locationId()));
 
-            // b. Increase the stock in memory
             location.increaseStock(entry.productId(), entry.quantity());
 
-            // CORRECTION: Save the updated aggregate back to the repository
             storageLocationRepository.save(location);
 
-            // c. Create the inbound StockMovement
             StockMovement movement = StockMovement.createEntry(
                     entry.productId(),
                     entry.locationId(),
@@ -53,7 +48,6 @@ public class ReceivingService {
             generatedMovements.add(movement);
         }
 
-        // 3. Return the created movements
         return generatedMovements;
     }
 }

@@ -186,7 +186,7 @@ class DashboardQueryPersistenceTest {
         assertThat(alert.oldestSaleId()).isEqualTo(oldestSale);
         assertThat(alert.daysOutstanding()).isEqualTo(40);
 
-        // Le test utilise ces identifiants pour rendre explicites les cas volontairement exclus.
+        // Use explicit IDs for intentionally excluded fixtures.
         assertThat(secondOpenSale).isNotEqualTo(oldestSale);
         assertThat(settledSale).isNotEqualTo(recentSale);
     }

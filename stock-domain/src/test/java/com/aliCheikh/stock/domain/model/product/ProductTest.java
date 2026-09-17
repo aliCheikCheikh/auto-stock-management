@@ -39,7 +39,7 @@ class ProductTest {
         }).isInstanceOf(InvalidProductPriceException.class)
                 .extracting(ex -> (InvalidProductPriceException) ex)
                 .satisfies(ex -> {
-                    // CORRECTION ICI : Utilisation de invalidPrice
+
                     assertThat(ex.getInvalidPrice()).isEqualTo(invalidPrice);
                 });
     }

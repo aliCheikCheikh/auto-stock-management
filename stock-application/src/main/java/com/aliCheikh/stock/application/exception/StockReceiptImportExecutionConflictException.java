@@ -8,7 +8,7 @@ public final class StockReceiptImportExecutionConflictException extends RuntimeE
     private final UUID importId;
 
     public StockReceiptImportExecutionConflictException(UUID importId) {
-        super("Cet identifiant d'import a déjà été utilisé avec un autre fichier ou une autre sélection.");
+        super("This import ID has already been used with a different file or selection.");
         this.importId = Objects.requireNonNull(importId, "importId cannot be null");
     }
 

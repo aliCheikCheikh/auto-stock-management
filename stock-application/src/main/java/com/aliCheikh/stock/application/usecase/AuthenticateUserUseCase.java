@@ -18,13 +18,13 @@ public final class AuthenticateUserUseCase {
     public AuthenticateUserUseCase(UserRepository userRepository,
                                    UserCredentialStore credentialStore,
                                    PasswordProtection passwordProtection) {
-        this.userRepository = Objects.requireNonNull(userRepository, "Le registre des utilisateurs est obligatoire.");
-        this.credentialStore = Objects.requireNonNull(credentialStore, "Le gestionnaire des accès est obligatoire.");
-        this.passwordProtection = Objects.requireNonNull(passwordProtection, "La protection des mots de passe est obligatoire.");
+        this.userRepository = Objects.requireNonNull(userRepository, "User repository is required.");
+        this.credentialStore = Objects.requireNonNull(credentialStore, "Credential store is required.");
+        this.passwordProtection = Objects.requireNonNull(passwordProtection, "Password protection is required.");
     }
 
     public Optional<User> execute(UserEmail email, String password) {
-        Objects.requireNonNull(email, "L'email est obligatoire.");
+        Objects.requireNonNull(email, "Email is required.");
         if (password == null) {
             return Optional.empty();
         }

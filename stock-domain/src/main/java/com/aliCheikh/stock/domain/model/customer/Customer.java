@@ -8,31 +8,14 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Client du magasin, à qui une vente à crédit peut être accordée.
- *
- * <p><b>Modèle de nommage.</b> Au Tchad, une personne est désignée par son nom propre, suivi du
- * nom de son père. Il n'existe pas de « nom de famille » au sens patronyme partagé par une lignée :
- * plaquer un modèle {@code firstName}/{@code lastName} conduirait à stocker le nom du père dans un
- * champ censé porter le patronyme, et à inverser les deux au moindre doute. D'où les deux champs
- * nommés d'après le métier :</p>
- * <ul>
- *     <li>{@code givenName} — le nom propre de la personne, <b>obligatoire</b> : c'est par lui
- *         qu'on l'appelle et qu'on la reconnaît dans la liste des créances ;</li>
- *     <li>{@code fatherName} — le nom du père, <b>optionnel</b> : il sert à distinguer deux
- *         clients portant le même nom propre.</li>
- * </ul>
- *
- * <p><b>Identité.</b> L'identité technique est le {@link CustomerId}, seul support de l'égalité.
- * L'identifiant naturel est le {@link PhoneNumber}, obligatoire, qui sert aussi de canal de
- * relance. L'email reste optionnel : beaucoup de clients n'en ont pas.</p>
- *
- * <p><b>Hors périmètre de cet agrégat :</b> l'unicité du téléphone ou de l'email. Un agrégat ne
- * connaît que lui-même ; l'unicité est garantie par une contrainte en base et vérifiée via le
- * repository.</p>
+ * Customer aggregate. The shop identifies customers by a required given name and optional father
+ * name, rather than a first/last-name pair. Equality uses {@link CustomerId}; {@link PhoneNumber}
+ * is the required natural identifier. Email is optional. Uniqueness is checked through the
+ * repository and enforced by database constraints.
  */
 public final class Customer {
 
-    /** Contrôle volontairement permissif : on attrape les fautes de frappe, pas la RFC 5322. */
+    /** Basic email syntax validation, not full RFC 5322 validation. */
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final CustomerId customerId;
@@ -41,10 +24,7 @@ public final class Customer {
     private final String fatherName;
     private final String email;
 
-    /**
-     * Porte les invariants de l'agrégat : tout chemin de construction, présent ou futur,
-     * passe obligatoirement par ici.
-     */
+    /** Validates invariants shared by all construction paths. */
     private Customer(CustomerId customerId,
                      PhoneNumber phoneNumber,
                      String givenName,
@@ -58,13 +38,8 @@ public final class Customer {
     }
 
     /**
-     * Crée un nouveau client.
-     *
-     * @param customerId  identité technique, jamais nulle
-     * @param phoneNumber identifiant naturel et canal de relance, jamais nul
-     * @param givenName   nom propre de la personne, obligatoire
-     * @param fatherName  nom du père, facultatif ({@code null} accepté)
-     * @param email       adresse email, facultative ({@code null} accepté), validée si présente
+     * Creates a customer with a required ID, phone number and given name. Father name and email
+     * are optional; a supplied email is validated.
      */
     public static Customer create(CustomerId customerId,
                                   PhoneNumber phoneNumber,
@@ -81,7 +56,7 @@ public final class Customer {
         return givenName.trim();
     }
 
-    /** Un texte optionnel absent ou vide est ramené à {@code null} : une seule façon de dire « absent ». */
+    /** Represent absent or blank optional text as null. */
     private static String normalizeOptionalText(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -89,11 +64,7 @@ public final class Customer {
         return value.trim();
     }
 
-    /**
-     * Normalise l'email en minuscules avant de le valider : sans cette forme canonique, la règle
-     * « email unique s'il est présent » ne tiendrait pas ({@code A@B.com} et {@code a@b.com}
-     * seraient deux valeurs distinctes).
-     */
+    /** Normalize email case and whitespace before uniqueness checks. */
     private static String normalizeOptionalEmail(String email) {
         if (email == null || email.isBlank()) {
             return null;
@@ -113,12 +84,12 @@ public final class Customer {
         return phoneNumber;
     }
 
-    /** Le nom propre du client, toujours présent. */
+    /** Required customer given name. */
     public String getGivenName() {
         return givenName;
     }
 
-    /** Le nom du père, s'il a été renseigné. */
+    /** Optional father name. */
     public Optional<String> getFatherName() {
         return Optional.ofNullable(fatherName);
     }
@@ -127,7 +98,7 @@ public final class Customer {
         return Optional.ofNullable(email);
     }
 
-    /** Deux clients sont le même client s'ils partagent la même identité — pas les mêmes données. */
+    /** Customer equality depends on identity, not mutable details. */
     @Override
     public boolean equals(Object o) {
         if (this == o) {

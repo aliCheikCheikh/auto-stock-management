@@ -3,7 +3,7 @@ package com.aliCheikh.stock.domain.exception.customer;
 import com.aliCheikh.stock.domain.exception.DomainException;
 import com.aliCheikh.stock.domain.model.customer.CustomerId;
 
-/** Levée quand un client référencé n'existe pas. */
+/** Raised when a referenced customer does not exist. */
 public class CustomerNotFoundException extends DomainException {
 
     private final CustomerId customerId;

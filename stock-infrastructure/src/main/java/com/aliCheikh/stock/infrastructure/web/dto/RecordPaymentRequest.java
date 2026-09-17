@@ -6,10 +6,8 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 /**
- * Encaissement d'un remboursement.
- *
- * <p>La validation ne fait ici que rejeter l'absurde (montant manquant ou négatif) ; savoir si le
- * montant est recevable au regard du solde est une règle métier, portée par le domaine.</p>
+ * Payment request. Input validation checks presence and positivity; the domain checks the
+ * outstanding balance.
  */
 public record RecordPaymentRequest(@NotNull @Positive BigDecimal amount) {
 }

@@ -11,7 +11,7 @@ public record ReceivingEntry(ProductId productId, LocationId locationId, int qua
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(locationId, "locationId cannot be null");
         if (quantity <= 0) {
-            // Une entrée de réception doit toujours être strictement positive
+
             throw new IllegalArgumentException("quantity must be greater than 0");
         }
     }

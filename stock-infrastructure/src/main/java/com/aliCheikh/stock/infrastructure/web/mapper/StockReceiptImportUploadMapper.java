@@ -17,12 +17,12 @@ public final class StockReceiptImportUploadMapper {
 
     public static StockReceiptImportFile toFile(MultipartFile upload) {
         if (upload.isEmpty()) {
-            throw invalid(StockReceiptImportFileErrorCode.EMPTY_FILE, "Le fichier CSV est vide.");
+            throw invalid(StockReceiptImportFileErrorCode.EMPTY_FILE, "The CSV file is empty.");
         }
         if (upload.getSize() > MAX_FILE_SIZE_BYTES) {
             throw invalid(
                     StockReceiptImportFileErrorCode.FILE_TOO_LARGE,
-                    "Le fichier dépasse la taille maximale autorisée de 1 Mo."
+                    "The file exceeds the maximum allowed size of 1 MB."
             );
         }
 
@@ -30,7 +30,7 @@ public final class StockReceiptImportUploadMapper {
         if (filename.isBlank() || "null".equals(filename) || filename.contains("..")) {
             throw invalid(
                     StockReceiptImportFileErrorCode.UNSUPPORTED_FILE,
-                    "Le nom du fichier CSV est invalide."
+                    "The CSV filename is invalid."
             );
         }
 
@@ -39,7 +39,7 @@ public final class StockReceiptImportUploadMapper {
         } catch (IOException exception) {
             throw new InvalidStockReceiptImportFileException(
                     StockReceiptImportFileErrorCode.MALFORMED_CSV,
-                    "Le fichier CSV n'a pas pu être lu.",
+                    "The CSV file could not be read.",
                     exception
             );
         }

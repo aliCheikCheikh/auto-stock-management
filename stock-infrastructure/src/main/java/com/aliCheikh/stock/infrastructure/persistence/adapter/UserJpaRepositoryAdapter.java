@@ -51,8 +51,7 @@ public class UserJpaRepositoryAdapter implements UserRepository {
 
     @Override
     public List<User> findActiveOwners() {
-        // Le verrou est un détail de cet adaptateur : le domaine demande seulement une vue
-        // cohérente des propriétaires actifs avant de prendre sa décision.
+        // The adapter owns locking; the domain requires a consistent view of active owners.
         return userJpaRepository.findActiveOwnersForUpdate().stream()
                 .map(userJpaMapper::toDomain)
                 .toList();

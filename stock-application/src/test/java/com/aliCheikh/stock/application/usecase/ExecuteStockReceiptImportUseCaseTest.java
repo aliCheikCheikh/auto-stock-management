@@ -271,7 +271,7 @@ class ExecuteStockReceiptImportUseCaseTest {
                 List.of(new StockReceiptImportIssue(
                         "nom_produit",
                         StockReceiptImportIssueCode.MISSING_NAME,
-                        "Le nom du produit est obligatoire."
+                        "Product name is required."
                 ))
         );
     }

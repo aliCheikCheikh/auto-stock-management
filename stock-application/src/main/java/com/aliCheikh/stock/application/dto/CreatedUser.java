@@ -4,15 +4,15 @@ import com.aliCheikh.stock.domain.model.user.User;
 
 import java.util.Objects;
 
-/** Résultat à remettre au patron sans jamais inclure le mot de passe dans les journaux. */
+/** Result returned to the owner. Never log the temporary password. */
 public final class CreatedUser {
 
     private final User user;
     private final String temporaryPassword;
 
     public CreatedUser(User user, String temporaryPassword) {
-        this.user = Objects.requireNonNull(user, "L'utilisateur créé est obligatoire.");
-        this.temporaryPassword = Objects.requireNonNull(temporaryPassword, "Le mot de passe temporaire est obligatoire.");
+        this.user = Objects.requireNonNull(user, "Created user is required.");
+        this.temporaryPassword = Objects.requireNonNull(temporaryPassword, "Temporary password is required.");
     }
 
     public User user() {

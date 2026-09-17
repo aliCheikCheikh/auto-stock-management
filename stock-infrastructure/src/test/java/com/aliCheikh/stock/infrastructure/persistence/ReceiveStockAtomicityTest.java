@@ -37,14 +37,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Prouve l'ATOMICITÉ de la réception : une réception qui crée un produit puis
- * échoue plus loin ne doit laisser AUCUNE trace (rollback complet).
- *
- * On utilise {@code @SpringBootTest} (et surtout PAS {@code @DataJpaTest}) :
- * ce dernier envelopperait chaque test dans sa propre transaction annulée en fin
- * de test, ce qui masquerait la transaction réelle du use case. Ici, la
- * transaction ouverte par SpringTransactionRunner est réelle et indépendante, et
- * on interroge la base depuis l'extérieur.
+ * Verifies receipt rollback using SpringBootTest without a test-managed transaction. The real
+ * use-case transaction must roll back product creation when a later write fails, as observed from
+ * outside that transaction.
  */
 @SpringBootTest
 @Testcontainers
@@ -90,8 +85,7 @@ class ReceiveStockAtomicityTest {
         shopId = ShopId.generate();
         shopFloorId = LocationId.generate();
 
-        // Catégorie / magasin / emplacement valides (nom de catégorie unique pour
-        // ne pas heurter les catégories semées par Flyway V7).
+        // Use a valid shop and location with a category name distinct from Flyway seeds.
         categoryJpaRepository.save(CategoryJpaEntity.of(
                 categoryId.getValue(), "Atomicité-" + categoryId.getValue()));
         shopJpaRepository.save(ShopJpaEntity.of(
@@ -104,9 +98,8 @@ class ReceiveStockAtomicityTest {
     void a_reception_that_fails_midway_leaves_no_trace() {
         String reference = "ATOMIC-" + UUID.randomUUID();
 
-        // userId absent de app_user : la clé étrangère performed_by du mouvement
-        // explose au commit, APRÈS que le nouveau produit a été créé dans la même
-        // transaction. C'est exactement le scénario du bug d'origine.
+        // A missing user triggers a movement foreign-key violation after product creation in the
+        // same transaction.
         UserId ghostUser = UserId.of(UUID.randomUUID());
 
         ReceiveStockCommand command = new ReceiveStockCommand(
@@ -123,13 +116,13 @@ class ReceiveStockAtomicityTest {
                 List.of(new TargetLocation(shopFloorId, 10))
         );
 
-        // La réception doit échouer (violation de contrainte au commit).
+        // The receipt must fail on the constraint violation.
         assertThatThrownBy(() -> receiveStockUseCase.execute(command))
                 .isInstanceOf(RuntimeException.class);
 
-        // Preuve d'atomicité : le produit créé en cours de route a été ANNULÉ.
+        // The product created within the failed transaction must be rolled back.
         assertThat(productJpaRepository.findByReference(reference))
-                .as("un échec en cours de réception ne doit laisser aucun produit")
+                .as("a failed receipt must not leave a product behind")
                 .isEmpty();
     }
 }

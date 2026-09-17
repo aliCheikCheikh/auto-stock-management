@@ -4,12 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Vente renvoyée au client HTTP.
- *
- * <p>{@code amountDue} est fourni pour que le front n'ait jamais à recalculer le solde :
- * une seule source de vérité, celle du domaine.</p>
- */
+/** Sale response including the balance computed by the domain. */
 public record SaleResponse(UUID saleId,
                            UUID sellerId,
                            String sellerName,

@@ -10,7 +10,7 @@ public class InsufficientStockException extends DomainException {
     private final int requestedQuantity;
 
     public InsufficientStockException(ProductId productId, int availableQuantity, int requestedQuantity) {
-        // Le message formaté reste très utile pour les logs backend
+
         super(String.format("Insufficient stock for product %s: available = %d, requested = %d",
                 productId, availableQuantity, requestedQuantity));
 

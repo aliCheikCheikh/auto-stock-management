@@ -1,142 +1,111 @@
-= Spécification API REST (OpenAPI)
+= REST API specification (OpenAPI)
 :toc: left
 :icons: font
 
-== Source de vérité
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Le contrat API est maintenu dans un fichier OpenAPI 3.1 unique :
+== Source of truth
 
-[source]
-----
-auto-stock-management/api/openapi.yaml
-----
+The API contract is maintained in `auto-stock-management/api/openapi.yaml` (OpenAPI 3.1).
+Change the contract there and align documentation and server code with it. The notes below record the original API design; they are not a statement of current endpoint coverage or guarantees.
 
-Cette page ne duplique plus le YAML — elle en explique les choix.
-Toute modification de contrat se fait dans ce fichier ; la doc Antora et le
-code serveur s'alignent sur lui.
+== Specification-driven development and TDD
 
-== Approche Spec-Driven + TDD
+TDD protects domain rules, such as nonnegative `StockLevel` quantities and currency compatibility in `Money`.
+The OpenAPI contract defines integration between backend and frontend.
 
-Deux disciplines complémentaires, chacune protégeant une couche :
+== Original design principles
 
-* **TDD** protège les règles métier du domaine (`StockLevel` ne descend
-  jamais sous zéro, `Money` ne mélange pas les devises, etc.).
-* **Spec-Driven** protège le contrat d'intégration entre backend et
-  frontend. Le fichier `openapi.yaml` tranche en cas de désaccord.
+=== Explicit versioning
 
-== Principes de conception
+URLs use `/api/v1`. The design calls for a new URL version for incompatible payload changes or removed fields, while additive optional fields or endpoints remain on `v1`.
 
-=== Versioning explicite
+=== Resource naming
 
-Toutes les URLs sont préfixées par `/api/v1`. Une évolution incompatible
-(changement de shape de payload, suppression de champ, etc.) incrémente
-la version d'URL ; une évolution additive (nouveau champ optionnel,
-nouvel endpoint) reste sur `v1`.
+Use plural resources in kebab-case: `/stock-receipts`, `/stock-transfers`, `/stock-levels`, `/stock-movements`, `/sales` and `/products`.
+The HTTP verb carries the action rather than paths such as `/createSale` or `/sales/confirm`.
 
-=== URLs : kebab-case, ressources au pluriel
+=== Primitive types
 
-* `/stock-receipts`, `/stock-transfers`, `/stock-levels`, `/stock-movements`
-* `/sales`, `/products`
-* L'action est portée par le verbe HTTP, pas l'URL. Pas de `/createSale`
-  ni de `/sales/confirm`.
+* IDs: UUID v4 strings; no exposed Long identifiers.
+* Dates: ISO 8601 UTC (`date-time`).
+* Money: `{ amount: string, currency: string }`. String amounts preserve `BigDecimal` precision when consumed by JavaScript.
 
-=== Types primitifs stricts
+=== Errors
 
-* **IDs** : UUID v4 en `string` (pas de Long exposé).
-* **Dates** : ISO 8601 UTC (`date-time`).
-* **Monnaie** : objet `Money { amount: string, currency: string }`.
-  `amount` est transporté en **string** pour éviter la perte de précision
-  que `number` JavaScript inflige à `BigDecimal`.
+The design uses RFC 7807 `application/problem+json` with `type`, `title`, `status`, `detail` and `instance`, plus:
 
-=== Erreurs : RFC 7807 `application/problem+json`
-
-Toute réponse d'erreur est un `Problem` (`type`, `title`, `status`,
-`detail`, `instance`) enrichi de trois extensions :
-
-* `code` : code machine stable (`STOCK_INSUFFICIENT`, `PRODUCT_NOT_FOUND`…)
-  utilisé par le frontend pour le mapping i18n.
-* `errors[]` : erreurs de validation par champ.
-* `traceId` : ID de corrélation pour retrouver les logs serveur.
+* `code`: stable machine code such as `STOCK_INSUFFICIENT`, used for frontend localization.
+* `errors[]`: field validation errors.
+* `traceId`: server-log correlation identifier.
 
 [source,json]
 ----
 {
   "type": "https://api.stock.example.com/errors/stock-insufficient",
-  "title": "Stock insuffisant",
+  "title": "Insufficient stock",
   "status": 409,
-  "detail": "Quantité demandée 10, disponible 4 sur le shop 3c4d…",
+  "detail": "Requested quantity 10, available 4 in shop 3c4d…",
   "code": "STOCK_INSUFFICIENT",
   "traceId": "8f1e2a7b-…"
 }
 ----
 
-=== Idempotence des mutations
+=== Planned mutation idempotency
 
-`POST /stock-receipts`, `POST /sales`, `POST /stock-transfers` acceptent
-un header `Idempotency-Key: <UUID>`. Deux requêtes portant la même clé
-dans une fenêtre de 24h retournent la même réponse sans réexécuter
-l'opération — critique pour éviter les doubles ventes en cas de retry
-réseau côté point de vente.
+The original proposal accepts `Idempotency-Key: <UUID>` on `POST /stock-receipts`, `POST /sales` and `POST /stock-transfers`, with the same response for repeated keys within 24 hours.
+This is a design target intended to prevent duplicate operations after network retries; check the current implementation for actual persistence and expiry behavior.
 
-=== Pagination uniforme
+=== Planned pagination convention
 
-Toutes les listes utilisent le même contrat :
+* Query: `?page=0&size=20&sort=field,direction`.
+* Response: `{ "content": [...], "page": { page, size, totalElements, totalPages } }`.
 
-* Query : `?page=0&size=20&sort=field,direction`
-* Response : `{ "content": [...], "page": { page, size, totalElements, totalPages } }`
+Check each operation in OpenAPI for supported parameters and response shapes.
 
-=== Les rôles filtrent les données, pas les endpoints
+=== Role-based financial visibility
 
-L'endpoint `GET /sales` est accessible aux deux rôles. Le backend filtre
-les champs financiers visibles (ex. `totalAmount`) selon le rôle porté
-par le JWT. Le frontend n'a pas besoin d'URL différentes.
+The original design exposes `GET /sales` to both roles and filters financial fields such as `totalAmount` according to the JWT role, using one URL for both roles.
 
-== Endpoints disponibles
+== Original endpoint map
 
-[cols="3,2,5"]
+[cols="1,1,1"]
 |===
-| Endpoint | Use Case | Résumé
+| Endpoint | Use case | Purpose
 
 | `POST /stock-receipts`
 | `ReceiveStockUseCase`
-| Réception fournisseur. Crée le produit à la volée si besoin,
-  répartit entre plusieurs emplacements.
+| Supplier receipt; create an unknown product if necessary and distribute quantities across locations.
 
 | `POST /sales`
 | `SellProductUseCase`
-| Vente avec allocation automatique (priorité shop floor).
+| Sale with automatic allocation, shop floor first.
 
 | `POST /stock-transfers`
 | `TransferStockUseCase`
-| Transfert entre emplacements du même shop.
+| Transfer between locations in the same shop.
 
 | `GET /products`, `GET /products/{id}`
-| lecture
-| Catalogue produit.
+| Read
+| Product catalog.
 
 | `GET /stock-levels`, `GET /products/{id}/stock-levels`
-| lecture
-| Niveau de stock par produit / emplacement.
+| Read
+| Stock by product and location.
 
 | `GET /sales`, `GET /sales/{id}`
-| lecture
-| Historique des ventes.
+| Read
+| Sales history.
 
 | `GET /stock-movements`
-| lecture
-| Journal d'audit des entrées, sorties, transferts.
+| Read
+| Audit log of receipts, issues and transfers.
 |===
 
-== Évolutions futures (non contractualisées)
+== Historical follow-up list
 
-Ces endpoints ne sont **pas** dans `openapi.yaml` tant qu'ils ne sont
-pas implémentés côté serveur :
-
-* Authentification (login / refresh / logout) — attend l'ajout de
-  l'adaptateur d'authentification.
-* Dashboard analytique (`summary`, `daily-revenue`) — attend la
-  projection / read model dédiée.
-* Annulation d'une vente.
-* Inventaire physique et ajustement de stock.
-
-La règle : on ne publie pas de spec pour du code qui n'existe pas.
+The original design deferred authentication (login, refresh and logout), analytical dashboard projections (`summary`, `daily-revenue`), sale cancellation, and physical inventory adjustments.
+This list describes the planning stage, not current implementation status. Consult the current OpenAPI file, source code and README for available functionality.

@@ -19,18 +19,15 @@ public record StockMovementView(
         MovementType type,
         int quantity,
         UserId executedBy,
-        /** Nom affichable de l'auteur : « c'est Ahmat qui a fait cette réception ». */
+        /** Display name of the user who performed the operation. */
         String executedByName,
         LocalDateTime executedAt,
         SaleId saleId,
-        /** Opération à l'origine du mouvement : les lignes qui la partagent se regroupent. */
+        /** Groups movements belonging to the same business operation. */
         OperationId operationId,
         /**
-         * Solde restant dû de la vente à l'origine du mouvement, {@code null} si le mouvement
-         * n'est pas une sortie de vente. Zéro signifie « vente réglée ».
-         *
-         * <p>Un seul champ plutôt qu'un booléen accompagné d'un montant : le montant porte déjà
-         * l'information, et deux champs pourraient un jour se contredire.</p>
+         * Remaining balance of the originating sale, or null for movements unrelated to a sale.
+         * Zero indicates a settled sale.
          */
         Money saleAmountDue
 ) {

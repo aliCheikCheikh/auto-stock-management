@@ -32,12 +32,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * API des clients.
- *
- * <p>Le contrôleur ne dépend que de use cases : il traduit du HTTP, il ne connaît ni le domaine
- * ni la persistance.</p>
- */
+/** Customer HTTP endpoints backed by application use cases. */
 @RestController
 @RequestMapping("/api/v1/customers")
 @Validated
@@ -69,12 +64,7 @@ public class CustomerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(CustomerResponse.from(customer));
     }
 
-    /**
-     * Recherche d'un client par nom ou par numéro, pour le sélecteur de vente.
-     *
-     * <p>Sans terme de recherche, renvoie les derniers clients enregistrés : le vendeur retrouve
-     * ainsi immédiatement ceux à qui il vient de faire crédit.</p>
-     */
+    /** Searches customers by name or phone; returns recent customers when no keyword is supplied. */
     @GetMapping
     public List<CustomerSummaryResponse> searchCustomers(@RequestParam(required = false) String search) {
         return searchCustomersUseCase.search(search).stream()
@@ -88,12 +78,8 @@ public class CustomerController {
     }
 
     /**
-     * Les créances d'un client donné, en cours par défaut.
-     *
-     * <p>Même filtre et même pagination que la vue globale, parce que c'est la même question posée
-     * sur un périmètre plus étroit : « ce client, il me doit quoi, et il a réglé quoi jusqu'ici ? »
-     * Deux comportements distincts pour la même donnée obligeraient le patron à se souvenir de
-     * quel écran il vient.</p>
+     * Lists a customer's debts with the same status filters and pagination as the global debt
+     * view.
      */
     @GetMapping("/{customerId}/debts")
     public PageOfDebtResponse getCustomerDebts(

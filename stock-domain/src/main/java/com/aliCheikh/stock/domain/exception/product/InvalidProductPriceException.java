@@ -7,7 +7,7 @@ public class InvalidProductPriceException extends DomainException {
     private final Money invalidPrice;
 
     public InvalidProductPriceException(Money invalidPrice) {
-        // Règle : Le prix doit être strictement positif.
+
         super("Product unit price must be strictly positive. Provided value: '" + invalidPrice + "'");
         this.invalidPrice = invalidPrice;
     }

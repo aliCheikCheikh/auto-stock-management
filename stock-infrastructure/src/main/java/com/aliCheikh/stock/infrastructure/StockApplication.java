@@ -11,8 +11,7 @@ public class StockApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(StockApplication.class, args);
 
-        // La récupération est une opération ponctuelle : une fois le runner terminé,
-        // fermer le contexte empêche ce démarrage exceptionnel de devenir un serveur durable.
+        // Recovery is a one-shot operation; close the context after the runner finishes.
         if (context.getEnvironment().acceptsProfiles(Profiles.of("owner-recovery"))) {
             context.close();
         }

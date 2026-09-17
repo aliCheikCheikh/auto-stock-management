@@ -1,19 +1,18 @@
-= Agrégat Product
+= Product aggregate
 :toc: left
 :icons: font
 
-== Rôle
-
-Le `Product` représente un article du catalogue de la boutique.
-Il porte l'identité du produit, sa classification, son prix et son seuil d'alerte global.
-
-[IMPORTANT]
+[NOTE]
 ====
-Le `Product` ne contient **ni le stock ni les mouvements**.
-Le stock est géré par `StorageLocation` (via `StockLevel`), les mouvements par `StockMovement`.
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
 ====
 
-== Diagramme
+== Responsibility
+
+`Product` represents a catalog item. It holds product identity, classification, price and global alert threshold.
+Stock belongs to `StorageLocation` through `StockLevel`; movements belong to `StockMovement`.
+
+== Diagram
 
 [plantuml]
 ----
@@ -56,71 +55,59 @@ Product *-- Money : unitPrice
 @enduml
 ----
 
-== Attributs
+== Attributes
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `productId`
-| `ProductId` (Value Object)
-| Identifiant unique généré par le système. Jamais modifiable.
+| `ProductId`
+| System-generated, immutable unique identifier.
 
 | `name`
 | `String`
-| Nom commercial du produit, utilisé pour la recherche. Ex : "Filtre à huile Toyota Corolla".
+| Commercial name used for search, for example "Toyota Corolla oil filter".
 
 | `reference`
 | `String`
-| Référence technique du produit, unique dans le catalogue. Ex : "FH-TOY-2024-001".
+| Technical reference, unique in the catalog, for example "FH-TOY-2024-001".
 
 | `categoryId`
-| `CategoryId` (Value Object)
-| Référence vers la catégorie à laquelle appartient le produit. Un produit appartient à exactement une catégorie.
+| `CategoryId`
+| Reference to the product's single category.
 
 | `minimumGlobalThreshold`
 | `int`
-| Seuil d'alerte sur le stock global (magasin + réserve). Quand le stock total descend en dessous, un événement `LowStockAlert` est émis.
+| Alert threshold for combined shop-floor and backstock quantities. Falling below it raises `LowStockAlert`.
 
 | `unitPrice`
-| `Money` (Value Object)
-| Prix de vente unitaire du produit. Encapsule le montant et la devise.
+| `Money`
+| Unit selling price, including amount and currency.
 |===
 
 == Invariants
 
-[cols="1,3"]
+[cols="1,1"]
 |===
 | Invariant | Description
 
-| `name` non vide
-| Un produit doit toujours avoir un nom.
+| Nonempty `name`
+| A product must have a name.
 
-| `reference` unique
-| Deux produits ne peuvent pas partager la même référence. Cet invariant est vérifié au niveau du Repository (infrastructure), pas de l'agrégat.
+| Unique `reference`
+| Checked by the infrastructure repository, not by the aggregate.
 
 | `minimumGlobalThreshold` ≥ 0
-| Le seuil ne peut pas être négatif.
+| The threshold cannot be negative.
 
 | `unitPrice` > 0
-| Un produit doit avoir un prix strictement positif.
+| The unit price must be strictly positive.
 |===
 
-== Comportements
+== Behavior
 
-=== `isGlobalStockBelowThreshold(globalQuantity)`
+`isGlobalStockBelowThreshold(globalQuantity)` compares a supplied global quantity to the threshold.
+A Domain Service or Application Service calculates the quantity from storage locations and coordinates the check.
 
-Méthode pure qui compare une quantité globale (calculée depuis les `StorageLocation`) au seuil.
-Le `Product` ne calcule pas lui-même le stock global — il reçoit la valeur et rend un verdict.
-
-Cette séparation est voulue : le `Product` ne connaît pas les emplacements.
-C'est un Domain Service ou un Application Service qui orchestre la vérification.
-
-== Ce que Product ne fait PAS
-
-* Il ne connaît pas le stock (pas de `StockLevel` embarqué)
-* Il ne connaît pas les mouvements (pas de `StockMovement` embarqué)
-* Il ne connaît pas les ventes (pas de `Sale` embarquée)
-* Il ne connaît pas les emplacements (pas de `StorageLocation` embarquée)
-
-Toutes ces relations passent par les identifiants dans les autres agrégats.
+`Product` contains no stock levels, movements, sales or storage locations. These relationships are represented by identifiers in other aggregates.

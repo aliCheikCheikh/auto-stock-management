@@ -8,10 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Expose le contexte de session (magasin courant + emplacements) pour que le
- * front n'ait plus à coder en dur ces identifiants.
- */
+/** Exposes the current shop and locations without hard-coded frontend identifiers. */
 @RestController
 @RequestMapping("/api/v1/context")
 public class ContextController {

@@ -21,8 +21,7 @@ public class MoneyTest {
 
     @Test
     public void should_subtract_two_amounts_of_same_currency() {
-        // GIVEN un total de 50 000 et un acompte de 20 000
-        // WHEN on calcule le reste dû
+
         Money remaining = xaf("50000").subtract(xaf("20000"));
 
         // THEN il reste 30 000
@@ -31,11 +30,10 @@ public class MoneyTest {
 
     @Test
     public void should_return_negative_money_when_subtracting_a_bigger_amount() {
-        // GIVEN on paie 50 000 pour un total de 20 000 (cas que Sale interdira plus tard)
-        // WHEN on soustrait
+
         Money result = xaf("20000").subtract(xaf("50000"));
 
-        // THEN le résultat est négatif : Money reste neutre, c'est la règle métier qui tranchera
+        // Money allows negative results; the sale enforces payment limits.
         assertThat(result.isNegative()).isTrue();
         assertThat(result).isEqualTo(xaf("-30000"));
     }

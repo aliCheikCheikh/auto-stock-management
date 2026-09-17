@@ -18,10 +18,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Read model SQL du tableau de bord.
- *
- * <p>Les agrégations restent dans PostgreSQL : remonter des pages de ventes ou de stock pour les
- * additionner en Java produirait des totaux incomplets et beaucoup plus d'entrées/sorties.</p>
+ * Dashboard SQL read model. Aggregation runs in PostgreSQL rather than summing incomplete pages in
+ * Java.
  */
 @Repository
 public class DashboardQuerySqlAdapter implements DashboardQueryPort {

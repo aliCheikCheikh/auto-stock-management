@@ -4,7 +4,7 @@ import com.aliCheikh.stock.domain.model.customer.Customer;
 
 import java.util.UUID;
 
-/** Client renvoyé au client HTTP. Le téléphone est exposé sous sa forme canonique. */
+/** Customer response exposing the canonical phone number. */
 public record CustomerResponse(UUID customerId,
                                String givenName,
                                String fatherName,

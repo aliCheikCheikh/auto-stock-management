@@ -2,12 +2,7 @@ package com.aliCheikh.stock.domain.exception.customer;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
 
-/**
- * Levée quand le nom propre d'un client est absent ou vide.
- *
- * <p>Ce nom est obligatoire : c'est par lui que le vendeur reconnaît le client dans la liste
- * des créances.</p>
- */
+/** Raised when the required customer given name is missing or blank. */
 public class InvalidCustomerGivenNameException extends DomainException {
 
     private final String invalidGivenName;

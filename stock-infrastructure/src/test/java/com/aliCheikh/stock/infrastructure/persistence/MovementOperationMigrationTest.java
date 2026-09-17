@@ -18,12 +18,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Vérifie la migration V16 contre une base <b>déjà peuplée</b> de mouvements.
- *
- * <p>Le point sensible n'est pas la colonne mais la reprise : les sorties d'une même vente doivent
- * rester groupées, tandis que les réceptions et transferts antérieurs — pour lesquels aucun
- * regroupement n'est reconstituable — doivent devenir chacun leur propre opération plutôt que d'être
- * fusionnés à tort.</p>
+ * Applies V16 to existing movements. Exits from the same sale remain grouped; legacy receipts and
+ * transfers get distinct operation IDs because their original grouping cannot be recovered.
  */
 @Testcontainers
 class MovementOperationMigrationTest {
@@ -47,18 +43,17 @@ class MovementOperationMigrationTest {
 
         seedLegacyMovements(sellerId, saleId, firstExitId, secondExitId, firstEntryId, secondEntryId);
 
-        // WHEN : V16 s'applique sur une base contenant déjà des mouvements
+        // Apply V16 to a populated database.
         migrateTo(null);
 
-        // Deux sorties de la même vente : un seul groupe, hérité de la vente.
+        // Exits from the same sale share an operation ID.
         assertThat(operationOf(firstExitId)).isEqualTo(operationOf(secondExitId));
         assertThat(operationOf(firstExitId)).isEqualTo(saleId);
 
-        // Deux entrées anciennes : aucun lien reconstituable, donc deux opérations distinctes.
-        // Les fusionner aurait inventé une réception qui n'a jamais existé.
+        // Legacy entries remain distinct rather than inventing a shared receipt.
         assertThat(operationOf(firstEntryId)).isNotEqualTo(operationOf(secondEntryId));
 
-        // Aucune ligne ne reste sans opération.
+        // Every movement receives an operation ID.
         assertThat(countWithoutOperation()).isZero();
     }
 
@@ -96,8 +91,8 @@ class MovementOperationMigrationTest {
                     INSERT INTO app_user (id, username, display_name, role)
                     VALUES ('%s', 'vendeur.historique', 'Ahmat', 'SELLER')
                     """.formatted(sellerId));
-            // V7 sème déjà les familles par défaut, dont « Freinage » : le nom doit être
-            // propre au test, sinon l'insertion viole l'unicité posée par V14.
+            // Use a distinct category name to avoid the defaults seeded by V7 and uniqueness
+            // enforced by V14.
             statement.execute("INSERT INTO category (id, name) VALUES ('%s', 'Test-%s')"
                     .formatted(categoryId, categoryId));
             statement.execute("""

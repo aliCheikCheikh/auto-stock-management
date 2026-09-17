@@ -10,7 +10,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/** Limite un compte à l'authentification tant que son mot de passe doit être remplacé. */
+/**
+ * Restricts accounts to password-change and authentication operations until their temporary
+ * password is replaced.
+ */
 public class TemporaryPasswordFilter extends OncePerRequestFilter {
 
     private static final String AUTH_PATH_PREFIX = "/api/v1/auth/";

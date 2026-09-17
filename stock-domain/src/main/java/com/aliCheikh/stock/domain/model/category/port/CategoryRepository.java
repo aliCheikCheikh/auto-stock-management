@@ -16,14 +16,9 @@ public interface CategoryRepository {
 
     void delete(CategoryId categoryId);
 
-    /**
-     * Indique si une catégorie porte déjà ce nom, <b>à la casse près</b>.
-     *
-     * <p>Une comparaison sensible à la casse laisserait « Freinage » et « freinage » coexister :
-     * deux familles pour la base, une seule dans la tête du patron.</p>
-     */
+    /** Checks whether the category name exists, ignoring case. */
     boolean existsByName(String name);
 
-    /** Même question en ignorant une catégorie donnée — nécessaire lors d'un renommage. */
+    /** Checks name uniqueness while excluding the category being renamed. */
     boolean existsByNameExcluding(String name, CategoryId excludedCategoryId);
 }

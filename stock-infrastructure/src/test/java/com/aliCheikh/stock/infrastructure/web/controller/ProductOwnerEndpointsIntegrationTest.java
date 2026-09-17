@@ -102,7 +102,7 @@ class ProductOwnerEndpointsIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // Nettoyage dans l'ordre des clés étrangères : enfant avant parent.
+        // Delete children before parents to respect foreign keys.
         productJpaRepository.deleteAll();    // product -> category
         categoryRepository.deleteAll();
         refreshTokenRepository.deleteAll();  // refresh_token -> user
@@ -120,8 +120,7 @@ class ProductOwnerEndpointsIntegrationTest {
                 Money.create(new BigDecimal("45.90"), Currency.getInstance("EUR"))));
     }
 
-    // Les fixtures représentent des comptes déjà onboardés : on efface l'indicateur
-    // "mot de passe temporaire" pour qu'ils ne soient pas bloqués par le TemporaryPasswordFilter.
+    // Use onboarded accounts without the temporary-password restriction.
     private void saveEstablishedUser(String email, String password, UserRole role) {
         UserJpaEntity user = UserJpaEntity.withCredentials(
                 UUID.randomUUID(), email, email, passwordEncoder.encode(password), role);
@@ -183,12 +182,12 @@ class ProductOwnerEndpointsIntegrationTest {
                         .cookie(ownerCookie))
                 .andExpect(status().isNoContent());
 
-        // Soft delete : la ligne existe toujours en base, mais inactive (historique préservé).
+        // Soft deletion preserves the inactive row and its history.
         Optional<Product> persisted = productRepository.findById(productId);
         assertThat(persisted).isPresent();
         assertThat(persisted.get().isActive()).isFalse();
 
-        // Et il disparaît du catalogue actif (sélecteurs).
+        // Inactive products disappear from active catalog results.
         mockMvc.perform(get("/api/v1/products").param("activeOnly", "true")
                         .cookie(ownerCookie))
                 .andExpect(status().isOk())

@@ -14,10 +14,10 @@ public interface CategoryJpaRepository extends JpaRepository<CategoryJpaEntity, 
 
     Optional<CategoryJpaEntity> findByName(String name);
 
-    /** Unicité du nom à la casse près : « Freinage » et « freinage » désignent la même famille. */
+    /** Case-insensitive category name uniqueness. */
     boolean existsByNameIgnoreCase(String name);
 
-    /** Même contrôle en excluant une catégorie : renommer sans être bloqué par soi-même. */
+    /** Checks name uniqueness while excluding the category being renamed. */
     boolean existsByNameIgnoreCaseAndIdNot(String name, UUID excludedId);
 
     @Query("""

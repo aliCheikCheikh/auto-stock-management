@@ -3,7 +3,7 @@ package com.aliCheikh.stock.application.dto;
 import java.util.Arrays;
 import java.util.Objects;
 
-/** Contenu borné par l'adaptateur entrant avant d'atteindre le cas d'usage. */
+/** File content bounded by the inbound adapter before reaching the use case. */
 public record StockReceiptImportFile(String filename, byte[] content) {
 
     public StockReceiptImportFile {

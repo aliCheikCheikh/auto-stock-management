@@ -17,8 +17,7 @@ public class CustomerJpaMapper {
         return CustomerJpaEntity.of(customer.getCustomerId().getValue(),
                 customer.getGivenName(),
                 customer.getFatherName().orElse(null),
-                // getValue() et non toString() : toString est destiné aux logs et peut changer,
-                // getValue() est le contrat de la forme canonique persistée.
+                // Persist the canonical value, not the diagnostic string representation.
                 customer.getPhoneNumber().getValue(),
                 customer.getEmail().orElse(null));
     }

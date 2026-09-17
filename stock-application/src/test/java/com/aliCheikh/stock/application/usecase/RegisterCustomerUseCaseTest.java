@@ -51,7 +51,7 @@ public class RegisterCustomerUseCaseTest {
 
     @Test
     public void should_detect_a_duplicate_phone_number_whatever_the_input_format() {
-        // La base contient déjà la forme canonique ; la saisie arrive dans un autre format.
+        // The stored phone is canonical; the input uses a different format.
         given(customerRepository.existsByPhoneNumber(PhoneNumber.of("+23566123456"))).willReturn(true);
 
         assertThatThrownBy(() -> useCase.register(
@@ -64,7 +64,7 @@ public class RegisterCustomerUseCaseTest {
     @Test
     public void should_reject_an_email_already_used() {
         given(customerRepository.existsByPhoneNumber(any())).willReturn(false);
-        // L'agrégat normalise l'email : le contrôle porte sur la forme canonique.
+        // Check uniqueness against the canonical email.
         given(customerRepository.existsByEmail("ahmat@example.com")).willReturn(true);
 
         assertThatThrownBy(() -> useCase.register(

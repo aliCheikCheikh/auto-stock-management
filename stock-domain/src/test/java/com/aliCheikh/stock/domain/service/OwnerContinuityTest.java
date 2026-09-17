@@ -18,7 +18,7 @@ class OwnerContinuityTest {
 
         assertThatThrownBy(() -> ownerContinuity.ensureDeactivationKeepsAnActiveOwner(owner, 1))
                 .isInstanceOf(LastActiveOwnerException.class)
-                .hasMessage("Le magasin doit toujours conserver au moins un propriétaire actif.");
+                .hasMessage("The shop must retain at least one active owner.");
     }
 
     @Test

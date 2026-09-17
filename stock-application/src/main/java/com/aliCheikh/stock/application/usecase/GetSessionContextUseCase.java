@@ -9,12 +9,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Fournit le contexte de session : le magasin courant et ses emplacements.
- *
- * <p>Hypothèse mono-magasin assumée : tous les emplacements appartiennent au
- * seul magasin, donc {@code findAll()} suffit à reconstruire tout le contexte
- * (le magasin est celui des emplacements). Le jour où plusieurs magasins seront
- * un vrai besoin, seul ce use case (et la résolution du magasin courant) évolue.</p>
+ * Builds the session context under a single-shop assumption: all storage locations belong to the
+ * same shop. Multiple shops would require explicit shop selection.
  */
 public class GetSessionContextUseCase {
 

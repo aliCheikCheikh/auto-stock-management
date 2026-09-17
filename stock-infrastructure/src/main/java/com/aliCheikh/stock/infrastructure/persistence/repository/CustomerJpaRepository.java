@@ -16,10 +16,8 @@ public interface CustomerJpaRepository extends JpaRepository<CustomerJpaEntity, 
     boolean existsByPhoneNumber(String phoneNumber);
 
     /**
-     * Recherche sur le nom, le nom du père ou le numéro.
-     *
-     * <p>Le numéro étant stocké sous forme canonique, le LIKE permet aussi de le retrouver à
-     * partir d'un fragment saisi par le vendeur.</p>
+     * Searches given name, father name and canonical phone number; LIKE also supports partial
+     * phone input.
      */
     @Query("""
             SELECT c FROM CustomerJpaEntity c
@@ -30,7 +28,7 @@ public interface CustomerJpaRepository extends JpaRepository<CustomerJpaEntity, 
             """)
     List<CustomerJpaEntity> search(@Param("keyword") String keyword, Pageable pageable);
 
-    /** Les clients les plus récemment enregistrés, pour amorcer le sélecteur sans saisie. */
+    /** Most recently registered customers for the initial selector state. */
     @Query("SELECT c FROM CustomerJpaEntity c ORDER BY c.createdAt DESC")
     List<CustomerJpaEntity> findMostRecent(Pageable pageable);
 }

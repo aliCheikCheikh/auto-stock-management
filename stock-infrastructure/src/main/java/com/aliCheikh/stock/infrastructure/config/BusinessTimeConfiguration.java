@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Clock;
 import java.time.ZoneId;
 
-/** Fournit l'heure métier indépendamment du fuseau du serveur d'hébergement. */
+/** Provides business time independently of the hosting server's time zone. */
 @Configuration
 public class BusinessTimeConfiguration {
 

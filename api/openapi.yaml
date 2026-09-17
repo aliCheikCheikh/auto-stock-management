@@ -3,55 +3,59 @@ openapi: 3.1.0
 info:
   title: Auto Stock Management API
   version: 1.0.0
-  summary: Gestion de stock pour boutique de pièces détachées automobiles
+  summary: Stock management for an automotive spare parts shop
   description: |
-    API REST du système de gestion de stock.
+    Stock management REST API.
+
+    This hand-maintained design document is incomplete and retains historical
+    schemas. Check the controllers and DTOs in `stock-infrastructure` for the
+    current request and response contracts.
 
     ## Conventions
-    - **Versioning** : préfixe d'URL `/api/v1`. Toute évolution incompatible = `/api/v2`.
-    - **Casse** : `kebab-case` pour les segments d'URL, `camelCase` pour les champs JSON.
-    - **IDs** : UUID v4 en `string` dans tous les payloads.
-    - **Dates** : `date-time` ISO 8601 UTC (`2026-04-23T10:15:30Z`).
-    - **Monnaie** : objet `Money { amount: string (BigDecimal), currency: ISO-4217 }`.
-      `amount` est transporté en **string** pour éviter la perte de précision JavaScript.
-    - **Erreurs** : RFC 7807 (`application/problem+json`) systématiquement.
-    - **Idempotence** : les endpoints de mutation acceptent un header `Idempotency-Key`
-      (UUID) ; deux requêtes avec la même clé dans une fenêtre de 24h retournent la même
-      réponse sans réexécuter l'opération.
-    - **Pagination** : `?page=0&size=20&sort=field,asc` ; la réponse est enveloppée
-      dans `Page<T>`.
-    - **Auth** : Bearer JWT (tant que l'adaptateur d'authentification n'est pas livré,
-      les endpoints acceptent un header `X-User-Id` en environnement de dev).
+    - **Versioning**: URL prefix `/api/v1`; incompatible changes use `/api/v2`.
+    - **Case**: `kebab-case` URL segments and `camelCase` JSON fields.
+    - **IDs**: UUID v4 strings in all payloads.
+    - **Dates**: ISO 8601 UTC `date-time` (`2026-04-23T10:15:30Z`).
+    - **Money**: `Money { amount: string (BigDecimal), currency: ISO-4217 }`.
+      Amounts use strings to avoid JavaScript precision loss.
+    - **Errors**: RFC 7807 (`application/problem+json`).
+    - **Idempotency**: POST sales, stock receipts and stock transfers accept an
+      optional `Idempotency-Key` UUID. See `IdempotencyFilter` for replay behavior
+      and current limitations; no 24-hour expiry is enforced.
+    - **Pagination**: `?page=0&size=20&sort=field,asc`, with a `Page<T>` response.
+    - **Auth**: JWT in the HttpOnly `access_token` cookie. See `SecurityConfig`
+      for public routes and role restrictions; Authorization Bearer is not read by the current filter.
+
   contact:
     name: Ali Cheikh — ALMA / Nantes Université
-    email: cheikhalicheikh593@gmail.com
+    email: maintainer@example.test
   license:
     name: Proprietary
 
 servers:
   - url: https://api.stock.example.com/api/v1
-    description: Production
+    description: Example production URL (not an active demo)
   - url: https://staging.api.stock.example.com/api/v1
-    description: Staging
+    description: Example staging URL (not an active demo)
   - url: http://localhost:8080/api/v1
-    description: Développement local
+    description: Local development
 
 tags:
   - name: Stock — Receiving
-    description: Réception de marchandises (entrée de stock).
+    description: Receiving goods (stock entry).
   - name: Stock — Sales
-    description: Vente et allocation automatique du stock.
+    description: Sales and automatic stock allocation.
   - name: Stock — Transfers
-    description: Transfert entre emplacements (backstock → shop floor).
+    description: Transfers between locations (backstock → shop floor).
   - name: Products
-    description: Consultation du catalogue produit.
+    description: Product catalogue queries.
   - name: Stock — Read
-    description: Consultation des niveaux de stock.
+    description: Stock level queries.
   - name: Health
     description: Liveness / readiness.
 
 security:
-  - bearerAuth: [ ]
+  - cookieAuth: [ ]
 
 paths:
 
@@ -66,30 +70,30 @@ paths:
       security: [ ]
       responses:
         '200':
-          description: Service opérationnel.
+          description: Service operational.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthStatus'
 
   # ───────────────────────────────────────────────────────────────
-  # Receiving — entrée de stock depuis un fournisseur
+  # Receiving — stock entry from a supplier
   # ───────────────────────────────────────────────────────────────
   /stock-receipts:
     post:
       tags: [ Stock — Receiving ]
       operationId: receiveStock
-      summary: Enregistre une réception de marchandises.
+      summary: Record a stock receipt.
       description: |
-        Déclenche le use case `ReceiveStockUseCase`.
+        Invoke `ReceiveStockUseCase`.
 
-        - Si `productReference` correspond à un produit existant,
-          `newProductInfo` doit être omis.
-        - Sinon `newProductInfo` est obligatoire et le produit est créé à la volée.
-        - `distributions` répartit la quantité reçue entre un ou plusieurs
-          emplacements de stockage ; chaque ligne a `quantity > 0`.
+        - Omit `newProductInfo` when `productReference` identifies an existing product.
+        - Otherwise, `newProductInfo` is required and the product is created.
+        - `distributions` splits the received quantity across one or more
+          storage locations; each line must have `quantity > 0`.
 
-        Publie les événements `StockReceived` et (conditionnellement) `StockReplenished`.
+        Publish `StockReceived` and, when applicable, `StockReplenished`.
+
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -100,7 +104,7 @@ paths:
               $ref: '#/components/schemas/ReceiveStockRequest'
             examples:
               existingProduct:
-                summary: Réception d'un produit existant
+                summary: Receive an existing product
                 value:
                   productReference: BRK-PAD-2017-RENAULT
                   shopId: 3c4d5e6f-7a8b-4c9d-8e9f-0a1b2c3d4e5f
@@ -111,7 +115,7 @@ paths:
                     - locationId: 2a1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
                       quantity: 30
               newProduct:
-                summary: Réception avec création du produit
+                summary: Receive and create a product
                 value:
                   productReference: BRK-DISC-2019-PEUGEOT
                   shopId: 3c4d5e6f-7a8b-4c9d-8e9f-0a1b2c3d4e5f
@@ -129,11 +133,11 @@ paths:
                       quantity: 50
       responses:
         '202':
-          description: Réception enregistrée. Les mouvements de stock sont créés et les événements publiés.
+          description: Receipt recorded. Stock movements created and events published.
           headers:
             Location:
               schema: { type: string, format: uri }
-              description: URL vers le statut de la réception (pour audit futur).
+              description: Receipt status URL (for future auditing).
           content:
             application/json:
               schema:
@@ -146,25 +150,24 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ───────────────────────────────────────────────────────────────
-  # Sales — vente et allocation automatique
+  # Sales — automatic stock allocation
   # ───────────────────────────────────────────────────────────────
   /sales:
     post:
       tags: [ Stock — Sales ]
       operationId: sellProduct
-      summary: Enregistre une vente et alloue automatiquement le stock.
+      summary: Record a sale and allocate stock automatically.
       description: |
-        Déclenche le use case `SellProductUseCase`.
+        Invoke `SellProductUseCase`.
 
-        - Le service `StockAllocationService` choisit les emplacements
-          d'où sortir la marchandise (priorité shop floor).
-        - Échoue avec `STOCK_INSUFFICIENT` si la quantité disponible
-          sur l'ensemble des emplacements du shop est insuffisante.
-        - Publie `SaleCompleted`, potentiellement `LowStockAlert` et
-          `ShopFloorLow` si les seuils sont franchis.
+        - `StockAllocationService` selects source locations, prioritizing the shop floor.
+        - Fail with `STOCK_INSUFFICIENT` when available stock across all shop
+          locations cannot cover the requested quantity.
+        - Publish `SaleCompleted` and, when thresholds are crossed,
+          `LowStockAlert` and `ShopFloorLow`.
 
-        Le body supporte **plusieurs lignes** (multi-produits) pour être
-        évolutif, même si le use case courant ne traite qu'une ligne à la fois.
+        The body and use case support multiple product lines.
+
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -175,7 +178,7 @@ paths:
               $ref: '#/components/schemas/CreateSaleRequest'
             examples:
               singleLine:
-                summary: Vente d'un produit unique
+                summary: Single-product sale
                 value:
                   sellerId: 6f2a3b8a-1d0e-4d7a-8f3c-2b9c1e4a7d11
                   shopId: 3c4d5e6f-7a8b-4c9d-8e9f-0a1b2c3d4e5f
@@ -184,11 +187,11 @@ paths:
                       quantity: 2
       responses:
         '201':
-          description: Vente créée.
+          description: Sale created.
           headers:
             Location:
               schema: { type: string, format: uri }
-              description: URL vers la ressource vente créée.
+              description: URL of the created sale.
           content:
             application/json:
               schema:
@@ -203,7 +206,7 @@ paths:
     get:
       tags: [ Stock — Sales ]
       operationId: listSales
-      summary: Liste paginée des ventes.
+      summary: Paginated sales list.
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/SizeParam'
@@ -216,11 +219,11 @@ paths:
           schema: { type: string, format: uuid }
         - name: from
           in: query
-          description: Date-heure de début (inclus).
+          description: Start date and time (inclusive).
           schema: { type: string, format: date-time }
         - name: to
           in: query
-          description: Date-heure de fin (exclus).
+          description: End date and time (exclusive).
           schema: { type: string, format: date-time }
       responses:
         '200':
@@ -236,7 +239,7 @@ paths:
     get:
       tags: [ Stock — Sales ]
       operationId: getSale
-      summary: Détail d'une vente.
+      summary: Sale details.
       parameters:
         - $ref: '#/components/parameters/SaleIdPath'
       responses:
@@ -249,19 +252,20 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ───────────────────────────────────────────────────────────────
-  # Transfers — backstock → shop floor (ou inverse)
+  # Transfers — backstock → shop floor (or reverse)
   # ───────────────────────────────────────────────────────────────
   /stock-transfers:
     post:
       tags: [ Stock — Transfers ]
       operationId: transferStock
-      summary: Transfère du stock d'un emplacement vers un autre.
+      summary: Transfer stock between locations.
       description: |
-        Déclenche le use case `TransferStockUseCase`.
+        Invoke `TransferStockUseCase`.
 
-        - Les deux emplacements doivent appartenir au même shop.
-        - Échoue avec `STOCK_INSUFFICIENT` si la source n'a pas assez de stock.
-        - Publie un `StockMovement` de type `TRANSFER`.
+        - Both locations must belong to the same shop.
+        - Fail with `STOCK_INSUFFICIENT` when the source has insufficient stock.
+        - Publish a `StockMovement` of type `TRANSFER`.
+
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -280,7 +284,7 @@ paths:
                   userId: 6f2a3b8a-1d0e-4d7a-8f3c-2b9c1e4a7d11
       responses:
         '202':
-          description: Transfert accepté.
+          description: Transfer accepted.
           content:
             application/json:
               schema:
@@ -292,20 +296,20 @@ paths:
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
 
   # ───────────────────────────────────────────────────────────────
-  # Products — lecture seule
+  # Products — read only
   # ───────────────────────────────────────────────────────────────
   /products:
     get:
       tags: [ Products ]
       operationId: listProducts
-      summary: Liste paginée des produits.
+      summary: Paginated product list.
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/SizeParam'
         - $ref: '#/components/parameters/SortParam'
         - name: reference
           in: query
-          description: Filtre exact sur la référence métier.
+          description: Exact match on the business reference.
           schema: { type: string }
         - name: categoryId
           in: query
@@ -322,7 +326,7 @@ paths:
     get:
       tags: [ Products ]
       operationId: getProduct
-      summary: Détail d'un produit.
+      summary: Product details.
       parameters:
         - $ref: '#/components/parameters/ProductIdPath'
       responses:
@@ -341,7 +345,7 @@ paths:
     get:
       tags: [ Stock — Read ]
       operationId: listStockLevels
-      summary: État du stock par produit / emplacement.
+      summary: Stock levels by product and location.
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/SizeParam'
@@ -356,7 +360,7 @@ paths:
           schema: { type: string, format: uuid }
         - name: belowThreshold
           in: query
-          description: Si `true`, ne retourne que les lignes sous le seuil global.
+          description: If `true`, return only rows below the global threshold.
           schema: { type: boolean, default: false }
       responses:
         '200':
@@ -370,7 +374,7 @@ paths:
     get:
       tags: [ Stock — Read ]
       operationId: getProductStockLevels
-      summary: Stock d'un produit décliné par emplacement + total global.
+      summary: Product stock by location and global total.
       parameters:
         - $ref: '#/components/parameters/ProductIdPath'
         - name: shopId
@@ -389,7 +393,7 @@ paths:
     get:
       tags: [ Stock — Read ]
       operationId: listStockMovements
-      summary: Historique paginé des mouvements de stock.
+      summary: Paginated stock movement history.
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/SizeParam'
@@ -419,32 +423,28 @@ paths:
                 $ref: '#/components/schemas/PageOfStockMovement'
 
   # ───────────────────────────────────────────────────────────────
-  # Créances — ventes à crédit, en cours et soldées
+  # Debts — outstanding and settled credit sales
   #
-  # Réservées au patron : ces réponses portent le nom et le téléphone
-  # du client. La règle de sécurité couvre `/debts/**`, ce qui vaut
-  # aussi pour toute route ajoutée sous ce préfixe.
+  # Owner only: responses include customer names and phone numbers.
+  # The security rule covers `/debts/**`, including new routes under this prefix.
   # ───────────────────────────────────────────────────────────────
   /debts:
     get:
       tags: [ Créances ]
       operationId: listDebts
-      summary: Créances de la boutique, en cours ou soldées.
+      summary: Outstanding or settled shop debts.
       description: |
-        Sans paramètre, répond à « qui me doit de l'argent » : les créances encore
-        ouvertes, de la plus ancienne à la plus récente — c'est celle-là qu'on relance.
+        By default, return outstanding debts, oldest first.
+        With `status=SETTLED`, return settled debts, most recently settled first.
+        Settled debts remain available as payment records.
 
-        `status=SETTLED` ouvre l'historique : les créances éteintes, du règlement le plus
-        récent au plus ancien. Une dette payée ne disparaît pas, c'est la preuve du
-        règlement le jour où le client conteste avoir payé.
+        Sorting parameters are not accepted; ordering depends on the debt status.
 
-        Aucun paramètre de tri n'est accepté : l'ordre utile dépend du statut et relève
-        d'une décision métier, pas d'un réglage d'écran.
       parameters:
         - $ref: '#/components/parameters/DebtStatusParam'
         - name: customerId
           in: query
-          description: Restreint à un client. Absent, la requête couvre toute la boutique.
+          description: Filter by customer. When omitted, include the whole shop.
           schema: { type: string, format: uuid }
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/SizeParam'
@@ -463,18 +463,14 @@ paths:
     get:
       tags: [ Créances ]
       operationId: getCreditSaleDetail
-      summary: Détail d'une créance — quels produits, vendus par qui, réglés comment.
+      summary: Debt details, sale lines, seller and payments.
       description: |
-        Ce qu'une liste de soldes ne dit pas : les produits vendus et leurs quantités, le
-        prix pratiqué le jour de la vente, le vendeur, le client, et l'échéancier complet
-        des encaissements avec le nom de qui les a reçus.
+        Return sale lines and quantities, prices at the time of sale, seller,
+        customer, and the full payment history with collector names.
+        Details remain available after full settlement.
 
-        Le détail reste consultable après règlement complet. Le filtrer sur le solde
-        restant effacerait la preuve au moment précis où elle devient utile.
+        Return `404` for cash sales without a customer, as well as missing sales.
 
-        `404` pour une vente au comptant : sans client, ce n'est pas une créance, et la
-        distinguer d'une vente inexistante renseignerait l'appelant sur une vente qui ne
-        le regarde pas.
       parameters:
         - name: saleId
           in: path
@@ -495,11 +491,11 @@ paths:
     get:
       tags: [ Créances ]
       operationId: listCustomerDebts
-      summary: Créances d'un client, en cours ou soldées.
+      summary: Outstanding or settled customer debts.
       description: |
-        Même filtre, même pagination et même ordre que la vue globale : c'est la même
-        question posée sur un périmètre plus étroit. Deux comportements distincts pour la
-        même donnée obligeraient le patron à se souvenir de quel écran il vient.
+        Use the same filters, pagination and ordering as the shop-wide debt list,
+        restricted to the specified customer.
+
       parameters:
         - name: customerId
           in: path
@@ -525,10 +521,11 @@ paths:
 components:
 
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: JWT access token set by the login endpoint.
 
   parameters:
     IdempotencyKey:
@@ -539,13 +536,15 @@ components:
         type: string
         format: uuid
       description: |
-        UUID client. Garantit qu'une retransmission réseau ne crée pas deux
-        ventes/réceptions/transferts. Fenêtre de rétention : 24h.
+        Optional client-generated UUID for replaying a recorded response on retries.
+        Supported on POST sales, stock receipts and stock transfers.
+        No automatic expiry is enforced. See `IdempotencyFilter` for implementation
+        details; this header does not guarantee exactly-once execution.
 
     PageParam:
       name: page
       in: query
-      description: Numéro de page (base 0).
+      description: Page number (zero-based).
       schema:
         type: integer
         minimum: 0
@@ -554,7 +553,7 @@ components:
     SizeParam:
       name: size
       in: query
-      description: Nombre d'éléments par page.
+      description: Number of items per page.
       schema:
         type: integer
         minimum: 1
@@ -565,9 +564,9 @@ components:
       name: status
       in: query
       description: |
-        Filtre de règlement. `OUTSTANDING` par défaut : sans paramètre, l'écran répond à
-        la question qu'on lui posait déjà. L'historique est une demande explicite, pas un
-        effet de bord d'une requête sans filtre.
+        Filter by settlement status. Defaults to `OUTSTANDING`.
+        Request settled debt history explicitly.
+
       schema:
         $ref: '#/components/schemas/DebtStatus'
 
@@ -575,8 +574,9 @@ components:
       name: sort
       in: query
       description: |
-        Tri au format `champ,direction` (ex. `createdAt,desc`).
-        Plusieurs valeurs autorisées ; appliquées dans l'ordre.
+        Sort using `field,direction` (e.g. `createdAt,desc`).
+        Multiple values are allowed and applied in order.
+
       explode: true
       schema:
         type: array
@@ -600,37 +600,37 @@ components:
 
   responses:
     BadRequest:
-      description: Requête malformée (validation syntaxique).
+      description: Malformed request (syntax validation).
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Unauthorized:
-      description: JWT manquant ou invalide.
+      description: Missing or invalid JWT.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Forbidden:
-      description: Authentifié mais rôle insuffisant.
+      description: Authenticated but missing the required role.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     NotFound:
-      description: Ressource introuvable.
+      description: Resource not found.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Conflict:
-      description: Conflit d'état (ex. quantité insuffisante, version obsolète).
+      description: State conflict (e.g. insufficient quantity or outdated version).
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     UnprocessableEntity:
-      description: Requête syntaxiquement correcte mais violant une règle métier.
+      description: Syntactically valid request that violates a business rule.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     InternalError:
-      description: Erreur serveur inattendue.
+      description: Unexpected server error.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -645,7 +645,7 @@ components:
         amount:
           type: string
           pattern: '^-?\d+(\.\d{1,4})?$'
-          description: Montant en décimal transporté comme string (BigDecimal).
+          description: Decimal amount serialized as a string (BigDecimal).
           examples: [ "45.90", "1299.00" ]
         currency:
           type: string
@@ -664,7 +664,7 @@ components:
         version: { type: string }
         timestamp: { type: string, format: date-time }
 
-    # ── Enums domaine ─────────────────────────────────────────
+    # ── Domain enums ─────────────────────────────────────────
     MovementType:
       type: string
       enum: [ ENTRY, EXIT, TRANSFER ]
@@ -675,7 +675,7 @@ components:
       type: string
       enum: [ OWNER, SELLER ]
 
-    # ── Produit ───────────────────────────────────────────────
+    # ── Product ───────────────────────────────────────────────
     Product:
       type: object
       required: [ productId, name, reference, categoryId, unitPrice, minimumGlobalThreshold ]
@@ -688,10 +688,10 @@ components:
         minimumGlobalThreshold:
           type: integer
           minimum: 0
-          description: Seuil d'alerte global (somme sur tous les emplacements).
+          description: Global alert threshold (sum across all locations).
 
     ProductInfo:
-      description: Informations pour la création on-the-fly d'un produit lors d'une réception.
+      description: Information for creating a product while receiving stock.
       type: object
       required: [ name, reference, categoryId, unitPrice, minimumGlobalThreshold ]
       properties:
@@ -738,8 +738,9 @@ components:
           type: string
           nullable: true
           description: |
-            Nom affichable du vendeur. Renseigné dans l'historique paginé ; `null` à la création
-            et sur la lecture unitaire, où l'auteur est l'appelant lui-même.
+            Seller display name. Populated in paginated history; `null` on creation
+            and individual lookup, where the caller is the author.
+
         customerId:
           type: string
           format: uuid
@@ -753,9 +754,9 @@ components:
           allOf:
             - $ref: '#/components/schemas/Money'
           description: |
-            Solde restant dû. `0` pour une vente réglée, positif pour une vente à crédit.
-            Renseigné à la création et dans l'historique paginé, afin que le front n'ait jamais
-            à recalculer un solde.
+            Remaining balance: `0` for a paid sale, positive for a credit sale.
+            Populated on creation and in paginated history so the frontend does not
+            need to recalculate the balance.
 
     SaleLineResponse:
       type: object
@@ -781,8 +782,9 @@ components:
           allOf:
             - $ref: '#/components/schemas/ProductInfo'
           description: |
-            Obligatoire si le produit n'existe pas encore, sinon à omettre.
-            Si présent, `newProductInfo.reference` doit égaler `productReference`.
+            Required if the product does not exist; omit otherwise.
+            When present, `newProductInfo.reference` must equal `productReference`.
+
         shopId: { type: string, format: uuid }
         userId: { type: string, format: uuid }
         distributions:
@@ -862,44 +864,42 @@ components:
         destinationLocationId:
           type: string
           format: uuid
-          description: Renseigné uniquement pour `type = TRANSFER`.
+          description: Populated only for `type = TRANSFER`.
         type: { $ref: '#/components/schemas/MovementType' }
         quantity: { type: integer, minimum: 1 }
         executedBy: { type: string, format: uuid }
         executedByName:
           type: string
           nullable: true
-          description: '`null` si le compte de l''auteur a disparu.'
+          description: '`null` if the author account no longer exists.'
         executedAt: { type: string, format: date-time }
         saleId:
           type: string
           format: uuid
-          description: Renseigné uniquement pour `type = EXIT` lié à une vente.
+          description: Populated only for a sale-related `type = EXIT`.
         operationId:
           type: string
           format: uuid
           description: |
-            Opération à l'origine du mouvement : les lignes qui la partagent se regroupent
-            dans l'historique.
+            Operation that created the movement. History groups lines that share
+            this identifier.
+
         saleAmountDue:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
           nullable: true
           description: |
-            Solde restant dû de la vente à l'origine du mouvement. Absent hors vente, zéro
-            si la vente a été réglée, positif si elle reste à crédit.
+            Remaining balance of the sale that created the movement. Absent for
+            non-sale movements, zero for paid sales, positive for outstanding credit sales.
 
-            Un seul champ plutôt qu'un booléen accompagné d'un montant : le montant porte
-            déjà l'information, et deux champs finiraient par se contredire.
-
-    # ── Créances ───────────────────────────────────────────────
+    # ── Debts ───────────────────────────────────────────────
     DebtStatus:
       type: string
       default: OUTSTANDING
       enum: [ OUTSTANDING, SETTLED, ALL ]
       description: |
-        `OUTSTANDING` : il reste quelque chose à encaisser.
-        `SETTLED` : la dette est éteinte, et reste consultable.
-        `ALL` : les deux, pour lire l'historique d'un client d'un seul tenant.
+        `OUTSTANDING`: a balance remains due.
+        `SETTLED`: the debt is paid and remains available for reference.
+        `ALL`: both outstanding and settled debts.
 
     Debt:
       type: object
@@ -916,34 +916,34 @@ components:
         totalAmount: { $ref: '#/components/schemas/Money' }
         amountPaid:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
-          description: Somme des encaissements. Dérivée du ledger, jamais stockée.
+          description: Sum of payments, derived from the ledger and never stored.
         amountDue:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
-          description: Total moins encaissé. Zéro sur une créance soldée.
+          description: Total minus payments received. Zero for a settled debt.
         settled:
           type: boolean
-          description: Vrai dès que plus rien n'est dû.
+          description: True when no balance remains due.
         settledAt:
           type: string
           format: date-time
           nullable: true
           description: |
-            Date du règlement, `null` tant que la créance est ouverte. C'est celle du
-            dernier encaissement.
+            Settlement date, taken from the last payment.
+            `null` while the debt is outstanding.
+
         daysOutstanding:
           type: integer
           minimum: 0
           description: |
-            Durée d'ouverture de la créance : jusqu'à aujourd'hui si elle est encore
-            vivante, jusqu'au règlement sinon. Une dette éteinte ne vieillit plus —
-            continuer à la compter afficherait « 180 jours » sur un dossier réglé en une
-            semaine.
+            Days from the sale to today for outstanding debts, or to the settlement
+            date for settled debts. The count stops at settlement.
+
         overdue:
           type: boolean
           description: |
-            Dépassement du délai toléré (30 jours), mesuré sur `daysOutstanding` :
-            « en retard » pour une créance ouverte, « réglée hors délai » pour une
-            créance éteinte.
+            Whether `daysOutstanding` exceeds the 30-day allowance.
+            For outstanding debts, indicates overdue payment; for settled debts,
+            indicates late settlement.
 
     CreditSaleLine:
       type: object
@@ -955,7 +955,7 @@ components:
         quantity: { type: integer, minimum: 1 }
         unitPrice:
           allOf: [ { $ref: '#/components/schemas/Money' } ]
-          description: Prix pratiqué le jour de la vente, pas le tarif du jour.
+          description: Price at the time of sale, not the current price.
         lineTotal: { $ref: '#/components/schemas/Money' }
 
     CreditSalePayment:
@@ -969,7 +969,7 @@ components:
         receivedByName:
           type: string
           nullable: true
-          description: '`null` si le compte de l''encaisseur a disparu.'
+          description: '`null` if the payment collector account no longer exists.'
 
     CreditSaleDetail:
       type: object
@@ -987,7 +987,7 @@ components:
         customerPhoneNumber: { type: string, nullable: true }
         lines:
           type: array
-          description: Dans l'ordre de saisie, celui du ticket remis au client.
+          description: In entry order, matching the customer receipt.
           items: { $ref: '#/components/schemas/CreditSaleLine' }
         totalAmount: { $ref: '#/components/schemas/Money' }
         amountPaid: { $ref: '#/components/schemas/Money' }
@@ -996,11 +996,11 @@ components:
         payments:
           type: array
           description: |
-            Du plus ancien au plus récent. L'acompte du jour de la vente ouvre la liste :
-            c'est un encaissement comme un autre.
+            Oldest first. The initial deposit, if any, is the first payment.
+
           items: { $ref: '#/components/schemas/CreditSalePayment' }
 
-    # ── Pagination générique ──────────────────────────────────
+    # ── Generic pagination ──────────────────────────────────
     PageMeta:
       type: object
       required: [ page, size, totalElements, totalPages ]
@@ -1058,20 +1058,20 @@ components:
     # ── RFC 7807 Problem Details ──────────────────────────────
     Problem:
       description: |
-        Représentation d'erreur conforme à RFC 7807.
-        Les champs `code`, `errors` et `traceId` sont des extensions
-        spécifiques à cette API.
+        RFC 7807 error representation.
+        `code`, `errors` and `traceId` are API-specific extensions.
+
       type: object
       required: [ type, title, status ]
       properties:
         type:
           type: string
           format: uri
-          description: URI identifiant le type d'erreur (documentation).
+          description: URI identifying the error type (documentation).
           examples: [ "https://api.stock.example.com/errors/stock-insufficient" ]
         title:
           type: string
-          description: Résumé court et humain.
+          description: Short, human-readable summary.
           examples: [ "Stock insuffisant" ]
         status:
           type: integer
@@ -1079,14 +1079,14 @@ components:
           maximum: 599
         detail:
           type: string
-          description: Explication détaillée pour ce cas précis.
+          description: Detailed explanation of this specific occurrence.
         instance:
           type: string
           format: uri
-          description: URI de l'instance de la ressource concernée.
+          description: URI of the affected resource instance.
         code:
           type: string
-          description: Code machine stable, pour mapping frontend.
+          description: Stable machine-readable code for frontend mapping.
           examples:
             - PRODUCT_NOT_FOUND
             - STOCK_INSUFFICIENT
@@ -1096,7 +1096,7 @@ components:
             - VALIDATION_FAILED
         errors:
           type: array
-          description: Erreurs de validation champ par champ (si pertinent).
+          description: Field-level validation errors, when applicable.
           items:
             type: object
             required: [ field, message ]
@@ -1106,4 +1106,4 @@ components:
               rejectedValue: { }
         traceId:
           type: string
-          description: ID de corrélation pour retrouver les logs.
+          description: Correlation ID for locating logs.

@@ -1,27 +1,20 @@
-= Domain Services
+= Domain services
 :toc: left
 :icons: font
 
-== Qu'est-ce qu'un Domain Service ?
-
-Un Domain Service encapsule une logique métier qui ne trouve sa place dans aucun agrégat.
-C'est le cas quand l'opération implique **plusieurs agrégats** ou quand l'assignation à un seul agrégat serait artificielle.
-
-[IMPORTANT]
+[NOTE]
 ====
-Un Domain Service est **sans état** (stateless).
-Il coordonne des agrégats, il n'en remplace aucun.
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
 ====
+
+== Responsibility
+
+A Domain Service contains business logic that does not naturally belong to a single aggregate, particularly operations involving several aggregates.
+It is stateless and coordinates aggregates without replacing them.
 
 == StockAllocationService
 
-=== Responsabilité
-
-Répartir une demande de vente entre les emplacements disponibles.
-
-Quand un vendeur veut vendre 4 filtres, ce service détermine automatiquement que 3 viennent du magasin et 1 de la réserve.
-
-=== Diagramme
+Distributes a sale request across available locations. For four filters, it might allocate three from the shop floor and one from backstock.
 
 [plantuml]
 ----
@@ -39,65 +32,28 @@ class AllocationResult <<Value Object>> {
   - quantity : int
 }
 
-StockAllocationService ..> StorageLocation : consulte
-StockAllocationService ..> AllocationResult : retourne
+StockAllocationService ..> StorageLocation : reads
+StockAllocationService ..> AllocationResult : returns
 
 @enduml
 ----
 
-=== Règle d'allocation
+=== Allocation algorithm
 
-[source]
-----
-1. Récupérer tous les StorageLocation du Shop
-2. Trier par priorité : SHOP_FLOOR d'abord, BACKSTOCK ensuite
-3. Pour chaque emplacement (dans l'ordre de priorité) :
-   a. Prendre le minimum entre (quantité disponible, quantité restante à allouer)
-   b. Ajouter à la liste d'allocation
-   c. Décrémenter la quantité restante
-4. Si quantité restante > 0 → lever InsufficientStockException
-5. Retourner la liste d'allocations
-----
+. Load all `StorageLocation` instances for the `Shop`.
+. Sort with `SHOP_FLOOR` before `BACKSTOCK`.
+. At each location, allocate the smaller of the available and remaining requested quantities; append the allocation and decrease the remaining quantity.
+. Throw `InsufficientStockException` if any requested quantity remains.
+. Return the allocations.
 
-=== Exemple concret
+For a request of four filters with three on the shop floor and seven in backstock, the result is `[(shopFloor, 3), (backstock, 1)]`.
 
-Demande : 4 filtres.
-Stock : magasin = 3, réserve = 7.
-
-[cols="1,1,1,1"]
-|===
-| Étape | Emplacement | Alloué | Restant
-
-| 1
-| Magasin (priorité)
-| 3
-| 1
-
-| 2
-| Réserve
-| 1
-| 0
-|===
-
-Résultat : `[(magasin, 3), (réserve, 1)]`
-
-=== Ce que ce service ne fait PAS
-
-* Il ne crée pas la `Sale` (c'est l'Application Service)
-* Il ne crée pas les `StockMovement` (c'est l'Application Service)
-* Il ne modifie pas les `StockLevel` (c'est `StorageLocation` lui-même)
-* Il ne persiste rien — il calcule et retourne
+This service calculates and returns allocations. The Application Service creates the `Sale` and `StockMovement` records; `StorageLocation` changes its own stock levels. Allocation itself performs no persistence.
 
 == ReceivingService
 
-=== Responsabilité
-
-Orchestrer la réception de marchandise (approvisionnement).
-
-Le vendeur saisit : "50 filtres reçus, 15 au magasin, 35 en réserve".
-Le service crée les mouvements et met à jour les niveaux de stock.
-
-=== Diagramme
+Coordinates receipt of goods according to the user's chosen distribution, for example 50 filters split into 15 on the shop floor and 35 in backstock.
+It creates movements and updates stock levels.
 
 [plantuml]
 ----
@@ -116,46 +72,24 @@ class ReceivingEntry <<Value Object>> {
   - quantity : int
 }
 
-ReceivingService ..> StorageLocation : met à jour
-ReceivingService ..> StockMovement : crée
-ReceivingService ..> ReceivingEntry : reçoit
+ReceivingService ..> StorageLocation : updates
+ReceivingService ..> StockMovement : creates
+ReceivingService ..> ReceivingEntry : receives
 
 @enduml
 ----
 
-=== Flux
+=== Flow
 
-[source]
-----
-1. Pour chaque ReceivingEntry :
-   a. Récupérer le StorageLocation par locationId
-   b. Appeler storageLocation.increaseStock(productId, quantity)
-   c. Créer un StockMovement.createEntry(productId, locationId, quantity, userId)
-2. Vérifier si le stock global repasse au-dessus du seuil
-   → Si oui, émettre StockReplenished
-3. Retourner la liste des mouvements créés
-----
+. For each `ReceivingEntry`, load the location by `locationId`, call `increaseStock(productId, quantity)` and create an entry movement with `StockMovement.createEntry(productId, locationId, quantity, userId)`.
+. Check whether global stock has risen above the threshold; if so, emit `StockReplenished`.
+. Return the created movements.
 
-=== Différence avec StockAllocationService
+Unlike automatic sale allocation, receiving records the user's distribution choices and adds units to stock.
 
-[cols="1,1"]
-|===
-| StockAllocationService | ReceivingService
+== Application service boundary
 
-| Le système décide de la répartition
-| L'utilisateur décide de la répartition
-
-| Puise dans le stock existant
-| Ajoute au stock
-
-| Logique d'allocation automatique
-| Simple enregistrement des choix utilisateur
-|===
-
-== Où se situe l'Application Service ?
-
-Les Domain Services ci-dessus restent dans la couche domaine.
-L'**Application Service** (couche application, hors du domaine) orchestre l'ensemble :
+The Domain Services remain in the domain layer. The Application Service coordinates the complete operation from the application layer:
 
 [plantuml]
 ----
@@ -165,21 +99,21 @@ skinparam backgroundColor transparent
 
 rectangle "Application Service\n(SellProductUseCase)" as AS #F1EFE8
 rectangle "StockAllocationService\n(Domain Service)" as SAS #E1F5EE
-rectangle "Sale\n(Agrégat)" as SA #E6F1FB
-rectangle "StorageLocation\n(Agrégat)" as SL #FAECE7
-rectangle "StockMovement\n(Agrégat)" as SM #EEEDFE
+rectangle "Sale\n(Aggregate)" as SA #E6F1FB
+rectangle "StorageLocation\n(Aggregate)" as SL #FAECE7
+rectangle "StockMovement\n(Aggregate)" as SM #EEEDFE
 rectangle "StockMovementRepository\n(Port)" as SMR #F1EFE8
 
 AS -down-> SAS : 1. allocate()
-AS -down-> SA : 2. créer Sale
+AS -down-> SA : 2. create Sale
 AS -down-> SL : 3. decreaseStock()
 AS -down-> SM : 4. createExit()
-AS -down-> SMR : 5. persister
+AS -down-> SMR : 5. persist
 
 note right of AS
-  L'Application Service coordonne
-  les agrégats et les Domain Services.
-  Il ne contient PAS de logique métier.
+  The Application Service coordinates
+  aggregates and Domain Services.
+  It contains no business logic.
 end note
 @enduml
 ----

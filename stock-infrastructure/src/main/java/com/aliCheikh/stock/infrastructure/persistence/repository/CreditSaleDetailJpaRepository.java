@@ -13,20 +13,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Lecture du détail d'une vente à crédit, en trois requêtes délibérément séparées.
- *
- * <p>Joindre les lignes et les paiements dans un même SELECT produirait un produit cartésien :
- * trois produits et deux encaissements donneraient six lignes, et tout cumul calculé dessus serait
- * faux. Trois requêtes ciblées sur une seule vente coûtent moins qu'un bug de montant.</p>
+ * Reads credit sale details in three queries. Joining both lines and payments would multiply rows
+ * and distort payment totals.
  */
 public interface CreditSaleDetailJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
 
     /**
-     * La jointure sur {@code customer} est interne : une vente sans client est une vente au
-     * comptant, donc pas une créance, et l'absence de résultat est la bonne réponse.
-     *
-     * <p>Le cumul encaissé passe par une sous-requête plutôt que par un {@code GROUP BY} : la
-     * ligne d'en-tête reste unique quel que soit le nombre de paiements.</p>
+     * The inner customer join excludes sales without a debtor. A payment subquery keeps the header
+     * to one row per sale.
      */
     @Query(value = """
             SELECT s.id                AS saleId,
@@ -47,7 +41,7 @@ public interface CreditSaleDetailJpaRepository extends JpaRepository<SaleJpaEnti
             """, nativeQuery = true)
     Optional<CreditSaleHeaderProjection> findHeader(@Param("saleId") UUID saleId);
 
-    /** Les lignes dans l'ordre de saisie : c'est l'ordre du ticket remis au client. */
+    /** Sale lines in entry order. */
     @Query(value = """
             SELECT sl.product_id        AS productId,
                    pr.name              AS productName,
@@ -63,10 +57,7 @@ public interface CreditSaleDetailJpaRepository extends JpaRepository<SaleJpaEnti
             """, nativeQuery = true)
     List<CreditSaleLineProjection> findLines(@Param("saleId") UUID saleId);
 
-    /**
-     * Du plus ancien au plus récent : l'acompte du jour de la vente ouvre naturellement la liste,
-     * sans avoir à le distinguer des remboursements suivants.
-     */
+    /** Payments in chronological order, including the initial payment. */
     @Query(value = """
             SELECT p.id              AS paymentId,
                    p.amount          AS amount,

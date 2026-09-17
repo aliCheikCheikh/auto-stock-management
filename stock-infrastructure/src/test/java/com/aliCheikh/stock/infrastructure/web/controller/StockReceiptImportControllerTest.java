@@ -190,14 +190,14 @@ class StockReceiptImportControllerTest {
     void exposes_a_stable_code_when_the_csv_headers_are_invalid() throws Exception {
         given(prepareUseCase.execute(any(), any())).willThrow(new InvalidStockReceiptImportFileException(
                 StockReceiptImportFileErrorCode.INVALID_HEADER,
-                "Les colonnes du fichier ne correspondent pas au modèle attendu."
+                "File columns do not match the expected template."
         ));
 
         mockMvc.perform(multipart("/api/v1/stock-receipts/import-preview")
                         .file(csvUpload())
                         .param("shopId", shopId.toString()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Fichier d'import invalide"))
+                .andExpect(jsonPath("$.title").value("Invalid import file"))
                 .andExpect(jsonPath("$.code").value("INVALID_HEADER"));
     }
 

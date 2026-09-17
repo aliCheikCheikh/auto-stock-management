@@ -3,7 +3,7 @@ package com.aliCheikh.stock.application.dto.dashboard;
 import java.util.List;
 import java.util.Objects;
 
-/** Données autoritaires lues en base, avant ajout du contexte temporel par le use case. */
+/** Database snapshot before the use case adds time context. */
 public record DashboardSnapshot(
         DashboardSummary.StockSummary stock,
         DashboardSummary.SalesSummary sales,

@@ -3,11 +3,7 @@ package com.aliCheikh.stock.domain.exception.sale;
 import com.aliCheikh.stock.domain.exception.DomainException;
 import com.aliCheikh.stock.domain.model.shared.Money;
 
-/**
- * Levée quand une vente laisse un solde dû sans être rattachée à un client.
- *
- * <p>Sans client identifié, la créance serait irrécouvrable : on ne fait pas crédit à un anonyme.</p>
- */
+/** Raised when a sale leaves an outstanding balance without an identified customer. */
 public class CreditSaleRequiresCustomerException extends DomainException {
 
     private final Money amountDue;
@@ -17,7 +13,7 @@ public class CreditSaleRequiresCustomerException extends DomainException {
         this.amountDue = amountDue;
     }
 
-    /** Le solde qui serait resté dû si la vente avait été acceptée. */
+    /** Balance that would remain if the sale were accepted. */
     public Money getAmountDue() {
         return amountDue;
     }

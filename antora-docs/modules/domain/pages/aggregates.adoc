@@ -1,27 +1,25 @@
-= Agrégats et Aggregate Roots
+= Aggregates and aggregate roots
 :toc: left
 :icons: font
 
-== Qu'est-ce qu'un agrégat ?
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Un agrégat est un groupe d'objets du domaine traité comme une unité pour les modifications de données.
-Chaque agrégat a une **racine** (Aggregate Root) qui est le seul point d'entrée pour les modifications.
+== Definition
 
-== Principes appliqués
+An aggregate is a group of domain objects treated as a unit for data changes.
+Its aggregate root is the only entry point for mutations.
 
-=== Petits agrégats
-Chaque agrégat protège un ensemble minimal d'invariants.
-On ne regroupe **jamais** des objets simplement parce qu'ils sont "liés" — on les regroupe parce qu'ils doivent changer ensemble de manière cohérente.
+== Design principles
 
-=== Références par identifiant
-Les agrégats ne se contiennent pas entre eux.
-Un `StockMovement` référence un `Product` par son `ProductId`, pas par un objet `Product` embarqué.
+Each aggregate protects a minimal set of invariants. Objects belong together when they must change consistently together.
+Aggregates reference one another by identifier: a `StockMovement` stores a `ProductId`, not an embedded `Product`.
 
-=== Frontières transactionnelles
-Chaque agrégat correspond à une transaction.
-On ne modifie qu'un seul agrégat par transaction — la cohérence entre agrégats est assurée par la cohérence éventuelle (événements de domaine).
+In this design, each aggregate forms a transaction boundary: one aggregate changes per transaction, with domain events providing eventual consistency between aggregates.
 
-== Diagramme des agrégats
+== Aggregate diagram
 
 [plantuml]
 ----
@@ -31,7 +29,7 @@ skinparam backgroundColor transparent
 skinparam classAttributeIconSize 0
 skinparam classFontStyle bold
 
-package "Agrégat Product" <<Rectangle>> #E1F5EE {
+package "Aggregate Product" <<Rectangle>> #E1F5EE {
   class Product <<Aggregate Root>> {
     productId : ProductId
     name : String
@@ -42,7 +40,7 @@ package "Agrégat Product" <<Rectangle>> #E1F5EE {
   }
 }
 
-package "Agrégat StorageLocation" <<Rectangle>> #FAECE7 {
+package "Aggregate StorageLocation" <<Rectangle>> #FAECE7 {
   class StorageLocation <<Aggregate Root>> {
     locationId : LocationId
     shopId : ShopId
@@ -56,10 +54,10 @@ package "Agrégat StorageLocation" <<Rectangle>> #FAECE7 {
     quantity : int
   }
 
-  StorageLocation "1" *-- "0..*" StockLevel : contient
+  StorageLocation "1" *-- "0..*" StockLevel : contains
 }
 
-package "Agrégat StockMovement" <<Rectangle>> #EEEDFE {
+package "Aggregate StockMovement" <<Rectangle>> #EEEDFE {
   class StockMovement <<Aggregate Root>> {
     movementId : MovementId
     productId : ProductId
@@ -73,7 +71,7 @@ package "Agrégat StockMovement" <<Rectangle>> #EEEDFE {
   }
 }
 
-package "Agrégat Sale" <<Rectangle>> #E6F1FB {
+package "Aggregate Sale" <<Rectangle>> #E6F1FB {
   class Sale <<Aggregate Root>> {
     saleId : SaleId
     soldBy : UserId
@@ -88,17 +86,17 @@ package "Agrégat Sale" <<Rectangle>> #E6F1FB {
     lineTotal : Money
   }
 
-  Sale "1" *-- "1..*" SaleLineItem : contient
+  Sale "1" *-- "1..*" SaleLineItem : contains
 }
 
-package "Agrégat Category" <<Rectangle>> #F1EFE8 {
+package "Aggregate Category" <<Rectangle>> #F1EFE8 {
   class Category <<Aggregate Root>> {
     categoryId : CategoryId
     name : String
   }
 }
 
-package "Agrégat Shop" <<Rectangle>> #F1EFE8 {
+package "Aggregate Shop" <<Rectangle>> #F1EFE8 {
   class Shop <<Aggregate Root>> {
     shopId : ShopId
     name : String
@@ -106,7 +104,7 @@ package "Agrégat Shop" <<Rectangle>> #F1EFE8 {
   }
 }
 
-package "Agrégat User" <<Rectangle>> #F1EFE8 {
+package "Aggregate User" <<Rectangle>> #F1EFE8 {
   class User <<Aggregate Root>> {
     userId : UserId
     name : String
@@ -126,24 +124,24 @@ SaleLineItem ..> Product : productId
 @enduml
 ----
 
-== Résumé des choix
+== Design decisions
 
-[cols="1,2"]
+[cols="1,1"]
 |===
-| Décision | Justification
+| Decision | Reason
 
-| `StockLevel` dans `StorageLocation`
-| Le stock est une propriété physique de l'emplacement, pas du produit. C'est l'emplacement qui protège l'invariant "quantité ≥ 0".
+| `StockLevel` belongs to `StorageLocation`
+| Stock is a property of a physical location. The location protects the nonnegative quantity invariant.
 
-| `StockMovement` séparé de `Product`
-| Évite un agrégat obèse. Les mouvements ont leur propre cycle de vie et sont consultés indépendamment.
+| `StockMovement` is separate from `Product`
+| Movements have their own lifecycle and queries; embedding them would make the product aggregate grow indefinitely.
 
-| `SaleLineItem` dans `Sale`
-| Une ligne de vente n'a aucun sens hors de sa vente. Elles sont créées et consultées ensemble.
+| `SaleLineItem` belongs to `Sale`
+| Line items are created and read with their sale and have no independent existence.
 
-| `Category` comme agrégat autonome
-| Même simple, elle a son propre identifiant et peut évoluer indépendamment des produits.
+| `Category` is independent
+| It has its own identity and can evolve independently of products.
 
-| `Shop` dès le départ
-| Coût minime (`shopId` sur `StorageLocation`), bénéfice futur énorme pour le multi-boutiques.
+| `Shop` is included from the start
+| A `shopId` on `StorageLocation` supports future multi-shop use.
 |===

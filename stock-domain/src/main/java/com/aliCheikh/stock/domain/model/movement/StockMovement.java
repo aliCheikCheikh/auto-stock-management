@@ -24,7 +24,7 @@ public class StockMovement {
     private final LocalDateTime occurredAt;
     private final SaleId saleId;
 
-    /** Opération métier à l'origine de ce mouvement : réception, transfert ou vente. */
+    /** Business operation that produced this movement. */
     private final OperationId operationId;
 
 
@@ -298,7 +298,7 @@ public class StockMovement {
         return Optional.ofNullable(saleId);
     }
 
-    /** L'opération à l'origine de ce mouvement. Tous les mouvements d'une même opération la partagent. */
+    /** Identity shared by all movements belonging to the same operation. */
     public OperationId getOperationId() {
         return operationId;
     }

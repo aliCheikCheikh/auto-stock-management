@@ -8,10 +8,10 @@ import java.util.UUID;
 
 public interface StockReceiptImportExecutionLedger {
 
-    /** Crée l'exécution si nécessaire ou vérifie que cet identifiant désigne exactement la même demande. */
+    /** Creates the execution or verifies that the ID refers to the same request. */
     void ensureExecution(StockReceiptImportExecutionDescriptor descriptor);
 
-    /** Verrouille l'exécution dans la transaction courante avant toute écriture de stock. */
+    /** Locks the execution in the current transaction before any stock write. */
     void lockExecution(UUID importId);
 
     Optional<StockReceiptImportRowExecutionResult> findRowResult(UUID importId, int lineNumber);

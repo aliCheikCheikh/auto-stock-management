@@ -47,8 +47,7 @@ public class SearchCustomersUseCaseTest {
 
     @Test
     public void should_normalize_a_keyword_that_is_a_phone_number() {
-        // Le numéro est stocké sous forme canonique : la recherche doit s'y ramener,
-        // sinon « 66 12 34 56 » ne retrouverait jamais « +23566123456 ».
+        // Normalize the search input to match the stored phone number.
         useCase.search("66 12 34 56");
 
         ArgumentCaptor<String> keyword = ArgumentCaptor.forClass(String.class);
@@ -67,7 +66,7 @@ public class SearchCustomersUseCaseTest {
 
     @Test
     public void should_keep_a_partial_phone_number_as_a_plain_keyword() {
-        // Fragment de numéro : non normalisable, mais doit rester utilisable en recherche.
+        // A partial phone number must remain searchable even when it cannot be normalized.
         useCase.search("6612");
 
         ArgumentCaptor<String> keyword = ArgumentCaptor.forClass(String.class);

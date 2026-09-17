@@ -68,9 +68,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         StockMovementJpaRepositoryAdapter.class,
         StockMovementQueryJpaAdapter.class,
         StockMovementJpaMapper.class,
-        // L'adapter de lecture nomme désormais l'auteur de chaque mouvement et annonce
-        // l'état de règlement des ventes : sans ces collaborateurs, le contexte de la
-        // tranche ne démarre pas.
+        // Include author-name and balance resolvers required by the read adapter.
         UserDisplayNameResolver.class,
         SaleSettlementResolver.class
 })
@@ -271,18 +269,15 @@ class StockMovementPersistenceTest {
     }
 
     /**
-     * L'historique doit annoncer sous quelle forme la vente a été enregistrée : réglée, ou à
-     * crédit et pour combien.
-     *
-     * <p>Les trois formes sont lues en une seule page, car c'est ainsi qu'elles se présentent à
-     * l'écran — et parce que la résolution des soldes est justement groupée par page.</p>
+     * Reads settled sales, credit sales and non-sale movements on one page to verify batched
+     * balance resolution.
      */
     @Test
     void should_announce_the_settlement_state_of_the_sale_behind_each_movement() {
         saveReferenceData();
         saveSale();
 
-        // Vendue 91,80 €, dont 41,80 € versés au comptoir : il reste 50,00 €.
+        // Sale total EUR 91.80, paid EUR 41.80, due EUR 50.00.
         Sale creditSale = Sale.create(
                 userId,
                 List.of(new SaleLineInput(productId, 2, unitPrice)),
@@ -303,18 +298,17 @@ class StockMovementPersistenceTest {
 
         List<StockMovementView> movements = queryAdapter.findByQuery(allMovements()).content();
 
-        // Vente à crédit : le solde restant, et non un simple drapeau.
+        // Credit sales expose the amount due.
         assertThat(viewOf(movements, creditExit).saleAmountDue()).isEqualTo(eur("50.00"));
-        // Vente réglée : zéro, ce qui est une réponse, pas une absence de réponse.
+        // Zero is a known settled balance, not missing data.
         assertThat(viewOf(movements, paidExit).saleAmountDue()).isEqualTo(eur("0"));
-        // Une réception ne naît d'aucune vente : il n'y a rien à annoncer.
+        // Receipts have no originating sale balance.
         assertThat(viewOf(movements, entry).saleAmountDue()).isNull();
     }
 
     /**
-     * Le cas le plus courant du terrain : le client emporte la marchandise sans rien verser. Aucune
-     * ligne n'existe alors dans le ledger, et c'est la branche {@code COALESCE(..., 0)} de la
-     * requête qui répond — celle qu'une jointure interne aurait silencieusement fait disparaître.
+     * A sale without payments must retain its full balance through COALESCE rather than disappear
+     * through an inner join.
      */
     @Test
     void should_announce_the_full_total_when_nothing_was_paid_at_the_counter() {

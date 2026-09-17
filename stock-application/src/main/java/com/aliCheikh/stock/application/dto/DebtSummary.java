@@ -6,19 +6,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Une créance enrichie de la politique de crédit, telle que présentée au patron.
- *
- * <p>{@code overdue} traduit une règle du domaine : l'interface se contente de l'afficher, elle ne
- * décide pas de ce qui constitue un retard.</p>
- *
- * @param settled         {@code true} si plus rien n'est dû
- * @param settledAt       date du règlement, {@code null} tant que la créance est ouverte
- * @param daysOutstanding jours pendant lesquels la créance est restée ouverte : jusqu'à
- *                        aujourd'hui si elle l'est encore, jusqu'au règlement sinon. Une dette
- *                        éteinte ne vieillit plus, et afficher son âge courant ferait passer pour
- *                        un retard ce qui est un dossier clos.
- * @param overdue         dépassement du délai toléré, mesuré sur cette même durée : « en retard »
- *                        pour une créance ouverte, « réglée hors délai » pour une créance éteinte
+ * Debt enriched with credit policy. {@code settledAt} is null while outstanding. {@code
+ * daysOutstanding} stops at settlement; {@code overdue} uses that same duration for both open and
+ * settled debts.
  */
 public record DebtSummary(UUID saleId,
                           LocalDateTime occurredAt,

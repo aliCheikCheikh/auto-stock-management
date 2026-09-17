@@ -36,10 +36,7 @@ public class SaleJpaEntity {
     @Column(name = "customer_id")
     private UUID customerId;
 
-    /**
-     * Encaissements de la vente. Le montant encaissé n'est plus une colonne : c'est la somme de ces
-     * lignes, seule source de vérité.
-     */
+    /** Payment ledger from which the total amount paid is derived. */
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PaymentJpaEntity> payments = new ArrayList<>();
 
@@ -57,7 +54,7 @@ public class SaleJpaEntity {
         this.occurredAt = Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
         this.totalAmount = Objects.requireNonNull(totalAmount, "totalAmount cannot be null");
         this.totalCurrency = Objects.requireNonNull(totalCurrency, "totalCurrency cannot be null");
-        // customerId reste nullable : une vente au comptant n'a pas de client rattaché.
+        // A cash sale may have no customer.
         this.customerId = customerId;
     }
 
@@ -70,11 +67,7 @@ public class SaleJpaEntity {
         return new SaleJpaEntity(id, soldBy, occurredAt, totalAmount, totalCurrency, customerId);
     }
 
-    /**
-     * Vente au comptant, sans client rattaché.
-     *
-     * <p>Surcharge de commodité qui préserve les appelants antérieurs à la gestion des créances.</p>
-     */
+    /** Convenience constructor for a cash sale without a customer. */
     public static SaleJpaEntity of(UUID id,
                                    UUID soldBy,
                                    LocalDateTime occurredAt,

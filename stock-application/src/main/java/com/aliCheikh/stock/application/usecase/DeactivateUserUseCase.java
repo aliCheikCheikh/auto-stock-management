@@ -21,14 +21,14 @@ public final class DeactivateUserUseCase {
                                  OwnerContinuity ownerContinuity,
                                  UserSessionRevoker sessionRevoker,
                                  TransactionRunner transactionRunner) {
-        this.userRepository = Objects.requireNonNull(userRepository, "Le registre des utilisateurs est obligatoire.");
-        this.ownerContinuity = Objects.requireNonNull(ownerContinuity, "La continuité du propriétaire est obligatoire.");
-        this.sessionRevoker = Objects.requireNonNull(sessionRevoker, "La fermeture des sessions est obligatoire.");
-        this.transactionRunner = Objects.requireNonNull(transactionRunner, "La transaction est obligatoire.");
+        this.userRepository = Objects.requireNonNull(userRepository, "User repository is required.");
+        this.ownerContinuity = Objects.requireNonNull(ownerContinuity, "Owner continuity policy is required.");
+        this.sessionRevoker = Objects.requireNonNull(sessionRevoker, "Session revoker is required.");
+        this.transactionRunner = Objects.requireNonNull(transactionRunner, "Transaction runner is required.");
     }
 
     public User execute(UserId userId) {
-        Objects.requireNonNull(userId, "L'identifiant de l'utilisateur est obligatoire.");
+        Objects.requireNonNull(userId, "User ID is required.");
         return transactionRunner.execute(() -> deactivate(userId));
     }
 

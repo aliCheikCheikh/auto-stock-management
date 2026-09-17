@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Read model directement affichable, sans exposer les entités du domaine. */
+/** Dashboard read model that does not expose domain entities. */
 public record DashboardSummary(
         LocalDateTime generatedAt,
         Periods periods,

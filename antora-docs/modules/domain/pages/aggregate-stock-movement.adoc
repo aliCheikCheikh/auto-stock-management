@@ -1,15 +1,18 @@
-= Agrégat StockMovement
+= StockMovement aggregate
 :toc: left
 :icons: font
 
-== Rôle
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Le `StockMovement` est le journal immuable du stock.
-Chaque mouvement enregistre une opération atomique : un produit, une quantité, un emplacement source et/ou destination, un utilisateur, une date.
+== Responsibility
 
-Un mouvement est **créé une seule fois, jamais modifié ni supprimé**.
+`StockMovement` is an immutable stock audit record. Each movement records one atomic operation: product, quantity, source and/or destination, user and timestamp.
+A movement is created once and is never updated or deleted.
 
-== Diagramme
+== Diagram
 
 [plantuml]
 ----
@@ -50,111 +53,70 @@ StockMovement *-- MovementType
 @enduml
 ----
 
-== Attributs
+== Attributes
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `movementId`
-| `MovementId` (Value Object)
-| Identifiant unique du mouvement.
+| `MovementId`
+| Unique movement identifier.
 
 | `productId`
 | `ProductId`
-| Produit concerné par le mouvement.
+| Product concerned by the movement.
 
 | `sourceLocationId`
-| `LocationId?` (nullable)
-| Emplacement d'où part la marchandise. `null` pour une `ENTRY` (la source est extérieure au système).
+| `LocationId?`
+| Source location; `null` for `ENTRY`, whose source is outside the system.
 
 | `destinationLocationId`
-| `LocationId?` (nullable)
-| Emplacement où arrive la marchandise. `null` pour une `EXIT` (la destination est extérieure au système — le client).
+| `LocationId?`
+| Destination location; `null` for `EXIT`, whose destination is outside the system (the customer).
 
 | `type`
-| `MovementType` (Enum)
-| Type de mouvement : `ENTRY`, `EXIT`, ou `TRANSFER`.
+| `MovementType`
+| `ENTRY`, `EXIT` or `TRANSFER`.
 
 | `quantity`
 | `int`
-| Nombre d'unités déplacées. Toujours strictement positif.
+| Units moved, strictly positive.
 
 | `performedBy`
 | `UserId`
-| Utilisateur ayant effectué le mouvement.
+| User who performed the movement.
 
 | `occurredAt`
 | `DateTime`
-| Date et heure du mouvement.
+| Movement timestamp.
 
 | `saleId`
-| `SaleId?` (nullable)
-| Référence vers la vente qui a déclenché ce mouvement. Présent uniquement pour les mouvements de type `EXIT` liés à une vente.
+| `SaleId?`
+| Sale reference, present only for sale-related `EXIT` movements.
 |===
 
-== Invariants
+== Invariants and factory methods
 
-[cols="1,3"]
-|===
-| Invariant | Description
+Every movement has a strictly positive quantity. Static factory methods enforce the source and destination rules:
 
-| **Quantité > 0**
-| Un mouvement porte toujours une quantité strictement positive.
+* `createEntry(productId, destinationId, quantity, userId)` sets `sourceLocationId = null` and `type = ENTRY`; a destination is required.
+* `createExit(productId, sourceId, quantity, userId, saleId)` requires a source, sets `destinationLocationId = null` and `type = EXIT`. A sale-related exit requires `saleId`.
+* `createTransfer(productId, sourceId, destinationId, quantity, userId)` requires distinct source and destination locations and sets `type = TRANSFER`.
 
-| **Cohérence source/destination selon le type**
-a|
-* `ENTRY` : `sourceLocationId` doit être `null`, `destinationLocationId` obligatoire
-* `EXIT` : `sourceLocationId` obligatoire, `destinationLocationId` doit être `null`
-* `TRANSFER` : les deux sont obligatoires, et ils doivent être différents
+There are no setters or other mutation methods.
 
-| **Immuabilité**
-| Aucun setter, aucune méthode de modification. La seule opération possible est la création via les factory methods.
-|===
+== Aggregate boundary
 
-== Factory Methods
+Movements are queried and aggregated independently of products, for example by date or location.
+Keeping them separate prevents unbounded product aggregates and avoids locking an entire product when sellers create movements concurrently.
 
-Le `StockMovement` utilise des **factory methods statiques** plutôt qu'un constructeur ouvert.
-Chaque factory method encode les règles de validité pour son type de mouvement.
+== Typical repository queries
 
-=== `createEntry(productId, destinationId, quantity, userId)`
+The infrastructure `StockMovementRepository`, rather than the aggregate, handles:
 
-Crée un mouvement d'entrée. Force `sourceLocationId = null` et `type = ENTRY`.
-
-=== `createExit(productId, sourceId, quantity, userId, saleId)`
-
-Crée un mouvement de sortie. Force `destinationLocationId = null` et `type = EXIT`.
-Le `saleId` est obligatoire pour une sortie liée à une vente.
-
-=== `createTransfer(productId, sourceId, destinationId, quantity, userId)`
-
-Crée un mouvement de transfert. Vérifie que `sourceId ≠ destinationId` et `type = TRANSFER`.
-
-== Pourquoi un agrégat séparé
-
-[cols="1,3"]
-|===
-| Raison | Explication
-
-| Cycle de vie indépendant
-| Les mouvements sont consultés, filtrés et agrégés indépendamment des produits (historique du jour, mouvements par date, etc.).
-
-| Taille d'agrégat
-| Un `Product` avec des milliers de mouvements serait un agrégat obèse, violant le principe de petits agrégats.
-
-| Concurrence
-| Deux vendeurs peuvent créer des mouvements simultanément. Si tout est dans `Product`, un verrou inutile bloque l'agrégat entier.
-
-| Immuabilité
-| Le mouvement est créé et figé. Il n'a pas besoin des méthodes de modification d'un agrégat riche.
-|===
-
-== Requêtes typiques sur les mouvements
-
-Ces requêtes sont gérées par le **Repository** (`StockMovementRepository`) au niveau infrastructure, pas par l'agrégat lui-même :
-
-* Mouvements d'aujourd'hui : `findByDate(today)`
-* Mouvements d'un produit : `findByProductId(productId)`
-* Mouvements d'un emplacement : `findByLocationId(locationId)`
-* Mouvements liés à une vente : `findBySaleId(saleId)`
-* Mouvements par plage de dates : `findByDateRange(from, to)`
+* Today's movements: `findByDate(today)`.
+* Product movements: `findByProductId(productId)`.
+* Location movements: `findByLocationId(locationId)`.
+* Sale movements: `findBySaleId(saleId)`.
+* Date ranges: `findByDateRange(from, to)`.

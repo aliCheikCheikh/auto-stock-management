@@ -21,31 +21,27 @@ public class StockAllocationService {
 
     public List<AllocationResult> allocate(ProductId productId, int requestedQuantity, ShopId shopId) {
 
-        // 1. Guard clauses
         Objects.requireNonNull(productId, "productId cannot be null");
         Objects.requireNonNull(shopId, "shopId cannot be null");
         if (requestedQuantity <= 0) {
             throw new IllegalArgumentException("requestedQuantity must be strictly positive");
         }
 
-        // 2. Retrieve storage locations for the specified shop
         List<StorageLocation> locations = repository.findByShopId(shopId);
         if (locations == null || locations.isEmpty()) {
             // If no locations exist, available stock is effectively 0
             throw new InsufficientStockException(productId, 0, requestedQuantity);
         }
 
-        // 3. Calculate total available stock for Fail-Fast validation
         int totalAvailableStock = locations.stream()
                 .mapToInt(loc -> loc.getStockLevel(productId))
                 .sum();
 
         if (totalAvailableStock < requestedQuantity) {
-            // Throw a domain-specific exception with rich context
             throw new InsufficientStockException(productId, totalAvailableStock, requestedQuantity);
         }
 
-        // 4. Stock is guaranteed to be sufficient. Proceed with allocation by priority.
+        // Allocate from the shop floor before backstock.
         List<StorageLocation> sortedLocations = new ArrayList<>(locations);
         sortedLocations.sort(Comparator.comparing(loc -> loc.getLocationType().getPriority()));
 
@@ -68,7 +64,6 @@ public class StockAllocationService {
             }
         }
 
-        // No final check for (remaining > 0) is needed because the Fail-Fast guarantees success
 
         return allocations;
     }

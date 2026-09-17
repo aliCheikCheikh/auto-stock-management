@@ -8,7 +8,7 @@ public final class DuplicateUserEmailException extends DomainException {
     private final UserEmail duplicatedEmail;
 
     public DuplicateUserEmailException(UserEmail duplicatedEmail) {
-        super("Un utilisateur possède déjà cette adresse email.");
+        super("A user with this email address already exists.");
         this.duplicatedEmail = duplicatedEmail;
     }
 

@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/auto_stock_management
-    username: ${DB_USERNAME:auto_stock_user}
-    password: ${DB_PASSWORD:auto_stock_password}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: none
@@ -13,10 +13,7 @@ spring:
 app:
   security:
     jwt:
-      secret: ${JWT_SECRET:dev-secret-a-changer-en-prod-0123456789-abcdefghij}
+      secret: ${JWT_SECRET}
 
-# Compte d'amorçage local. Le composant associé n'existe que sous le profil dev
-# et refuse de créer un compte dès que le registre des utilisateurs n'est plus vide.
-INITIAL_OWNER_DISPLAY_NAME: Propriétaire
-INITIAL_OWNER_EMAIL: owner@local.dev
-INITIAL_OWNER_PASSWORD: dev-owner-password
+# Set INITIAL_OWNER_DISPLAY_NAME, INITIAL_OWNER_EMAIL and INITIAL_OWNER_PASSWORD
+# in the environment to create a development owner in an empty user registry.

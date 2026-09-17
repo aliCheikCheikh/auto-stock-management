@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Consultation des créances : « qui me doit de l'argent », puis « pourquoi », puis « depuis quand ». */
+/** Debt list and detail endpoints. */
 @RestController
 @RequestMapping("/api/v1/debts")
 @Validated
@@ -35,13 +35,7 @@ public class DebtController {
         this.getCreditSaleDetailUseCase = Objects.requireNonNull(getCreditSaleDetailUseCase);
     }
 
-    /**
-     * Les créances, filtrées par statut de règlement.
-     *
-     * <p>Le statut par défaut reste {@code OUTSTANDING} : sans paramètre, l'écran répond à la
-     * question qu'on lui posait déjà, « qui me doit de l'argent ». L'historique est une demande
-     * explicite, pas un effet de bord d'une requête sans filtre.</p>
-     */
+    /** Filters debts by settlement status, defaulting to OUTSTANDING. */
     @GetMapping
     public PageOfDebtResponse listDebts(
             @RequestParam(defaultValue = "OUTSTANDING") DebtStatus status,
@@ -54,13 +48,8 @@ public class DebtController {
     }
 
     /**
-     * Le détail reste accessible après règlement complet : le patron doit pouvoir justifier une
-     * créance soldée autant qu'une créance en cours. Filtrer sur le solde restant reviendrait à
-     * effacer la preuve au moment précis où elle devient utile.
-     *
-     * <p>La route vit sous {@code /debts} — et non sous {@code /sales} — parce qu'elle expose le
-     * nom et le téléphone du client : la règle de sécurité qui réserve les créances au patron
-     * s'applique alors sans qu'il faille y penser.</p>
+     * Credit sale details remain accessible after settlement. The /debts route applies owner-only
+     * access to customer information.
      */
     @GetMapping("/{saleId}")
     public CreditSaleDetailResponse getCreditSaleDetail(@PathVariable UUID saleId) {

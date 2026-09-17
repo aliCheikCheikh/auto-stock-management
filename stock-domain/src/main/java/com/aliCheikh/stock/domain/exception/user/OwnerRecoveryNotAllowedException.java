@@ -8,7 +8,7 @@ public final class OwnerRecoveryNotAllowedException extends DomainException {
     private final UserEmail email;
 
     public OwnerRecoveryNotAllowedException(UserEmail email) {
-        super("La récupération de cet accès propriétaire n'est pas autorisée.");
+        super("Recovery of this owner account is not allowed.");
         this.email = email;
     }
 

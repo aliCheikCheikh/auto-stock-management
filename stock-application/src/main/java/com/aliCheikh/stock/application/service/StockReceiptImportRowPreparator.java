@@ -22,7 +22,7 @@ import java.util.Map;
 
 import static com.aliCheikh.stock.application.service.StockReceiptImportNormalizer.normalizeKey;
 
-/** Transforme une ligne brute en ligne exécutable ou en rejet explicite. */
+/** Prepares a CSV row for execution or reports its validation issues. */
 public final class StockReceiptImportRowPreparator {
 
     private static final Currency XAF = Currency.getInstance("XAF");
@@ -51,7 +51,7 @@ public final class StockReceiptImportRowPreparator {
         if (shopFloorQuantity.valid() && backstockQuantity.valid()
                 && (long) shopFloorQuantity.value() + backstockQuantity.value() <= 0) {
             addIssue(issues, "quantites", StockReceiptImportIssueCode.MISSING_QUANTITY,
-                    "Indiquez une quantité en surface de vente ou en réserve.");
+                    "Enter a quantity for the shop floor or backstock.");
         }
 
         List<TargetLocation> distributions = buildDistributions(
@@ -61,7 +61,7 @@ public final class StockReceiptImportRowPreparator {
         if (existing != null) {
             if (!existing.active()) {
                 addIssue(issues, "reference", StockReceiptImportIssueCode.INACTIVE_PRODUCT,
-                        "Cette référence appartient à un produit désactivé.");
+                        "This reference belongs to an inactive product.");
             }
             return preview(
                     row.lineNumber(), issues, existing.reference(), existing.name(),
@@ -89,14 +89,14 @@ public final class StockReceiptImportRowPreparator {
     ) {
         if (reference.isBlank()) {
             addIssue(issues, "reference", StockReceiptImportIssueCode.MISSING_REFERENCE,
-                    "La référence est obligatoire.");
+                    "Reference is required.");
         } else if (reference.length() > MAX_REFERENCE_LENGTH) {
             addIssue(issues, "reference", StockReceiptImportIssueCode.REFERENCE_TOO_LONG,
-                    "La référence ne peut pas dépasser 100 caractères.");
+                    "Reference must not exceed 100 characters.");
         }
         if (!normalizedReference.isBlank() && referenceOccurrences.getOrDefault(normalizedReference, 0L) > 1) {
             addIssue(issues, "reference", StockReceiptImportIssueCode.DUPLICATE_REFERENCE_IN_FILE,
-                    "Cette référence apparaît plusieurs fois dans le fichier.");
+                    "This reference appears more than once in the file.");
         }
     }
 
@@ -111,30 +111,30 @@ public final class StockReceiptImportRowPreparator {
         String normalizedName = normalizeKey(name);
         if (name.isBlank()) {
             addIssue(issues, "nom_produit", StockReceiptImportIssueCode.MISSING_NAME,
-                    "Le nom du produit est obligatoire pour une nouvelle référence.");
+                    "Product name is required for a new reference.");
         } else if (name.length() > MAX_NAME_LENGTH) {
             addIssue(issues, "nom_produit", StockReceiptImportIssueCode.NAME_TOO_LONG,
-                    "Le nom du produit ne peut pas dépasser 255 caractères.");
+                    "Product name must not exceed 255 characters.");
         }
         if (!normalizedName.isBlank() && nameOccurrences.getOrDefault(normalizedName, 0L) > 1) {
             addIssue(issues, "nom_produit", StockReceiptImportIssueCode.DUPLICATE_NAME_IN_FILE,
-                    "Ce nom de produit apparaît plusieurs fois dans le fichier.");
+                    "This product name appears more than once in the file.");
         }
         if (productsByName.containsKey(normalizedName)) {
             addIssue(issues, "nom_produit", StockReceiptImportIssueCode.PRODUCT_NAME_ALREADY_USED,
-                    "Ce nom appartient déjà à un autre produit.");
+                    "This name already belongs to another product.");
         }
 
         String categoryName = row.categoryName().trim();
         if (categoryName.isBlank()) {
             addIssue(issues, "categorie", StockReceiptImportIssueCode.MISSING_CATEGORY,
-                    "La famille de pièces est obligatoire pour un nouveau produit.");
+                    "Category is required for a new product.");
             return null;
         }
         StockReceiptImportCategoryCandidate category = categoriesByName.get(normalizeKey(categoryName));
         if (category == null) {
             addIssue(issues, "categorie", StockReceiptImportIssueCode.UNKNOWN_CATEGORY,
-                    "Cette famille de pièces n'existe pas dans le logiciel.");
+                    "This category does not exist.");
             return null;
         }
         return category.categoryId();
@@ -150,7 +150,7 @@ public final class StockReceiptImportRowPreparator {
             return Money.create(amount, XAF);
         } catch (NumberFormatException exception) {
             addIssue(issues, "prix_unitaire_xaf", StockReceiptImportIssueCode.INVALID_UNIT_PRICE,
-                    "Le prix unitaire doit être un montant positif avec au maximum deux décimales.");
+                    "Unit price must be positive with at most two decimal places.");
             return null;
         }
     }
@@ -164,13 +164,13 @@ public final class StockReceiptImportRowPreparator {
             int threshold = Integer.parseInt(normalized);
             if (threshold < 0) {
                 addIssue(issues, "seuil_alerte", StockReceiptImportIssueCode.NEGATIVE_THRESHOLD,
-                        "Le seuil d'alerte ne peut pas être négatif.");
+                        "Alert threshold must not be negative.");
                 return null;
             }
             return threshold;
         } catch (NumberFormatException exception) {
             addIssue(issues, "seuil_alerte", StockReceiptImportIssueCode.INVALID_THRESHOLD,
-                    "Le seuil d'alerte doit être un nombre entier.");
+                    "Alert threshold must be an integer.");
             return null;
         }
     }
@@ -188,13 +188,13 @@ public final class StockReceiptImportRowPreparator {
             int quantity = Integer.parseInt(normalized);
             if (quantity < 0) {
                 addIssue(issues, field, StockReceiptImportIssueCode.NEGATIVE_QUANTITY,
-                        "La quantité ne peut pas être négative.");
+                        "Quantity must not be negative.");
                 return new ParsedInteger(0, false);
             }
             return new ParsedInteger(quantity, true);
         } catch (NumberFormatException exception) {
             addIssue(issues, field, StockReceiptImportIssueCode.INVALID_QUANTITY,
-                    "La quantité doit être un nombre entier.");
+                    "Quantity must be an integer.");
             return new ParsedInteger(0, false);
         }
     }
@@ -224,14 +224,14 @@ public final class StockReceiptImportRowPreparator {
         LocationId locationId = locationIds.get(type);
         if (locationId == null) {
             addIssue(issues, "emplacement", StockReceiptImportIssueCode.MISSING_LOCATION,
-                    "L'emplacement " + locationLabel(type) + " est indisponible.");
+                    "The " + locationLabel(type) + " location is unavailable.");
             return;
         }
         distributions.add(new TargetLocation(locationId, quantity.value()));
     }
 
     private String locationLabel(LocationType type) {
-        return type == LocationType.SHOP_FLOOR ? "surface de vente" : "réserve";
+        return type == LocationType.SHOP_FLOOR ? "shop floor" : "backstock";
     }
 
     private StockReceiptImportRowPreview preview(

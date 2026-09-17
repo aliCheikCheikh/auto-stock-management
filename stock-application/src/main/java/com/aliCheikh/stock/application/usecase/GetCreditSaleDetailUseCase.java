@@ -7,13 +7,7 @@ import com.aliCheikh.stock.domain.model.sale.SaleId;
 
 import java.util.Objects;
 
-/**
- * Consulter le détail d'une créance.
- *
- * <p>Une vente au comptant est traitée comme absente plutôt que refusée : du point de vue de cet
- * écran, elle n'existe pas en tant que créance, et distinguer les deux cas ne renseignerait
- * l'appelant que sur l'existence d'une vente qui ne le concerne pas.</p>
- */
+/** Reads a credit sale. A cash sale is treated as absent from the debt view. */
 public class GetCreditSaleDetailUseCase {
 
     private final CreditSaleDetailQueryPort creditSaleDetailQueryPort;

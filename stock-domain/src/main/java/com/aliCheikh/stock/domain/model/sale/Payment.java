@@ -7,17 +7,9 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * Un encaissement rattaché à une vente : l'acompte du jour de la vente, ou un remboursement ultérieur.
- *
- * <p>Entité interne à l'agrégat {@link Sale} : elle n'a pas d'existence hors de la vente qu'elle
- * solde, mais elle possède une <b>identité propre</b>. Deux encaissements du même montant, le même
- * jour, par le même vendeur restent deux faits distincts — les confondre reviendrait à perdre un
- * versement. C'est aussi ce qui permet de les réécrire sans les recréer.</p>
- *
- * <p>Immuable : on n'annule pas un encaissement, on en enregistre un autre.</p>
- *
- * <p>L'auteur et la date sont conservés parce qu'il s'agit d'argent : savoir qui a encaissé quoi et
- * quand est une exigence de traçabilité, pas un confort.</p>
+ * Immutable payment within a {@link Sale}, including the initial payment or a later repayment.
+ * Each entry has its own identity, receiver and timestamp; equal amounts do not imply equal
+ * payments.
  */
 public final class Payment {
 
@@ -37,12 +29,12 @@ public final class Payment {
         }
     }
 
-    /** Nouvel encaissement, dont l'identité est générée. */
+    /** Creates a payment with a new identity. */
     public static Payment record(Money amount, UserId receivedBy, LocalDateTime receivedAt) {
         return new Payment(PaymentId.generate(), amount, receivedBy, receivedAt);
     }
 
-    /** Encaissement relu depuis la persistance, dont l'identité est conservée. */
+    /** Reconstitutes a persisted payment with its original identity. */
     public static Payment rehydrate(PaymentId paymentId,
                                     Money amount,
                                     UserId receivedBy,

@@ -7,12 +7,7 @@ import com.aliCheikh.stock.domain.model.customer.PhoneNumber;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Recherche d'un client au comptoir, par nom ou par numéro de téléphone.
- *
- * <p>Sans mot-clé, on renvoie les clients les plus récents : le vendeur retrouve ainsi en un
- * geste ceux à qui il vient de faire crédit, sans rien taper.</p>
- */
+/** Searches customers by name or phone; returns recent customers when no keyword is supplied. */
 public class SearchCustomersUseCase {
 
     private static final int MAX_RESULTS = 10;
@@ -39,9 +34,8 @@ public class SearchCustomersUseCase {
     }
 
     /**
-     * Une recherche par téléphone doit fonctionner quel que soit le format tapé : « 66 12 34 56 »
-     * doit retrouver le « +23566123456 » stocké. On tente donc la normalisation, et on retombe sur
-     * le mot-clé brut si la saisie n'est pas un numéro complet (nom, ou numéro partiel).
+     * Normalize complete phone numbers; fall back to the raw keyword for names and partial phone
+     * numbers.
      */
     private static String normalizeIfPhoneNumber(String keyword) {
         try {

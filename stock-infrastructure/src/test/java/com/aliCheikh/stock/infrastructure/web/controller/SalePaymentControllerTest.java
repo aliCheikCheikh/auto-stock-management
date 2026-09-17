@@ -36,11 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Encaissement d'un remboursement — tranche web.
- *
- * <p>L'authentification est posée avec {@code .principal(...)} et non via le contexte de sécurité :
- * la chaîne de filtres étant désactivée sur cette tranche, aucun filtre ne chargerait le contexte
- * dans la requête et le paramètre {@code Authentication} du contrôleur resterait nul.</p>
+ * Payment web slice. Set the request principal directly because security filters are disabled and
+ * cannot populate Authentication.
  */
 @WebMvcTest(SaleController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -111,7 +108,8 @@ class SalePaymentControllerTest {
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
                         .principal(cashier(cashierId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        // Un identifiant glissé dans le corps ne doit avoir aucun effet.
+                        // A receiver ID supplied in the body must not override the authenticated
+                        // user.
                         .content("{\"amount\": 1000, \"receivedBy\": \"11111111-1111-1111-1111-111111111111\"}"))
                 .andExpect(status().isCreated());
 

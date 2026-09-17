@@ -58,7 +58,7 @@ class CustomerControllerTest {
     @MockitoBean
     private SearchCustomersUseCase searchCustomersUseCase;
 
-    /** Requis par IdempotencyFilter, chargé par la tranche web mais dépendant de la persistance. */
+    /** Persistence dependency required by IdempotencyFilter in the web slice. */
     @MockitoBean
     private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;
 
@@ -81,7 +81,7 @@ class CustomerControllerTest {
                 .andExpect(jsonPath("$.givenName").value("Ahmat"))
                 .andExpect(jsonPath("$.phoneNumber").value("+23566123456"));
 
-        // Le téléphone est transmis brut : sa normalisation appartient au domaine, pas au web.
+        // Pass the raw phone input to the domain for normalization.
         ArgumentCaptor<RegisterCustomerCommand> captor =
                 ArgumentCaptor.forClass(RegisterCustomerCommand.class);
         verify(registerCustomerUseCase).register(captor.capture());
@@ -119,9 +119,8 @@ class CustomerControllerTest {
     }
 
     /**
-     * La fiche d'un client pose la même question que l'écran global, sur un périmètre plus étroit.
-     * Elle doit donc filtrer de la même façon — et se restreindre au client de l'URL, faute de quoi
-     * elle exposerait les dettes de toute la boutique sur la fiche d'un seul.
+     * Customer debt queries must apply the global filters and restrict results to the customer in
+     * the URL.
      */
     @Test
     void should_scope_the_debts_to_the_customer_in_the_path() throws Exception {

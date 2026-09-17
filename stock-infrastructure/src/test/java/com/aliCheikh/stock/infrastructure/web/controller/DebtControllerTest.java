@@ -51,7 +51,7 @@ class DebtControllerTest {
     @MockitoBean
     private GetCreditSaleDetailUseCase getCreditSaleDetailUseCase;
 
-    /** Requis par IdempotencyFilter, chargé par la tranche web mais dépendant de la persistance. */
+    /** Persistence dependency required by IdempotencyFilter in the web slice. */
     @MockitoBean
     private IdempotencyRecordJpaRepository idempotencyRecordJpaRepository;
 
@@ -97,10 +97,7 @@ class DebtControllerTest {
                 .andExpect(jsonPath("$.page.totalElements").value(0));
     }
 
-    /**
-     * Sans paramètre, l'écran répond à la question qu'on lui posait déjà. L'historique est une
-     * demande explicite : il ne doit pas surgir d'une requête sans filtre.
-     */
+    /** Queries without a status filter default to outstanding debts. */
     @Test
     void should_look_at_open_debts_when_no_status_is_asked_for() throws Exception {
         given(listDebtsUseCase.execute(any())).willReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
@@ -135,7 +132,7 @@ class DebtControllerTest {
                 .andExpect(jsonPath("$.content[0].settled").value(true))
                 .andExpect(jsonPath("$.content[0].settledAt").value("2026-07-28T09:15:00"))
                 .andExpect(jsonPath("$.content[0].amountDue.amount").value("0"))
-                // Réglée en 8 jours : la créance a cessé de vieillir le jour du paiement.
+                // Debt age stops at settlement after eight days.
                 .andExpect(jsonPath("$.content[0].daysOutstanding").value(8))
                 .andExpect(jsonPath("$.content[0].overdue").value(false));
 
@@ -193,14 +190,14 @@ class DebtControllerTest {
 
         mockMvc.perform(get("/api/v1/debts/{saleId}", saleId))
                 .andExpect(status().isOk())
-                // « Pour quels produits ? » — la question à laquelle la liste ne répondait pas.
+                // Product details absent from the list view.
                 .andExpect(jsonPath("$.lines[0].productName").value("Plaquettes de frein"))
                 .andExpect(jsonPath("$.lines[0].quantity").value(3))
                 .andExpect(jsonPath("$.lines[0].lineTotal.amount").value("120000"))
                 // « Vendu par qui ? »
                 .andExpect(jsonPath("$.sellerName").value("Ahmat"))
                 .andExpect(jsonPath("$.customerGivenName").value("Moussa"))
-                // « Combien payé, combien reste-t-il ? »
+                // Payments and remaining balance.
                 .andExpect(jsonPath("$.amountPaid.amount").value("100000"))
                 .andExpect(jsonPath("$.amountDue.amount").value("100000"))
                 .andExpect(jsonPath("$.settled").value(false))
@@ -228,7 +225,7 @@ class DebtControllerTest {
                 true,
                 List.of()));
 
-        // Une créance soldée reste consultable : c'est la preuve du règlement.
+        // Settled debt details remain accessible.
         mockMvc.perform(get("/api/v1/debts/{saleId}", saleId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.settled").value(true))

@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Gestion des familles de pièces — tranche web. */
+/** Category management web slice. */
 @WebMvcTest(CategoryController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class CategoryWriteControllerTest {

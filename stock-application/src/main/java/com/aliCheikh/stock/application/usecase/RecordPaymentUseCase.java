@@ -13,13 +13,8 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * Encaisse un remboursement sur une vente à crédit.
- *
- * <p>La vente est chargée avec un accès exclusif : lire le solde puis écrire un paiement doit être
- * indivisible, faute de quoi deux règlements simultanés pourraient sur-payer la dette.</p>
- *
- * <p>Les règles — montant strictement positif, ne dépassant pas le solde, vente non déjà soldée —
- * appartiennent à l'agrégat. Ce use case orchestre : il charge, délègue, sauvegarde.</p>
+ * Records a payment with exclusive access to the sale, preventing concurrent payments from
+ * exceeding the balance. The aggregate validates the payment amount and settlement status.
  */
 public class RecordPaymentUseCase {
 

@@ -69,7 +69,7 @@ class TemporaryPasswordGuardIntegrationTest {
     void setUp() {
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
-        // Compte fraîchement provisionné : mot de passe temporaire (flag = true par défaut).
+        // New accounts require changing their temporary password.
         userRepository.save(UserJpaEntity.withCredentials(
                 UUID.randomUUID(), OWNER_EMAIL, OWNER_EMAIL,
                 passwordEncoder.encode(TEMP_PASSWORD), UserRole.OWNER));
@@ -108,7 +108,7 @@ class TemporaryPasswordGuardIntegrationTest {
                                 """.formatted(TEMP_PASSWORD, NEW_PASSWORD)))
                 .andExpect(status().isNoContent());
 
-        // Le même cookie passe désormais : le filtre relit le flag en base (maintenant false).
+        // The same cookie is accepted once the filter reads the updated password flag.
         mockMvc.perform(get("/api/v1/categories").cookie(accessCookie))
                 .andExpect(status().isOk());
     }

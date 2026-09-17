@@ -3,12 +3,7 @@ package com.aliCheikh.stock.domain.exception.sale;
 import com.aliCheikh.stock.domain.exception.DomainException;
 import com.aliCheikh.stock.domain.model.shared.Money;
 
-/**
- * Levée quand un encaissement dépasse ce que le client reste devoir.
- *
- * <p>Le magasin ne conserve pas de trop-perçu : le vendeur rend la monnaie, il n'enregistre que ce
- * qui solde la dette.</p>
- */
+/** Raised when a payment exceeds the outstanding balance; overpayments are not recorded. */
 public class PaymentExceedsAmountDueException extends DomainException {
 
     private final Money attemptedAmount;

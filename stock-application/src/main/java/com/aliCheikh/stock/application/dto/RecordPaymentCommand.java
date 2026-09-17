@@ -6,7 +6,7 @@ import com.aliCheikh.stock.domain.model.user.UserId;
 
 import java.util.Objects;
 
-/** Demande d'encaissement d'un remboursement sur une vente à crédit. */
+/** Request to record a payment against a credit sale. */
 public record RecordPaymentCommand(SaleId saleId, Money amount, UserId receivedBy) {
 
     public RecordPaymentCommand {

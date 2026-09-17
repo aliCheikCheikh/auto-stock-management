@@ -57,7 +57,7 @@ class ListStockMovementsUseCaseTest {
                 LocalDateTime.of(2026, 5, 15, 12, 0),
                 null,
                 OperationId.generate(),
-                // Un transfert ne naît d'aucune vente : aucun solde à annoncer.
+                // Transfers have no originating sale or outstanding balance.
                 null);
         PageResult<StockMovementView> expectedPage = new PageResult<>(
                 List.of(movement),

@@ -1,0 +1,25 @@
+reference;nom_produit;categorie;prix_unitaire_xaf;seuil_alerte;quantite_surface;quantite_reserve
+DEMO-FILTRE-AIR;Filtre à air;Filtration;6500;5;8;12
+DEMO-FILTRE-HUILE;Filtre à huile;Filtration;4500;5;8;12
+DEMO-FILTRE-CARBURANT;Filtre à carburant;Filtration;8000;5;8;12
+DEMO-DISQUE-FREIN;Disque de frein;Freinage;22000;5;2;0
+DEMO-LIQUIDE-FREIN;Liquide de frein;Freinage;3500;5;8;12
+DEMO-MACHOIRE-FREIN;Mâchoire de frein;Freinage;15000;5;8;12
+DEMO-KIT-EMBRAYAGE;Kit embrayage;Embrayage;75000;5;8;12
+DEMO-BUTEE-EMBRAYAGE;Butée embrayage;Embrayage;18000;5;8;12
+DEMO-COURROIE;Courroie accessoires;Moteur;9000;5;8;12
+DEMO-JOINT-CULASSE;Joint de culasse;Moteur;16000;5;2;0
+DEMO-BOUGIE;Bougie allumage;Moteur;3000;5;8;12
+DEMO-CARDAN;Cardan transmission;Transmission;55000;5;8;12
+DEMO-SOUFFLET;Soufflet cardan;Transmission;5000;5;8;12
+DEMO-AMORTISSEUR;Amortisseur avant;Suspension;45000;5;8;12
+DEMO-RESSORT;Ressort suspension;Suspension;27000;5;8;12
+DEMO-ROTULE;Rotule direction;Direction;14000;5;8;12
+DEMO-BIELLETTE;Biellette direction;Direction;11000;5;8;12
+DEMO-BATTERIE;Batterie 12 V;Electrique;65000;5;8;12
+DEMO-AMPOULE;Ampoule phare;Electrique;2500;5;8;12
+DEMO-FUSIBLE;Boîte de fusibles;Electrique;2000;5;8;12
+DEMO-PNEU;Pneu démonstration;Pneumatique;48000;5;8;12
+DEMO-THERMOSTAT;Thermostat moteur;Refroidissement;12000;5;8;12
+DEMO-DURITE;Durite radiateur;Refroidissement;7000;5;8;12
+DEMO-COLLIER;Collier échappement;Echappement;4000;5;8;12

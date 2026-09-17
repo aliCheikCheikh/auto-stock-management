@@ -185,7 +185,7 @@ class SaleControllerTest {
         ArgumentCaptor<SellProductCommand> captor = ArgumentCaptor.forClass(SellProductCommand.class);
         verify(sellProductUseCase).sell(captor.capture());
         assertThat(captor.getValue().sellerId())
-                .as("l'identité doit venir du token, pas du corps")
+                .as("identity must come from the token, not the request body")
                 .isEqualTo(UserId.of(userId));
     }
 
@@ -382,8 +382,7 @@ class SaleControllerTest {
                 .andExpect(jsonPath("$.content[0].lines[0].quantity").value(4))
                 .andExpect(jsonPath("$.content[0].lines[0].unitPrice.amount").value("15.00"))
                 .andExpect(jsonPath("$.content[0].lines[0].subtotal.amount").value("60.00"))
-                // L'historique porte le solde : l'écran des ventes distingue une
-                // vente réglée d'une vente à crédit sans second appel.
+                // Sale history exposes balances without a second request.
                 .andExpect(jsonPath("$.content[0].amountDue.amount").value("15.00"))
                 .andExpect(jsonPath("$.content[0].totalAmount.amount").value("60.00"))
                 .andExpect(jsonPath("$.content[0].createdAt").value("2026-05-15T10:30:00"))

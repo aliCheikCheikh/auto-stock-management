@@ -14,7 +14,7 @@ public final class StockLevel {
         Objects.requireNonNull(productId, "productId cannot be null");
 
         if (qty < 0) {
-            // On passe 0 explicitement car l'objet n'existe pas encore
+            // Report zero as the current quantity before the object exists.
             throw new InvalidStockOperationException(productId, 0, qty);
         }
 
@@ -28,7 +28,7 @@ public final class StockLevel {
 
     public StockLevel decrease(int quantityToDecrease) {
         if (quantityToDecrease <= 0) {
-            // Ici, this.quantity est valide
+
             throw new InvalidStockOperationException(productId, this.quantity, quantityToDecrease);
         }
 

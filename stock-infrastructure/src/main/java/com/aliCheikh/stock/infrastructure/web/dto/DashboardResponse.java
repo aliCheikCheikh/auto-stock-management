@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/** Contrat REST borné du tableau de bord, indépendant des objets du domaine. */
+/** Bounded dashboard REST contract independent of domain objects. */
 public record DashboardResponse(
         LocalDateTime generatedAt,
         PeriodsResponse periods,

@@ -7,7 +7,7 @@
 ### Mac OS ###
 .DS_Store
 
-# --- Compilation Maven ---
+# Maven build output
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -31,3 +31,15 @@ out/
 apprentissage-pilotage/
 cookies.txt
 graphify-out/
+
+# Local configuration; keep sanitized examples versioned.
+.env
+.env.*
+!.env.example
+
+# Generated documentation and installed dependencies.
+antora-docs/node_modules/
+antora-docs/build/
+
+# Internal frontend implementation briefs.
+/BRIEF_FRONT_*.md

@@ -5,6 +5,6 @@ import com.aliCheikh.stock.domain.exception.DomainException;
 public final class IncorrectCurrentPasswordException extends DomainException {
 
     public IncorrectCurrentPasswordException() {
-        super("Le mot de passe actuel est incorrect.");
+        super("The current password is incorrect.");
     }
 }

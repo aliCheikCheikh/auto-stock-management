@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.Objects;
 
-/** Orchestre une lecture bornée du tableau de bord avec l'heure métier du magasin. */
+/** Builds a bounded dashboard snapshot using the shop's business clock. */
 public class GetDashboardSummaryUseCase {
 
     static final int ALERT_LIMIT = 5;

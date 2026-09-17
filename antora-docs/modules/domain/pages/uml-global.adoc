@@ -1,10 +1,15 @@
-= Diagramme UML global
+= Complete UML diagram
 :toc: left
 :icons: font
 
-== Diagramme de classes complet
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Ce diagramme présente l'ensemble du modèle de domaine avec tous les agrégats, Value Objects, enums et leurs relations.
+== Domain class diagram
+
+The original model includes aggregates, value objects, enums and their relationships.
 
 [plantuml]
 ----
@@ -15,13 +20,13 @@ skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
 skinparam linetype ortho
 
-title Modèle de domaine — Gestion de stock pièces automobiles
+title Domain model — Automotive parts stock management
 
 ' ──────────────────────────────────
-'  AGRÉGAT PRODUCT
+'  AGGREGATE PRODUCT
 ' ──────────────────────────────────
 
-package "Agrégat Product" as pkg_product <<Rectangle>> #E1F5EE {
+package "Aggregate Product" as pkg_product <<Rectangle>> #E1F5EE {
 
   class Product <<Aggregate Root>> {
     - productId : ProductId
@@ -42,10 +47,10 @@ package "Agrégat Product" as pkg_product <<Rectangle>> #E1F5EE {
 }
 
 ' ──────────────────────────────────
-'  AGRÉGAT CATEGORY
+'  AGGREGATE CATEGORY
 ' ──────────────────────────────────
 
-package "Agrégat Category" as pkg_category <<Rectangle>> #F1EFE8 {
+package "Aggregate Category" as pkg_category <<Rectangle>> #F1EFE8 {
 
   class Category <<Aggregate Root>> {
     - categoryId : CategoryId
@@ -57,10 +62,10 @@ package "Agrégat Category" as pkg_category <<Rectangle>> #F1EFE8 {
 }
 
 ' ──────────────────────────────────
-'  AGRÉGAT STORAGE LOCATION
+'  AGGREGATE STORAGE LOCATION
 ' ──────────────────────────────────
 
-package "Agrégat StorageLocation" as pkg_location <<Rectangle>> #FAECE7 {
+package "Aggregate StorageLocation" as pkg_location <<Rectangle>> #FAECE7 {
 
   class StorageLocation <<Aggregate Root>> {
     - locationId : LocationId
@@ -91,10 +96,10 @@ package "Agrégat StorageLocation" as pkg_location <<Rectangle>> #FAECE7 {
 }
 
 ' ──────────────────────────────────
-'  AGRÉGAT STOCK MOVEMENT
+'  AGGREGATE STOCK MOVEMENT
 ' ──────────────────────────────────
 
-package "Agrégat StockMovement" as pkg_movement <<Rectangle>> #EEEDFE {
+package "Aggregate StockMovement" as pkg_movement <<Rectangle>> #EEEDFE {
 
   class StockMovement <<Aggregate Root>> {
     - movementId : MovementId
@@ -115,10 +120,10 @@ package "Agrégat StockMovement" as pkg_movement <<Rectangle>> #EEEDFE {
 }
 
 ' ──────────────────────────────────
-'  AGRÉGAT SALE
+'  AGGREGATE SALE
 ' ──────────────────────────────────
 
-package "Agrégat Sale" as pkg_sale <<Rectangle>> #E6F1FB {
+package "Aggregate Sale" as pkg_sale <<Rectangle>> #E6F1FB {
 
   class Sale <<Aggregate Root>> {
     - saleId : SaleId
@@ -146,10 +151,10 @@ package "Agrégat Sale" as pkg_sale <<Rectangle>> #E6F1FB {
 }
 
 ' ──────────────────────────────────
-'  AGRÉGAT SHOP
+'  AGGREGATE SHOP
 ' ──────────────────────────────────
 
-package "Agrégat Shop" as pkg_shop <<Rectangle>> #F1EFE8 {
+package "Aggregate Shop" as pkg_shop <<Rectangle>> #F1EFE8 {
 
   class Shop <<Aggregate Root>> {
     - shopId : ShopId
@@ -163,10 +168,10 @@ package "Agrégat Shop" as pkg_shop <<Rectangle>> #F1EFE8 {
 }
 
 ' ──────────────────────────────────
-'  AGRÉGAT USER
+'  AGGREGATE USER
 ' ──────────────────────────────────
 
-package "Agrégat User" as pkg_user <<Rectangle>> #F1EFE8 {
+package "Aggregate User" as pkg_user <<Rectangle>> #F1EFE8 {
 
   class User <<Aggregate Root>> {
     - userId : UserId
@@ -180,7 +185,7 @@ package "Agrégat User" as pkg_user <<Rectangle>> #F1EFE8 {
 }
 
 ' ──────────────────────────────────
-'  VALUE OBJECTS PARTAGÉS
+'  SHARED VALUE OBJECTS
 ' ──────────────────────────────────
 
 package "Value Objects" as pkg_vo <<Rectangle>> #FAEEDA {
@@ -339,17 +344,15 @@ Shop *-- ShopId
 User *-- UserId
 User *-- UserRole
 
-StockAllocationService ..> StorageLocation : consulte
-StockAllocationService ..> AllocationResult : retourne
-ReceivingService ..> StorageLocation : met à jour
-ReceivingService ..> ReceivingEntry : reçoit
+StockAllocationService ..> StorageLocation : reads
+StockAllocationService ..> AllocationResult : returns
+ReceivingService ..> StorageLocation : updates
+ReceivingService ..> ReceivingEntry : receives
 
 @enduml
 ----
 
-== Diagramme des relations entre agrégats (simplifié)
-
-Pour une vue d'ensemble rapide des dépendances :
+== Aggregate relationships
 
 [plantuml]
 ----
@@ -376,25 +379,23 @@ SA ..> U : soldBy
 SA ..> P : productId\n(via SaleLineItem)
 
 note bottom of SM
-  Point central de traçabilité.
-  Référence presque tous
-  les autres agrégats.
+  Central audit record.
+  References most
+  other aggregates.
 end note
 
 note bottom of SL
-  Gardien de l'invariant
-  "quantité ≥ 0"
+  Protects the invariant
+  "quantity ≥ 0"
 end note
 @enduml
 ----
 
-== Notes d'implémentation
+== Diagram generation
 
-=== Génération des diagrammes
+Antora can render these PlantUML diagrams with `asciidoctor-kroki` or `asciidoctor-plantuml`.
 
-Ces diagrammes PlantUML peuvent être générés automatiquement avec Antora en utilisant l'extension `asciidoctor-kroki` ou `asciidoctor-plantuml`.
-
-.Configuration dans antora-playbook.yml
+.Example antora-playbook.yml configuration
 [source,yaml]
 ----
 asciidoc:
@@ -405,7 +406,7 @@ asciidoc:
     kroki-fetch-diagram: true
 ----
 
-=== Organisation des fichiers dans l'architecture hexagonale
+== Illustrative hexagonal package structure
 
 [source]
 ----
@@ -451,7 +452,7 @@ src/
 │   ├── ReceiveStockUseCase.java
 │   └── TransferStockUseCase.java
 └── infrastructure/
-    ├── persistence/          ← Adapters (implémentent les Ports)
-    ├── web/                  ← API REST
-    └── auth/                 ← Authentification
+    ├── persistence/          ← Adapters (implement ports)
+    ├── web/                  ← REST API
+    └── auth/                 ← Authentication
 ----

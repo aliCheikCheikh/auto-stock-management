@@ -7,7 +7,7 @@ public final class InvalidStockReceiptImportSelectionException extends RuntimeEx
     private final List<Integer> unknownLineNumbers;
 
     public InvalidStockReceiptImportSelectionException(List<Integer> unknownLineNumbers) {
-        super("Les lignes sélectionnées n'existent pas dans le fichier : " + unknownLineNumbers + ".");
+        super("Selected rows do not exist in the file: " + unknownLineNumbers + ".");
         this.unknownLineNumbers = List.copyOf(unknownLineNumbers);
     }
 

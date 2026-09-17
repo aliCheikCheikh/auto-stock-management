@@ -30,7 +30,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         this.idempotencyRecordJpaRepository = idempotencyRecordJpaRepository;
     }
 
-    private final Set<String> IDEMPTENT_PATHS = Set.of(
+    private final Set<String> IDEMPOTENT_PATHS = Set.of(
             "/api/v1/sales",
             "/api/v1/stock-receipts",
             "/api/v1/stock-transfers"
@@ -41,7 +41,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        if (!"POST".equals(request.getMethod()) || !IDEMPTENT_PATHS.contains(request.getRequestURI())) {
+        if (!"POST".equals(request.getMethod()) || !IDEMPOTENT_PATHS.contains(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }

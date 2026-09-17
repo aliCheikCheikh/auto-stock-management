@@ -2,7 +2,7 @@ package com.aliCheikh.stock.domain.service;
 
 import com.aliCheikh.stock.domain.exception.user.InvalidPasswordException;
 
-/** Règles communes aux mots de passe choisis par les utilisateurs. */
+/** Shared validation rules for user-chosen passwords. */
 public final class PasswordRules {
 
     public static final int MINIMUM_LENGTH = 8;

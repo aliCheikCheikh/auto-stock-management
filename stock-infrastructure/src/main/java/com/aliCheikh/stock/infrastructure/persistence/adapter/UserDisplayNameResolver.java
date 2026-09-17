@@ -12,14 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Résout en un seul appel les noms affichables d'un lot d'utilisateurs.
- *
- * <p>Un historique désigne ses auteurs par identifiant technique ; l'utilisateur, lui, attend un
- * nom — « c'est Ahmat qui a fait cette réception ». Résoudre chaque ligne séparément produirait un
- * N+1, d'où cette résolution par page. Le service est partagé entre les historiques de mouvements
- * et de ventes plutôt que dupliqué dans chacun.</p>
- */
+/** Resolves user display names for a batch of IDs, shared by sale and movement history. */
 @Component
 public class UserDisplayNameResolver {
 
@@ -29,10 +22,7 @@ public class UserDisplayNameResolver {
         this.userJpaRepository = Objects.requireNonNull(userJpaRepository, "userJpaRepository cannot be null");
     }
 
-    /**
-     * @param userIds identifiants, doublons et {@code null} tolérés
-     * @return les noms trouvés, indexés par identifiant ; un compte supprimé est simplement absent
-     */
+    /** Accepts duplicate and null IDs. Missing accounts are omitted from the result. */
     @Transactional(readOnly = true)
     public Map<UUID, String> resolve(Collection<UUID> userIds) {
         Objects.requireNonNull(userIds, "userIds cannot be null");

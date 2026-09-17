@@ -10,12 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Résultat d'une vente.
- *
- * <p>{@code amountDue} est renvoyé au vendeur pour qu'il sache immédiatement ce que le client
- * reste devoir — c'est l'information qu'il annonce de vive voix au comptoir.</p>
- */
+/** Sale result, including the remaining amount due. */
 public record SellProductResult(
         SaleId saleId,
         UserId sellerId,
@@ -27,7 +22,7 @@ public record SellProductResult(
         Money amountDue
 ) {
 
-    /** Vente au comptant : intégralement payée, sans client, donc rien à devoir. */
+    /** Fully paid cash sale without a customer. */
     public SellProductResult(SaleId saleId,
                              UserId sellerId,
                              List<SaleLineDto> lines,

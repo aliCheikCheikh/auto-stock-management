@@ -5,7 +5,7 @@ import com.aliCheikh.stock.domain.exception.user.InvalidUserEmailException;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/** L'adresse utilisée par une personne pour se connecter au magasin. */
+/** Email address used to sign in. */
 public final class UserEmail {
 
     public static final int MAX_LENGTH = 255;

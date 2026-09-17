@@ -12,7 +12,7 @@ public final class ChangeOwnPasswordCommand {
     private final String newPassword;
 
     public ChangeOwnPasswordCommand(UserId userId, String currentPassword, String newPassword) {
-        this.userId = Objects.requireNonNull(userId, "L'identifiant de l'utilisateur est obligatoire.");
+        this.userId = Objects.requireNonNull(userId, "User ID is required.");
         this.currentPassword = currentPassword;
         this.newPassword = newPassword;
     }

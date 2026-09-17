@@ -5,10 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Demande d'enregistrement d'un client.
- *
- * <p>Le téléphone est transmis tel que saisi : sa normalisation est l'affaire du domaine, pas du
- * web. Le nom du père et l'email sont facultatifs.</p>
+ * Customer registration request. The domain normalizes the phone number; father name and email are
+ * optional.
  */
 public record CreateCustomerRequest(@NotBlank @Size(max = 100) String givenName,
                                     @Size(max = 100) String fatherName,

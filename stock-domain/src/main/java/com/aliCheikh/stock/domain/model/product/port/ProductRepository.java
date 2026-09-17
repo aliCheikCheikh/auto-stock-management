@@ -24,11 +24,6 @@ public interface ProductRepository {
 
     boolean existsByName(String name);
 
-    /**
-     * Indique si au moins un produit est rangé dans cette catégorie.
-     *
-     * <p>La question porte sur les produits, elle appartient donc à leur port : une catégorie ne
-     * connaît pas ce qui la référence.</p>
-     */
+    /** Checks whether any product belongs to this category. */
     boolean existsByCategoryId(CategoryId categoryId);
 }
