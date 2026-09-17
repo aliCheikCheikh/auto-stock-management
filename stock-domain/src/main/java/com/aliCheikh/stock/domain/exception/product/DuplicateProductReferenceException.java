@@ -6,7 +6,7 @@ public class DuplicateProductReferenceException extends DomainException {
     private final String duplicatedReference;
 
     public DuplicateProductReferenceException(String reference) {
-        super("Le produit avec la reference '" + reference + " existe déjà");
+        super("A product with reference '" + reference + "' already exists.");
         duplicatedReference = reference;
     }
 

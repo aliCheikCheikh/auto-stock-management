@@ -210,7 +210,7 @@ class StockTransferControllerTest {
         ArgumentCaptor<TransferStockCommand> captor = ArgumentCaptor.forClass(TransferStockCommand.class);
         verify(transferStockUseCase).execute(captor.capture());
         assertThat(captor.getValue().userId())
-                .as("l'identité doit venir du token, pas du corps")
+                .as("identity must come from the token, not the request body")
                 .isEqualTo(UserId.of(userId));
     }
 

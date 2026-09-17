@@ -6,7 +6,7 @@ public class DuplicateProductNameException extends DomainException {
     private final String duplicatedName;
 
     public DuplicateProductNameException(String name) {
-        super("Le produit avec le nom : " + " " + name + " exite déjà dans le catalogue");
+        super("A product named '" + name + "' already exists in the catalog.");
         duplicatedName = name;
     }
 

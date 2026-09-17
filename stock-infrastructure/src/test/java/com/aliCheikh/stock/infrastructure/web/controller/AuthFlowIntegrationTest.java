@@ -108,15 +108,15 @@ class AuthFlowIntegrationTest {
         Cookie refreshCookie = login.getResponse().getCookie("refreshToken");
         assertThat(refreshCookie).isNotNull();
 
-        // le refresh marche AVANT le logout
+        // Refresh succeeds before logout.
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(refreshCookie))
                 .andExpect(status().isOk());
 
-        // le logout révoque le refresh token
+        // Logout revokes the refresh token.
         mockMvc.perform(post("/api/v1/auth/logout").cookie(refreshCookie))
                 .andExpect(status().isNoContent());
 
-        // le refresh est maintenant refusé
+        // The revoked token cannot refresh the session.
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(refreshCookie))
                 .andExpect(status().isUnauthorized());
     }
@@ -133,7 +133,7 @@ class AuthFlowIntegrationTest {
                                 """.formatted(OWNER_PASSWORD, NEW_PASSWORD)))
                 .andExpect(status().isNoContent());
 
-        // L'ancien mot de passe ne fonctionne plus.
+        // The old password is rejected.
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -141,7 +141,7 @@ class AuthFlowIntegrationTest {
                                 """.formatted(OWNER_EMAIL, OWNER_PASSWORD)))
                 .andExpect(status().isUnauthorized());
 
-        // Le nouveau mot de passe fonctionne.
+        // The new password is accepted.
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

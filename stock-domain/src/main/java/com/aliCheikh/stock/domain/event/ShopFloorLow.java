@@ -6,10 +6,7 @@ import com.aliCheikh.stock.domain.model.stock.LocationId;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * Émis lorsque le stock d'un emplacement de type SHOP_FLOOR tombe en dessous
- * de son propre indicateur de stock bas (lowStockIndicator).
- */
+/** Emitted when a SHOP_FLOOR location falls below its own low-stock threshold. */
 public record ShopFloorLow(
         ProductId productId,
         LocationId locationId,

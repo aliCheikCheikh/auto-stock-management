@@ -25,7 +25,7 @@ public class SaleTest {
         return Money.create(BigDecimal.valueOf(amount), EUR);
     }
 
-    /** Deux lignes totalisant 60 EUR (2 filtres à 15, 1 bidon d'huile à 30). */
+    /** Two lines totaling EUR 60: two filters at 15 and one oil container at 30. */
     private static List<SaleLineInput> linesTotalling60() {
         return List.of(
                 new SaleLineInput(ProductId.generate(), 2, eur(15)),
@@ -65,7 +65,7 @@ public class SaleTest {
         assertThat(sale.getSaleId()).isNotNull();
     }
 
-    // --- Vente au comptant et ventes à crédit ---
+    // Cash and credit sales
 
     @Test
     public void cash_sale_is_paid_in_full_and_needs_no_customer() {
@@ -94,7 +94,7 @@ public class SaleTest {
 
     @Test
     public void credit_sale_without_down_payment_owes_the_whole_total() {
-        // Le client de confiance repart sans rien payer : toute la vente est une créance.
+        // No initial payment: the full sale amount remains due.
         UserId sellerId = UserId.generate();
         CustomerId customerId = CustomerId.generate();
 
@@ -115,7 +115,7 @@ public class SaleTest {
         assertThat(sale.isOnCredit()).isFalse();
     }
 
-    // --- Invariants refusés ---
+    // Rejected invariants
 
     @Test
     public void should_reject_a_negative_down_payment() {
@@ -141,7 +141,7 @@ public class SaleTest {
     public void should_reject_a_sale_leaving_a_balance_without_a_customer() {
         UserId sellerId = UserId.generate();
 
-        // Reste dû = 40 EUR, mais aucun client à qui réclamer la créance.
+        // EUR 40 remains due without an identified debtor.
         assertThatThrownBy(() ->
                 Sale.create(sellerId, linesTotalling60(), null, eur(20)))
                 .isInstanceOf(CreditSaleRequiresCustomerException.class)
@@ -159,7 +159,7 @@ public class SaleTest {
                 .isInstanceOf(CurrencyMismatchException.class);
     }
 
-    // --- Reconstruction depuis la persistance ---
+    // Reconstitution from persistence
 
     @Test
     public void rehydrated_cash_sale_owes_nothing() {

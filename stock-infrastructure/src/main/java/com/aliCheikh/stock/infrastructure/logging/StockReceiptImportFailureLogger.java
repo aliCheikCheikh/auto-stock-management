@@ -14,6 +14,6 @@ public class StockReceiptImportFailureLogger implements StockReceiptImportFailur
 
     @Override
     public void report(UUID importId, int lineNumber, RuntimeException failure) {
-        LOGGER.error("Échec de la ligne {} pour l'import {}", lineNumber, importId, failure);
+        LOGGER.error("Row {} failed for import {}", lineNumber, importId, failure);
     }
 }

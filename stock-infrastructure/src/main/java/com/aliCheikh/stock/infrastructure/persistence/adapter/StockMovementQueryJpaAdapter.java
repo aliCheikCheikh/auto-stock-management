@@ -59,13 +59,11 @@ public class StockMovementQueryJpaAdapter implements StockMovementQueryPort {
                 PageRequest.of(query.page(), query.size(), toSort(query.sort()))
         );
 
-        // Les noms des auteurs sont résolus en une requête pour toute la page : les chercher
-        // ligne par ligne produirait un N+1.
+        // Resolve author names in one query for the entire page.
         Map<UUID, String> authorNames = userDisplayNameResolver.resolve(
                 page.getContent().stream().map(StockMovementJpaEntity::getPerformedBy).toList());
 
-        // Même parti pour l'état de règlement : une seule requête pour toute la page, afin que
-        // l'historique puisse annoncer « payée » ou « à crédit » sans interroger chaque vente.
+        // Resolve sale balances in one query for the entire page.
         Map<UUID, Money> amountsDue = saleSettlementResolver.resolveAmountsDue(
                 page.getContent().stream().map(StockMovementJpaEntity::getSaleId).toList());
 

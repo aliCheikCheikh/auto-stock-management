@@ -7,12 +7,7 @@ import com.aliCheikh.stock.domain.model.customer.port.CustomerRepository;
 
 import java.util.Objects;
 
-/**
- * Consultation d'un client.
- *
- * <p>Existe pour que la couche web n'atteigne jamais un port du domaine directement : le sens des
- * dépendances impose web → application → domaine.</p>
- */
+/** Retrieves a customer through the application layer. */
 public class GetCustomerUseCase {
 
     private final CustomerRepository customerRepository;

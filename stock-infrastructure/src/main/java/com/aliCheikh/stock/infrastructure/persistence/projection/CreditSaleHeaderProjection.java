@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** En-tête d'une vente à crédit : la vente, son vendeur, son client et le cumul encaissé. */
+/** Credit sale header with seller, customer and total payments. */
 public interface CreditSaleHeaderProjection {
 
     UUID getSaleId();

@@ -8,7 +8,7 @@ public final class UserNotFoundException extends DomainException {
     private final UserId userId;
 
     public UserNotFoundException(UserId userId) {
-        super("L'utilisateur demandé n'existe pas.");
+        super("The requested user does not exist.");
         this.userId = userId;
     }
 

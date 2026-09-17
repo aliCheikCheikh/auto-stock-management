@@ -32,10 +32,10 @@ public final class OwnerRecoveryRunner implements ApplicationRunner {
     public void run(ApplicationArguments arguments) {
         if (ownerEmail.isBlank() || newPassword.isBlank()) {
             throw new IllegalStateException(
-                    "OWNER_RECOVERY_EMAIL et OWNER_RECOVERY_PASSWORD sont obligatoires pour la récupération.");
+                    "OWNER_RECOVERY_EMAIL and OWNER_RECOVERY_PASSWORD are required for recovery.");
         }
 
         recoverOwnerAccess.execute(new RecoverOwnerAccessCommand(ownerEmail, newPassword));
-        log.info("Accès du propriétaire récupéré ; toutes ses sessions précédentes ont été fermées.");
+        log.info("Owner access recovered; all previous sessions have been revoked.");
     }
 }

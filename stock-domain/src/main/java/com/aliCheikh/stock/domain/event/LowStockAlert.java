@@ -5,13 +5,11 @@ import com.aliCheikh.stock.domain.model.product.ProductId;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * Émis lorsque le stock global d'un produit tombe en dessous de son seuil d'alerte.
- */
+/** Emitted when a product's total stock falls below its alert threshold. */
 public record LowStockAlert(
         ProductId productId,
-        String productName,    // Ajouté selon la spec
-        int globalQuantity,    // Renommé (anciennement currentQuantity)
+        String productName,
+        int globalQuantity,
         int threshold,
         LocalDateTime occurredAt
 ) implements DomainEvent {

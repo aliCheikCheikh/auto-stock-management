@@ -90,7 +90,7 @@ class ReceiveStockUseCaseTest {
         transactionRunner = new TransactionRunner() {
             @Override
             public <T> T execute(Supplier<T> work) {
-                return work.get();   // exécute le travail, sans vraie transaction
+                return work.get();   // Run the work without a real transaction.
             }
         };
 

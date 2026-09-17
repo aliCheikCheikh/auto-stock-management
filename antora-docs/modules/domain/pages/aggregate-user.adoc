@@ -1,14 +1,17 @@
-= Agrégat User
+= User aggregate
 :toc: left
 :icons: font
 
-== Rôle
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Le `User` représente un utilisateur du système.
-Au départ, il y a deux utilisateurs (le propriétaire et son frère).
-Le modèle est prévu pour évoluer vers le multi-utilisateurs.
+== Responsibility
 
-== Diagramme
+`User` represents a system user. The initial setup has an owner and another seller; the model supports additional users.
+
+== Diagram
 
 [plantuml]
 ----
@@ -41,37 +44,30 @@ User *-- UserRole
 @enduml
 ----
 
-== Attributs
+== Attributes
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `userId`
-| `UserId` (Value Object)
-| Identifiant unique.
+| `UserId`
+| Unique identifier.
 
 | `name`
 | `String`
-| Nom de l'utilisateur.
+| User name.
 
 | `role`
-| `UserRole` (Enum)
-| Rôle dans le système : `OWNER` (propriétaire) ou `SELLER` (vendeur).
+| `UserRole`
+| System role: `OWNER` or `SELLER`.
 |===
 
-== Invariants
+== Invariant
 
-[cols="1,3"]
-|===
-| Invariant | Description
+A user must have a nonempty `name`.
 
-| `name` non vide
-| Un utilisateur doit avoir un nom.
-|===
+== Authentication boundary
 
-== Note sur l'authentification
-
-L'authentification (mot de passe, session, etc.) n'est **pas** dans le domaine.
-Elle relève de l'infrastructure (adaptateur d'authentification dans l'architecture hexagonale).
-Le `User` du domaine est un concept métier : "qui a fait cette vente ?", "qui a enregistré ce mouvement ?".
+In this domain design, authentication concerns such as passwords and sessions belong to the infrastructure authentication adapter.
+The domain user identifies who recorded a sale or stock movement.

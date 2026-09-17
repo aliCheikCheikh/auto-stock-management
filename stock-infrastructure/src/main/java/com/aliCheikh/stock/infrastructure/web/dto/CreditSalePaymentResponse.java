@@ -3,12 +3,7 @@ package com.aliCheikh.stock.infrastructure.web.dto;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Un encaissement de l'échéancier.
- *
- * @param receivedByName {@code null} si le compte de l'encaisseur a disparu ; le front affiche
- *                       alors un repli neutre plutôt qu'un vide
- */
+/** Payment response. {@code receivedByName} is null if the receiver account no longer exists. */
 public record CreditSalePaymentResponse(UUID paymentId,
                                         MoneyResponse amount,
                                         LocalDateTime receivedAt,

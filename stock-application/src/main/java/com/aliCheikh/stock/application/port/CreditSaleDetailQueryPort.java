@@ -6,16 +6,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Lecture du détail d'une vente à crédit.
- *
- * <p>Port de <b>requête</b> : on assemble un modèle d'affichage — produits nommés, vendeur nommé,
- * encaissements — sans reconstruire l'agrégat, qui ne porte que des identifiants.</p>
+ * Reads credit sale details with product names, seller details and payments without rebuilding the
+ * aggregate.
  */
 public interface CreditSaleDetailQueryPort {
 
-    /**
-     * @return le détail, ou vide si la vente n'existe pas <b>ou</b> n'a pas de client. Une vente au
-     * comptant n'est pas une créance : elle n'a rien à faire sur cet écran.
-     */
+    /** @return the details, or empty if the sale does not exist or has no customer */
     Optional<CreditSaleDetailView> findCreditSaleDetail(UUID saleId);
 }

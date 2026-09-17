@@ -1,178 +1,123 @@
-= Règles métier et invariants
+= Business rules and invariants
 :toc: left
 :icons: font
 
-== Invariants par agrégat
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-=== Product
+== Aggregate invariants
 
-[cols="1,2,1"]
+[cols="1,1,1"]
 |===
-| Règle | Description | Conséquence si violée
+| Rule | Description | On violation
 
 | R-PROD-01
-| Le nom ne peut pas être vide
-| Rejet de la création/modification
+| Product name is nonempty.
+| Reject creation/update.
 
 | R-PROD-02
-| La référence est unique dans le catalogue
-| Rejet de la création (vérifié au Repository)
+| Product reference is unique in the catalog.
+| Repository rejects creation.
 
 | R-PROD-03
-| Le seuil d'alerte global ≥ 0
-| Rejet de la modification
+| Global alert threshold ≥ 0.
+| Reject update.
 
 | R-PROD-04
-| Le prix unitaire > 0
-| Rejet de la création/modification
-|===
-
-=== StorageLocation
-
-[cols="1,2,1"]
-|===
-| Règle | Description | Conséquence si violée
+| Unit price > 0.
+| Reject creation/update.
 
 | R-LOC-01
-| **La quantité d'un StockLevel ≥ 0**
-| `InsufficientStockException`
+| StockLevel quantity ≥ 0.
+| `InsufficientStockException`.
 
 | R-LOC-02
-| Le libellé ne peut pas être vide
-| Rejet de la création
+| Location label is nonempty.
+| Reject creation.
 
 | R-LOC-03
-| L'indicateur magasin bas ≥ 0
-| Rejet de la modification
-|===
-
-=== StockMovement
-
-[cols="1,2,1"]
-|===
-| Règle | Description | Conséquence si violée
+| Shop-floor low-stock indicator ≥ 0.
+| Reject update.
 
 | R-MOV-01
-| La quantité > 0
-| Rejet de la création
+| Movement quantity > 0.
+| Reject creation.
 
 | R-MOV-02
-| ENTRY : source = null, destination obligatoire
-| `InvalidMovementException`
+| ENTRY: source is null; destination is required.
+| `InvalidMovementException`.
 
 | R-MOV-03
-| EXIT : source obligatoire, destination = null
-| `InvalidMovementException`
+| EXIT: source is required; destination is null.
+| `InvalidMovementException`.
 
 | R-MOV-04
-| TRANSFER : source et destination obligatoires et différentes
-| `InvalidMovementException`
+| TRANSFER: distinct source and destination are required.
+| `InvalidMovementException`.
 
 | R-MOV-05
-| Immuabilité : aucune modification après création
-| Pas de setter exposé
-|===
-
-=== Sale
-
-[cols="1,2,1"]
-|===
-| Règle | Description | Conséquence si violée
+| Movements cannot change after creation.
+| No setters exposed.
 
 | R-SALE-01
-| Au moins un SaleLineItem
-| Rejet de la création
+| At least one SaleLineItem.
+| Reject creation.
 
 | R-SALE-02
-| Quantité de chaque ligne > 0
-| Rejet de l'ajout de ligne
+| Each line quantity > 0.
+| Reject line creation.
 
 | R-SALE-03
-| Prix unitaire de chaque ligne > 0
-| Rejet de l'ajout de ligne
+| Each line unit price > 0.
+| Reject line creation.
 
 | R-SALE-04
-| totalAmount = somme des lineTotal
-| Recalculé automatiquement
+| totalAmount equals the sum of lineTotal values.
+| Calculated automatically.
 |===
 
-== Règles métier transverses
+== Cross-aggregate business rules
 
-=== Allocation de stock (vente)
-
-[cols="1,3"]
+[cols="1,1"]
 |===
-| Règle | Description
+| Rule | Description
 
 | R-ALLOC-01
-| Le magasin (`SHOP_FLOOR`) est toujours priorisé avant la réserve (`BACKSTOCK`).
+| Allocate from `SHOP_FLOOR` before `BACKSTOCK`.
 
 | R-ALLOC-02
-| Si le stock total (tous emplacements) est insuffisant, la vente est refusée.
+| Reject the sale if total stock across locations is insufficient.
 
 | R-ALLOC-03
-| L'allocation est proposée au vendeur, qui confirme avant exécution.
-|===
-
-=== Approvisionnement
-
-[cols="1,3"]
-|===
-| Règle | Description
+| Propose the allocation to the seller for confirmation before execution.
 
 | R-RECV-01
-| La répartition entre emplacements est décidée par l'utilisateur, pas par le système.
+| The user decides how received stock is distributed across locations.
 
 | R-RECV-02
-| Chaque entrée génère autant de mouvements que d'emplacements concernés.
+| Create one receipt movement per target location.
 
 | R-RECV-03
-| Si un produit n'existe pas, il doit être créé avant l'enregistrement de l'entrée.
-|===
-
-=== Alertes
-
-[cols="1,3"]
-|===
-| Règle | Description
+| Create an unknown product before recording its receipt.
 
 | R-ALERT-01
-| L'alerte critique (`LowStockAlert`) se déclenche quand le stock global < `minimumGlobalThreshold`.
+| Raise `LowStockAlert` when global stock < `minimumGlobalThreshold`.
 
 | R-ALERT-02
-| L'indicateur opérationnel (`ShopFloorLow`) se déclenche quand le stock magasin < `lowStockIndicator`.
+| Raise `ShopFloorLow` when shop-floor stock < `lowStockIndicator`.
 
 | R-ALERT-03
-| L'alerte critique est désactivée quand le stock global repasse au-dessus du seuil (`StockReplenished`).
+| Clear the critical alert when global stock rises above the threshold (`StockReplenished`).
 |===
 
-== Premiers tests TDD à écrire
+== Initial TDD test plan
 
-Les invariants ci-dessus sont les premiers candidats pour les tests unitaires.
-Voici l'ordre recommandé :
+The original test plan prioritizes these invariants:
 
-[source]
-----
-1. StorageLocation
-   - decreaseStock avec quantité suffisante → succès
-   - decreaseStock qui ferait passer sous zéro → InsufficientStockException
-   - increaseStock sur produit inexistant → crée le StockLevel
-
-2. StockMovement
-   - createEntry avec source non-null → InvalidMovementException
-   - createExit avec destination non-null → InvalidMovementException
-   - createTransfer avec source = destination → InvalidMovementException
-   - quantité ≤ 0 → rejet
-
-3. Sale
-   - Sale sans SaleLineItem → rejet
-   - totalAmount calculé correctement
-
-4. StockAllocationService
-   - allocation standard (magasin suffisant)
-   - allocation mixte (magasin + réserve)
-   - stock insuffisant → InsufficientStockException
-
-5. Product
-   - isGlobalStockBelowThreshold → true/false selon la quantité
-----
+. `StorageLocation`: successful decrease with sufficient stock; rejection below zero; creation of a missing stock level on increase.
+. `StockMovement`: reject ENTRY with a source, EXIT with a destination, TRANSFER with identical locations, and nonpositive quantities.
+. `Sale`: reject empty sales and calculate the correct total.
+. `StockAllocationService`: shop-floor-only allocation, mixed shop-floor/backstock allocation, and insufficient-stock rejection.
+. `Product`: check `isGlobalStockBelowThreshold` on both sides of the threshold.

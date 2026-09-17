@@ -104,7 +104,7 @@ class StockMovementControllerTest {
                 .andExpect(jsonPath("$.content[0].locationId").value(sourceLocationId.toString()))
                 .andExpect(jsonPath("$.content[0].destinationLocationId").value(destinationLocationId.toString()))
                 .andExpect(jsonPath("$.content[0].type").value("TRANSFER"))
-                // L'utilisateur attend un nom, pas un identifiant : « c'est Ahmat qui a fait ça ».
+                // Expose the author's display name.
                 .andExpect(jsonPath("$.content[0].executedByName").value("Ahmat"))
                 .andExpect(jsonPath("$.content[0].operationId").isNotEmpty())
                 .andExpect(jsonPath("$.content[0].quantity").value(5))
@@ -130,11 +130,7 @@ class StockMovementControllerTest {
         assertThat(query.to()).isNull();
     }
 
-    /**
-     * « Cette vente, elle a été payée ou pas ? » — l'historique doit répondre sans quitter l'écran.
-     * Le solde restant porte l'information : zéro signifie réglée, une valeur positive signifie à
-     * crédit. Un booléen supplémentaire n'apporterait rien et pourrait le contredire.
-     */
+    /** Movement history exposes the sale balance: zero when settled, positive when outstanding. */
     @Test
     void should_expose_the_remaining_balance_of_the_sale_behind_a_movement() throws Exception {
         UUID saleId = UUID.randomUUID();
@@ -160,7 +156,7 @@ class StockMovementControllerTest {
                 .andExpect(jsonPath("$.content[0].saleAmountDue.amount").value("0"));
     }
 
-    /** Une réception ou un transfert ne naît d'aucune vente : aucun solde à annoncer. */
+    /** Receipts and transfers have no sale balance. */
     @Test
     void should_omit_the_balance_when_the_movement_is_not_a_sale() throws Exception {
         given(listStockMovementsUseCase.execute(any(ListStockMovementsQuery.class)))

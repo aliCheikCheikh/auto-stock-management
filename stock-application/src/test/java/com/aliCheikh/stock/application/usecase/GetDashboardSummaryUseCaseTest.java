@@ -51,7 +51,7 @@ class GetDashboardSummaryUseCaseTest {
         verify(dashboardQueryPort).load(captor.capture());
         DashboardQueryCriteria criteria = captor.getValue();
 
-        // Il est encore le 5 août en UTC, mais déjà le 6 à N'Djamena.
+        // It is still August 5 in UTC but already August 6 in N'Djamena.
         assertThat(result.generatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 6, 0, 30));
         assertThat(criteria.todayStart()).isEqualTo(LocalDateTime.of(2026, 8, 6, 0, 0));
         assertThat(criteria.tomorrowStart()).isEqualTo(LocalDateTime.of(2026, 8, 7, 0, 0));

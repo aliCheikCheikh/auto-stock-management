@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/** Exécute les lignes choisies avec une transaction et une preuve d'idempotence durables par ligne. */
+/** Executes selected rows with a separate transaction and durable idempotency record for each row. */
 public class ExecuteStockReceiptImportUseCase {
 
     private final PrepareStockReceiptImportUseCase prepareUseCase;

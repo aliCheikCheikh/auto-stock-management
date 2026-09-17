@@ -66,10 +66,8 @@ public class SaleController {
     }
 
     /**
-     * Encaisse un remboursement sur une vente à crédit.
-     *
-     * <p>L'auteur de l'encaissement est déterminé par le serveur à partir du jeton, jamais fourni
-     * par le client : c'est une information de traçabilité sur de l'argent.</p>
+     * Records a payment using the authenticated user as its receiver, never a client-supplied
+     * identity.
      */
     @PostMapping("/{saleId}/payments")
     public ResponseEntity<PaymentResponse> recordPayment(@PathVariable UUID saleId,

@@ -25,10 +25,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Familles de pièces.
- *
- * <p>La lecture reste ouverte à tout utilisateur authentifié — le vendeur en a besoin pour classer
- * un produit — tandis que la création, le renommage et la suppression relèvent du patron.</p>
+ * Category endpoints. Authenticated users may read categories; only owners may create, rename or
+ * delete them.
  */
 @RestController
 @RequestMapping("/api/v1/categories")

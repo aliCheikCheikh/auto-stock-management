@@ -108,8 +108,7 @@ public class SellProductUseCase {
         List<SaleLineInput> saleLineInputs = new ArrayList<>();
         List<PreparedLine> preparedLines = prepareLines(command, locationsById, saleLineInputs);
 
-        // Un client référencé doit exister : sans ça, on créerait une créance rattachée
-        // à un client fantôme, donc irrécouvrable.
+        // Reject a customer reference that cannot identify an existing debtor.
         if (command.customerId() != null && customerRepository.findById(command.customerId()).isEmpty()) {
             throw new CustomerNotFoundException(command.customerId());
         }
@@ -126,8 +125,7 @@ public class SellProductUseCase {
         List<DomainEvent> eventsToPublish = new ArrayList<>();
         Set<ProductId> alertedProducts = new LinkedHashSet<>();
 
-        // Une vente peut puiser dans plusieurs emplacements et produire autant de sorties :
-        // toutes appartiennent à la même opération.
+        // All stock exits for this sale share the same operation ID.
         OperationId operationId = OperationId.generate();
 
         for (PreparedLine preparedLine : preparedLines) {

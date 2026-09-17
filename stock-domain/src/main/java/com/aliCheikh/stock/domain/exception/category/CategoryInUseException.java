@@ -3,12 +3,7 @@ package com.aliCheikh.stock.domain.exception.category;
 import com.aliCheikh.stock.domain.exception.DomainException;
 import com.aliCheikh.stock.domain.model.category.CategoryId;
 
-/**
- * Levée quand on tente de supprimer une catégorie encore rattachée à des produits.
- *
- * <p>Un produit appartient toujours à une famille : supprimer la catégorie laisserait des produits
- * sans rangement. Le patron doit d'abord les reclasser, ou simplement renommer la catégorie.</p>
- */
+/** Raised when deleting a category that still contains products. */
 public class CategoryInUseException extends DomainException {
 
     private final CategoryId categoryId;

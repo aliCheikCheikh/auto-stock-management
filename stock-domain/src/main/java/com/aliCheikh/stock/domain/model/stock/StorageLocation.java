@@ -20,7 +20,7 @@ public class StorageLocation {
     private final int lowStockIndicator;
     private final Map<ProductId, StockLevel> stockLevels = new HashMap<>();
 
-    // AJOUT : Mémoire interne des événements générés par l'agrégat
+    // Pending domain events raised by this aggregate.
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
     public StorageLocation(LocationId locationId, ShopId shopId, LocationType locationType, String label, int lowStockIndicator) {
@@ -79,7 +79,7 @@ public class StorageLocation {
         StockLevel newStockLevel = stockLevel.decrease(quantityToDecrease);
         stockLevels.put(productId, newStockLevel);
 
-        // AJOUT : Vérification et émission autonome de l'événement
+        // Raise an event when the location crosses its low-stock threshold.
         if (isShopFloorLow(productId)) {
             this.domainEvents.add(new ShopFloorLow(
                     productId,
@@ -116,7 +116,7 @@ public class StorageLocation {
         return getStockLevel(productId) < this.lowStockIndicator;
     }
 
-    // AJOUT : Récupérer et vider la liste des événements
+    // Drain pending domain events.
     public List<DomainEvent> pullEvents() {
         List<DomainEvent> events = new ArrayList<>(this.domainEvents);
         this.domainEvents.clear();

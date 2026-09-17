@@ -4,12 +4,7 @@ import com.aliCheikh.stock.domain.exception.category.InvalidCategoryNameExceptio
 
 import java.util.Objects;
 
-/**
- * Famille de pièces sous laquelle le magasin range ses produits.
- *
- * <p>Le nom est normalisé (espaces de bordure retirés) dès la construction : sans forme canonique,
- * « Freinage » et « Freinage  » cohabiteraient et l'unicité ne voudrait plus rien dire.</p>
- */
+/** Product category. Names are trimmed at construction before uniqueness checks. */
 public class Category {
 
     private final CategoryId categoryId;
@@ -20,17 +15,12 @@ public class Category {
         this.name = requireUsableName(name);
     }
 
-    /** Nouvelle catégorie créée par le patron. */
+    /** Creates a new category. */
     public static Category create(CategoryId categoryId, String name) {
         return new Category(categoryId, name);
     }
 
-    /**
-     * Renomme la catégorie.
-     *
-     * <p>Les produits la référencent par identité, jamais par son nom : un renommage ne rompt donc
-     * aucune association.</p>
-     */
+    /** Renames the category while preserving associations through its ID. */
     public void rename(String newName) {
         this.name = requireUsableName(newName);
     }

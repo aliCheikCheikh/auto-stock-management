@@ -42,7 +42,7 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UU
 
     boolean existsByName(String name);
 
-    /** Utilisé pour refuser la suppression d'une catégorie encore rattachée à des produits. */
+    /** Checks whether a category still contains products before deletion. */
     boolean existsByCategoryId(UUID categoryId);
 
     @Query("""

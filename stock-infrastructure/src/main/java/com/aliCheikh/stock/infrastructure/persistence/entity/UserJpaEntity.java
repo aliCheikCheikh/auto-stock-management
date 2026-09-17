@@ -38,9 +38,7 @@ public class UserJpaEntity {
     @Column(name = "password_temporary", nullable = false)
     private boolean passwordTemporary;
 
-    // Initialisé à true : tout nouveau compte naît actif. L'initialiseur s'exécute
-    // dans chaque constructeur (donc via withCredentials aussi), et Hibernate écrase
-    // avec la valeur de la base au chargement.
+    // New accounts start active; Hibernate replaces this value when loading persisted accounts.
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
@@ -75,7 +73,7 @@ public class UserJpaEntity {
         this.id = Objects.requireNonNull(id, "id cannot be null");
         this.displayName = Objects.requireNonNull(displayName, "displayName cannot be null");
         this.email = Objects.requireNonNull(email, "email cannot be null");
-        // Conservé pour la compatibilité du schéma historique ; l'identité de connexion est l'email.
+        // Retained for legacy schema compatibility; email is the login identity.
         this.username = email;
         this.role = Objects.requireNonNull(role, "role cannot be null");
         this.active = active;

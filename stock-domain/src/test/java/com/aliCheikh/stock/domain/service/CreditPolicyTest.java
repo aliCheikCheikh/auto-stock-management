@@ -17,7 +17,7 @@ public class CreditPolicyTest {
 
     @Test
     public void a_debt_is_not_overdue_on_the_threshold_day() {
-        // Exactement 30 jours : encore dans le délai toléré.
+        // Exactly 30 days is still within the allowed duration.
         assertThat(CreditPolicy.isOverdue(NOW.minusDays(CreditPolicy.OVERDUE_AFTER_DAYS), NOW)).isFalse();
     }
 
@@ -33,7 +33,7 @@ public class CreditPolicyTest {
 
     @Test
     public void a_sale_dated_in_the_future_owes_nothing_yet() {
-        // Décalage d'horloge : on ne veut pas d'ancienneté négative.
+        // Clock skew must not produce a negative age.
         assertThat(CreditPolicy.daysOutstanding(NOW.plusDays(3), NOW)).isZero();
     }
 
@@ -58,11 +58,7 @@ public class CreditPolicyTest {
         assertThat(CreditPolicy.wasSettledLate(sale, NOW)).isTrue();
     }
 
-    /**
-     * Le seuil est unique : une créance jugée en retard aujourd'hui et une créance réglée après
-     * la même durée relèvent du même dépassement. Deux seuils qui divergeraient un jour feraient
-     * dire à l'écran des créances et à l'historique deux choses contradictoires sur la même vente.
-     */
+    /** Outstanding and settled debts use the same overdue threshold. */
     @Test
     public void both_readings_of_the_delay_share_one_threshold() {
         LocalDateTime sale = NOW.minusDays(CreditPolicy.OVERDUE_AFTER_DAYS + 1);
@@ -73,7 +69,7 @@ public class CreditPolicyTest {
                 .isEqualTo(CreditPolicy.daysOutstanding(sale, NOW));
     }
 
-    /** Un règlement horodaté avant la vente ne doit pas produire une durée négative. */
+    /** A settlement before the sale timestamp must not produce a negative duration. */
     @Test
     public void a_settlement_dated_before_the_sale_takes_no_time_at_all() {
         assertThat(CreditPolicy.daysToSettle(NOW, NOW.minusDays(3))).isZero();

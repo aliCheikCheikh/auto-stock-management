@@ -9,14 +9,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Demande de vente.
- *
- * <p>{@code customerId} et {@code amountPaid} sont facultatifs et portent la vente à crédit :</p>
- * <ul>
- *     <li>tous deux {@code null} → vente au comptant, intégralement payée, sans client ;</li>
- *     <li>{@code amountPaid} renseigné et inférieur au total → créance, et {@code customerId}
- *         devient obligatoire (règle portée par l'agrégat {@code Sale}).</li>
- * </ul>
+ * Sale request. Null {@code customerId} and {@code amountPaid} mean a fully paid cash sale. A
+ * payment below the total requires a customer, as enforced by {@code Sale}.
  */
 public record SellProductCommand(UserId sellerId,
                                  ShopId shopId,
@@ -33,7 +27,7 @@ public record SellProductCommand(UserId sellerId,
         }
     }
 
-    /** Vente au comptant : conserve la signature antérieure aux créances. */
+    /** Convenience constructor for a fully paid cash sale. */
     public SellProductCommand(UserId sellerId, ShopId shopId, List<SellLineCommand> lines) {
         this(sellerId, shopId, lines, null, null);
     }

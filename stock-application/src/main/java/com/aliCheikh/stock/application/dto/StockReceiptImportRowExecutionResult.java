@@ -62,7 +62,7 @@ public record StockReceiptImportRowExecutionResult(
                 List.of(new StockReceiptImportIssue(
                         "ligne",
                         StockReceiptImportIssueCode.EXECUTION_FAILED,
-                        "Cette ligne n'a pas pu être importée. Réessayez après une nouvelle prévisualisation."
+                        "This row could not be imported. Generate a new preview before retrying."
                 )));
     }
 

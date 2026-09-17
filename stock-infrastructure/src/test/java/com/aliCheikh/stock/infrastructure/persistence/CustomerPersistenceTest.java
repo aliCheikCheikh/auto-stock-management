@@ -68,7 +68,7 @@ class CustomerPersistenceTest {
         assertThat(reloaded).isPresent();
         assertThat(reloaded.get().getGivenName()).isEqualTo("Ahmat");
         assertThat(reloaded.get().getFatherName()).contains("Youssouf");
-        // Le téléphone est relu sous sa forme canonique, l'email en minuscules.
+        // Phone and email are read back in canonical form.
         assertThat(reloaded.get().getPhoneNumber()).isEqualTo(PhoneNumber.of("66 12 34 56"));
         assertThat(reloaded.get().getEmail()).contains("ahmat@example.com");
     }
@@ -78,13 +78,12 @@ class CustomerPersistenceTest {
         customerRepository.save(Customer.create(
                 CustomerId.generate(), PhoneNumber.of("66 12 34 56"), "Ahmat", null, null));
 
-        // Même numéro, écrit autrement : après normalisation, c'est un doublon.
+        // Different formats of the same phone number are duplicates after normalization.
         Customer duplicate = Customer.create(
                 CustomerId.generate(), PhoneNumber.of("+235 66 12 34 56"), "Moussa", null, null);
 
-        // L'adapter traduit la violation de contrainte en exception métier : c'est ce qui permet
-        // de répondre 409 plutôt que 500 lorsque deux créations concurrentes franchissent le
-        // contrôle d'unicité préalable.
+        // Constraint violations become domain conflicts, including concurrent registrations that
+        // pass the initial uniqueness check.
         assertThatThrownBy(() -> customerRepository.save(duplicate))
                 .isInstanceOf(DuplicatePhoneNumberException.class)
                 .hasMessageContaining("+23566123456");
@@ -92,8 +91,7 @@ class CustomerPersistenceTest {
 
     @Test
     void should_allow_several_customers_without_email() {
-        // Cas courant au Tchad : c'est ce que la contrainte UNIQUE doit tolérer,
-        // les NULL étant distincts entre eux en PostgreSQL.
+        // PostgreSQL UNIQUE constraints allow multiple null values for optional email addresses.
         customerRepository.save(Customer.create(
                 CustomerId.generate(), PhoneNumber.of("66 12 34 56"), "Ahmat", null, null));
         customerRepository.save(Customer.create(
@@ -111,7 +109,7 @@ class CustomerPersistenceTest {
                 CustomerId.generate(), PhoneNumber.of("0023566123456"), "Ahmat", null, null));
         entityManager.flush();
 
-        // Saisi dans un format différent, le numéro reste le même une fois normalisé.
+        // Different phone formats normalize to the same value.
         assertThat(customerRepository.existsByPhoneNumber(PhoneNumber.of("66 12 34 56"))).isTrue();
     }
 }

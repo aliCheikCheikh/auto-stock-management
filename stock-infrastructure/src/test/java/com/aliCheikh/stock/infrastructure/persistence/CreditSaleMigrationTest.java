@@ -18,11 +18,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Vérifie la migration V12 contre une base <b>déjà peuplée</b>.
- *
- * <p>Un test qui part d'une base vide ne prouverait rien : l'étape de remplissage ne toucherait
- * aucune ligne, et le passage en NOT NULL réussirait quelle que soit sa correction. On rejoue donc
- * les migrations jusqu'à V11, on insère une vente « ancienne », puis on applique V12.</p>
+ * Applies V12 to a populated V11 database to verify backfilling existing sales before adding NOT
+ * NULL constraints.
  */
 @Testcontainers
 class CreditSaleMigrationTest {
@@ -47,8 +44,7 @@ class CreditSaleMigrationTest {
         UUID saleId = UUID.randomUUID();
         insertLegacySale(saleId);
 
-        // WHEN : on applique V12 sur une base qui contient déjà une vente.
-        // La cible est épinglée : V13 supprime amount_paid, ce test porte sur son remplissage.
+        // Pin the target to V12: V13 removes amount_paid, while this test verifies its backfill.
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
@@ -56,7 +52,7 @@ class CreditSaleMigrationTest {
                 .load()
                 .migrate();
 
-        // THEN : la vente historique est considérée payée comptant, sans client
+        // Legacy sales are treated as fully paid without a customer.
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(
                      "SELECT amount_paid, amount_paid_currency, customer_id FROM sale WHERE id = ?")) {

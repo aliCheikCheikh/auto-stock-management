@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** Un encaissement et l'auteur qui l'a reçu. */
+/** Payment and the user who received it. */
 public interface CreditSalePaymentProjection {
 
     UUID getPaymentId();

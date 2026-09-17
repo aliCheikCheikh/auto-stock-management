@@ -46,11 +46,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Les trois lectures des créances, depuis la base.
- *
- * <p>Ce que seul PostgreSQL peut démentir : que le filtre par statut retienne les bonnes ventes,
- * que l'ordre soit celui promis, que le comptage d'une requête agrégée ne compte pas les
- * encaissements au lieu des ventes, et qu'un client nul ne fasse pas échouer le {@code CAST}.</p>
+ * Verifies PostgreSQL debt status filters, ordering, aggregated sale counts and nullable customer
+ * parameters.
  */
 @DataJpaTest
 @Testcontainers
@@ -60,7 +57,7 @@ class DebtQueryPersistenceTest {
 
     private static final Currency XAF = Currency.getInstance("XAF");
 
-    /** Dates figées : l'ordre attendu ne doit pas dépendre de l'instant où le test tourne. */
+    /** Fixed timestamps keep ordering independent of the test execution time. */
     private static final LocalDateTime REFERENCE = LocalDateTime.of(2026, 7, 28, 12, 0);
 
     @Container
@@ -126,22 +123,22 @@ class DebtQueryPersistenceTest {
                 fatimeId.getValue(), "Fatimé", "Abakar", "+23566654321", null));
         flushAndClear();
 
-        // Vieille créance partiellement remboursée : 200 000 dus, 50 000 versés.
+        // Older debt: total 200,000, amount paid 50,000.
         oldUnpaidByMoussa = saveSale(REFERENCE.minusDays(60), moussaId, 20,
                 payment("50000", REFERENCE.minusDays(55)));
 
-        // Soldée il y a longtemps.
+        // An older settlement.
         settledLongAgoByMoussa = saveSale(REFERENCE.minusDays(30), moussaId, 10,
                 payment("100000", REFERENCE.minusDays(25)));
 
-        // Emportée sans le moindre versement : aucune ligne dans le ledger.
+        // No initial payment or ledger entry.
         neverPaidByFatime = saveSale(REFERENCE.minusDays(10), fatimeId, 8);
 
-        // Soldée tout récemment.
+        // A recent settlement.
         recentlySettledByFatime = saveSale(REFERENCE.minusDays(5), fatimeId, 4,
                 payment("40000", REFERENCE.minusDays(2)));
 
-        // Vente au comptant : sans client, elle n'est jamais une créance.
+        // Cash sales without customers are excluded from debts.
         saveSale(REFERENCE.minusDays(1), null, 2, payment("20000", REFERENCE.minusDays(1)));
 
         flushAndClear();
@@ -151,7 +148,7 @@ class DebtQueryPersistenceTest {
     void should_list_open_debts_from_the_oldest_to_the_most_recent() {
         PageResult<DebtView> page = find(DebtStatus.OUTSTANDING, null, 0, 20);
 
-        // La plus ancienne d'abord : c'est celle qu'on relance.
+        // Oldest outstanding debt first.
         assertThat(page.content()).extracting(DebtView::saleId)
                 .containsExactly(oldUnpaidByMoussa.getValue(), neverPaidByFatime.getValue());
         assertThat(page.totalElements()).isEqualTo(2);
@@ -163,14 +160,14 @@ class DebtQueryPersistenceTest {
         assertThat(oldest.lastPaymentAt()).isEqualTo(REFERENCE.minusDays(55));
         assertThat(oldest.customerGivenName()).isEqualTo("Moussa");
 
-        // Jamais rien versé : pas de dernier encaissement, et la créance reste visible.
+        // A debt with no payments remains visible with no latest-payment timestamp.
         DebtView neverPaid = page.content().get(1);
         assertThat(neverPaid.lastPaymentAt()).isNull();
         assertThat(neverPaid.amountPaid()).isEqualTo(xaf("0"));
         assertThat(neverPaid.amountDue()).isEqualTo(xaf("80000"));
     }
 
-    /** C'est la demande du patron : une créance payée ne doit pas s'évaporer. */
+    /** Settled debts remain in history. */
     @Test
     void should_keep_settled_debts_readable_from_the_latest_settlement() {
         PageResult<DebtView> page = find(DebtStatus.SETTLED, null, 0, 20);
@@ -181,7 +178,7 @@ class DebtQueryPersistenceTest {
 
         DebtView latest = page.content().get(0);
         assertThat(latest.amountDue()).isEqualTo(xaf("0"));
-        // La date qui compte sur cet écran : celle du règlement, pas celle de la vente.
+        // Order by settlement date rather than sale date.
         assertThat(latest.lastPaymentAt()).isEqualTo(REFERENCE.minusDays(2));
     }
 
@@ -195,7 +192,7 @@ class DebtQueryPersistenceTest {
                         neverPaidByFatime.getValue(),
                         settledLongAgoByMoussa.getValue(),
                         oldUnpaidByMoussa.getValue());
-        // La vente au comptant n'y figure pas : elle n'a jamais été une créance.
+        // Cash sales without customers remain excluded.
         assertThat(page.totalElements()).isEqualTo(4);
     }
 
@@ -214,10 +211,7 @@ class DebtQueryPersistenceTest {
                 .containsExactly(neverPaidByFatime.getValue());
     }
 
-    /**
-     * Le comptage porte sur une requête agrégée. Compté naïvement, il aurait renvoyé le nombre de
-     * lignes de paiement au lieu du nombre de ventes — et l'écran aurait annoncé des pages vides.
-     */
+    /** Count aggregated sales rather than payment rows to preserve pagination totals. */
     @Test
     void should_count_sales_and_not_payments_when_paginating() {
         PageResult<DebtView> firstPage = find(DebtStatus.ALL, null, 0, 2);
@@ -233,7 +227,7 @@ class DebtQueryPersistenceTest {
                 .containsExactly(settledLongAgoByMoussa.getValue(), oldUnpaidByMoussa.getValue());
         assertThat(secondPage.totalElements()).isEqualTo(4);
 
-        // Aucune vente n'est lue deux fois d'une page à l'autre.
+        // Pages must not overlap.
         assertThat(firstPage.content()).extracting(DebtView::saleId)
                 .doesNotContainAnyElementsOf(
                         secondPage.content().stream().map(DebtView::saleId).toList());

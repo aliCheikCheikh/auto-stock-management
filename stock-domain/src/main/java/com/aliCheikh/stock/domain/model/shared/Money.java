@@ -20,7 +20,7 @@ public final class Money {
         return new Money(amount, currency);
     }
 
-    /** Montant nul dans une devise donnée : le neutre d'une somme vide. */
+    /** Zero amount in the given currency, used as the identity for summation. */
     public static Money zero(Currency currency) {
         return new Money(BigDecimal.ZERO, currency);
     }
@@ -77,8 +77,7 @@ public final class Money {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Money money = (Money) o;
-        // Attention : Pour BigDecimal, on utilise compareTo plutôt que equals
-        // pour que 10.0 soit égal à 10.00
+        // BigDecimal.compareTo treats 10.0 and 10.00 as equal.
         return amount.compareTo(money.amount) == 0 && currency.equals(money.currency);
     }
 
@@ -89,8 +88,7 @@ public final class Money {
 
     @Override
     public String toString() {
-        // Forme lisible dans les logs et les messages d'exception : "50000 XAF".
-        // toPlainString() évite la notation scientifique (5E+4) sur les gros montants.
+        // Use plain decimal notation for readable monetary amounts.
         return amount.toPlainString() + " " + currency.getCurrencyCode();
     }
 

@@ -7,7 +7,7 @@ public final class InvalidUserEmailException extends DomainException {
     private final String invalidEmail;
 
     public InvalidUserEmailException(String invalidEmail) {
-        super("L'adresse email de l'utilisateur n'est pas valide.");
+        super("User email address is invalid.");
         this.invalidEmail = invalidEmail;
     }
 

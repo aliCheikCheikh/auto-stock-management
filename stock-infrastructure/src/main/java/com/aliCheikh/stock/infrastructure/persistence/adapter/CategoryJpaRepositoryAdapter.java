@@ -41,11 +41,8 @@ public class CategoryJpaRepositoryAdapter implements CategoryRepository {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Le contrôle d'unicité effectué en amont ne protège pas de deux créations simultanées :
-     * l'index en base tranche alors, et l'erreur technique est traduite ici en erreur métier — sans
-     * quoi l'appelant recevrait un 500 au lieu d'un 409.</p>
+     * Translates concurrent uniqueness violations into domain conflicts. The preliminary lookup
+     * alone cannot prevent concurrent duplicates.
      */
     @Override
     public void save(Category category) {

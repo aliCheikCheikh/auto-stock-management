@@ -51,10 +51,9 @@ import static org.assertj.core.api.Assertions.within;
 @Import({SaleJpaRepositoryAdapter.class,
         SaleJpaMapper.class,
         SaleQueryJpaAdapter.class,
-        // L'adapter de lecture nomme désormais le vendeur : sans ce
-        // collaborateur, le contexte de la tranche ne démarre pas.
+        // The read adapter requires the seller-name resolver in this test slice.
         UserDisplayNameResolver.class,
-        // Idem pour le solde restant dû, que l'historique porte désormais.
+        // The read adapter also requires the balance resolver.
         SaleSettlementResolver.class})
 public class SaleQueryPersistenceTest {
 
@@ -156,7 +155,7 @@ public class SaleQueryPersistenceTest {
 
         SaleView view = result.content().get(0);
         assertThat(view.saleId()).isEqualTo(sale.getSaleId());
-        // Vente réglée au comptoir : le solde est nul, l'écran dira « Payée ».
+        // A fully paid sale has a zero balance.
         assertThat(view.amountDue().getAmount()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(view.sellerId()).isEqualTo(sellerId);
         assertThat(view.lines()).hasSize(2);

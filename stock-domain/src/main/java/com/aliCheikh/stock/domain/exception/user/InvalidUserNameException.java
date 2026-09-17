@@ -6,8 +6,8 @@ public class InvalidUserNameException extends DomainException {
     private final String invalidUserName;
 
     public InvalidUserNameException(String userName, int maximumLength) {
-        super("Le nom affiché d'un utilisateur est obligatoire et ne peut pas dépasser "
-                + maximumLength + " caractères.");
+        super("User display name is required and must not exceed "
+                + maximumLength + " characters.");
         this.invalidUserName = userName;
     }
 

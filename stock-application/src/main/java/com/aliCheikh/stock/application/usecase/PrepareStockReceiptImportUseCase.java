@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 import static com.aliCheikh.stock.application.service.StockReceiptImportNormalizer.normalizeKey;
 
-/** Orchestre une prévisualisation sans créer de produit et sans modifier le stock. */
+/** Previews an import without creating products or changing stock. */
 public class PrepareStockReceiptImportUseCase {
 
     private final StockReceiptImportReader reader;

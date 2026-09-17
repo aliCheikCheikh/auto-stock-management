@@ -99,8 +99,8 @@ class ProductSearchPersistenceTest {
 
     @Test
     void should_find_products_from_a_very_short_reference_fragment() {
-        // "flt" est trop court pour l'opérateur % (score dilué), mais doit remonter
-        // par contenance (ILIKE) sur les références FLT-*.
+        // Short reference fragments must match through ILIKE even when trigram similarity is too
+        // low.
         List<ProductSearchView> results = searchAdapter.findProductsByKeyword("flt", LIMIT);
 
         assertThat(results)
@@ -110,7 +110,7 @@ class ProductSearchPersistenceTest {
 
     @Test
     void should_only_return_active_products() {
-        // "Filtre à gasoil" existe mais est inactif -> ne doit jamais remonter
+        // Inactive products must remain excluded.
         List<ProductSearchView> results = searchAdapter.findProductsByKeyword("gasoil", LIMIT);
 
         assertThat(results)
@@ -128,7 +128,7 @@ class ProductSearchPersistenceTest {
 
     @Test
     void should_respect_the_limit() {
-        // "filtre" matche les deux filtres actifs ; avec une limite de 1, on n'en veut qu'un
+        // The result limit applies even when multiple active products match.
         List<ProductSearchView> results = searchAdapter.findProductsByKeyword("filtre", 1);
 
         assertThat(results).hasSize(1);

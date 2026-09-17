@@ -1,0 +1,3 @@
+reference;nom_produit;categorie;prix_unitaire_xaf;seuil_alerte;quantite_surface;quantite_reserve
+DEMO-FILTRE-001;Filtre de démonstration;Filtration;5000;5;8;12
+DEMO-FREIN-001;Plaquette de démonstration;Freinage;12000;4;6;10

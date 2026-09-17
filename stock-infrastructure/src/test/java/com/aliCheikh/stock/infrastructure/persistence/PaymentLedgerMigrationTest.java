@@ -18,12 +18,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Vérifie la migration V13 contre une base <b>déjà peuplée</b> de ventes.
- *
- * <p>C'est le seul scénario qui prouve quoi que ce soit : sur une base vide, la reprise de
- * l'acompte existant ne toucherait aucune ligne et réussirait quelle que soit sa correction.</p>
- */
+/** Applies V13 to existing sales to verify conversion of initial amounts into payment entries. */
 @Testcontainers
 class PaymentLedgerMigrationTest {
 
@@ -45,17 +40,17 @@ class PaymentLedgerMigrationTest {
 
         seedLegacyData(sellerId, customerId, cashSaleId, creditSaleId, unpaidSaleId);
 
-        // WHEN : V13 s'applique sur une base contenant déjà des ventes et leurs acomptes
+        // Apply V13 to sales with existing initial payments.
         migrateTo(null);
 
-        // THEN : chaque acompte est devenu un paiement, attribué au vendeur et daté de la vente
+        // Each initial payment retains the sale's seller and timestamp.
         assertThat(collectedFor(cashSaleId)).isEqualByComparingTo(new BigDecimal("50000.00"));
         assertThat(collectedFor(creditSaleId)).isEqualByComparingTo(new BigDecimal("20000.00"));
 
-        // Une vente sans acompte ne produit aucun paiement : on n'enregistre pas un non-versement.
+        // Zero initial amounts do not create payment entries.
         assertThat(paymentCountFor(unpaidSaleId)).isZero();
 
-        // La colonne agrégée a disparu : plus de seconde source de vérité.
+        // The aggregate amount column is removed in favor of the payment ledger.
         assertThat(columnExists("sale", "amount_paid")).isFalse();
         assertThat(columnExists("sale", "amount_paid_currency")).isFalse();
     }
@@ -95,11 +90,11 @@ class PaymentLedgerMigrationTest {
                     VALUES ('%s', 'Ahmat', '+23566123456')
                     """.formatted(customerId));
 
-            // Vente au comptant : acompte égal au total.
+            // Cash sale paid in full.
             statement.execute(insertSale(cashSaleId, sellerId, null, soldAt, "50000.00", "50000.00"));
-            // Vente à crédit avec acompte partiel.
+            // Credit sale with an initial payment.
             statement.execute(insertSale(creditSaleId, sellerId, customerId, soldAt, "75000.00", "20000.00"));
-            // Vente à crédit sans aucun versement.
+            // Credit sale without an initial payment.
             statement.execute(insertSale(unpaidSaleId, sellerId, customerId, soldAt, "30000.00", "0.00"));
         }
     }

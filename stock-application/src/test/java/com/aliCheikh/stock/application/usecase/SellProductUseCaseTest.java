@@ -224,8 +224,7 @@ class SellProductUseCaseTest {
         assertThat(movements).anySatisfy(movement ->
                 assertExitMovement(movement, productId, backstock.getLocationId(), 1, savedSale));
 
-        // Une vente puisant dans deux emplacements reste une seule opération : sinon l'historique
-        // afficherait deux ventes distinctes pour un seul passage en caisse.
+        // Stock exits from two locations belong to one sale operation.
         assertThat(movements).extracting(StockMovement::getOperationId)
                 .containsOnly(movements.get(0).getOperationId());
 

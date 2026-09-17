@@ -69,8 +69,7 @@ class StockReceiptControllerTest {
         acceptedAt = Instant.parse("2026-05-14T12:00:00Z");
     }
 
-    // Identité authentifiée telle que la pose JwtAuthenticationFilter : le
-    // principal est l'UUID de l'utilisateur.
+    // JwtAuthenticationFilter uses the user's UUID as the principal.
     private UsernamePasswordAuthenticationToken authenticatedAs(UUID userId) {
         return new UsernamePasswordAuthenticationToken(userId, null, List.of());
     }
@@ -162,15 +161,14 @@ class StockReceiptControllerTest {
         assertThat(command.newProductInfo().unitPrice().getCurrency()).isEqualTo(Currency.getInstance("EUR"));
     }
 
-    // ─── Sécurité de l'identité ────────────────────────────────────────────────
+    // Authenticated identity
 
     @Test
     void should_ignore_any_user_id_smuggled_in_the_body() throws Exception {
         givenUseCaseAccepts();
         UUID spoofedUserId = UUID.fromString("99999999-9999-9999-9999-999999999999");
 
-        // Un client malveillant glisse "userId" dans le corps. Le DTO ne le porte
-        // plus (champ supprimé) et l'identité vient du token : il doit être ignoré.
+        // Ignore client-supplied userId; the authenticated token determines the author.
         mockMvc.perform(post("/api/v1/stock-receipts")
                         .principal(authenticatedAs(authenticatedUserId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -188,7 +186,7 @@ class StockReceiptControllerTest {
 
         ReceiveStockCommand command = capturedCommand();
         assertThat(command.userId())
-                .as("l'identité doit venir du token, pas du corps")
+                .as("identity must come from the token, not the request body")
                 .isEqualTo(UserId.of(authenticatedUserId));
         assertThat(command.userId()).isNotEqualTo(UserId.of(spoofedUserId));
     }
@@ -215,7 +213,7 @@ class StockReceiptControllerTest {
         assertThat(capturedCommand().userId()).isEqualTo(UserId.of(anotherUserId));
     }
 
-    // ─── Validation (avant même d'atteindre le use case) ───────────────────────
+    // Request validation
 
     @Test
     void should_return_400_when_body_is_empty() throws Exception {

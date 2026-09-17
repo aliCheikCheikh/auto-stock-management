@@ -27,13 +27,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Parcours complet d'une vente à crédit, de la requête HTTP jusqu'à la base.
- *
- * <p>Chaque couche est déjà couverte séparément ; ce test vérifie ce qu'aucune d'elles ne peut
- * prouver seule : que l'assemblage tient. Il traverse le contrôleur, le use case, le domaine, les
- * mappers et une vraie PostgreSQL.</p>
- */
+/** Credit sale flow from HTTP through the application and domain layers to PostgreSQL. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
@@ -67,7 +61,7 @@ class CreditSaleEndToEndTest {
 
     @BeforeEach
     void seedShop() {
-        // Ordre imposé par les clés étrangères : les mouvements référencent la vente.
+        // Delete movements before sales to respect foreign keys.
         jdbcTemplate.update("DELETE FROM stock_movement");
         jdbcTemplate.update("DELETE FROM payment");
         jdbcTemplate.update("DELETE FROM sale_line");
@@ -81,8 +75,8 @@ class CreditSaleEndToEndTest {
         UUID categoryId = UUID.randomUUID();
         UUID locationId = UUID.randomUUID();
 
-        // password_temporary vaut TRUE par défaut : TemporaryPasswordFilter refuserait alors toute
-        // requête hors authentification. Ce vendeur est un compte déjà activé.
+        // Use an onboarded seller; the default temporary-password flag would block business
+        // requests.
         jdbcTemplate.update("""
                 INSERT INTO app_user (id, username, display_name, role, password_temporary, active)
                 VALUES (?, ?, 'Vendeur', 'SELLER', false, true)
@@ -129,7 +123,7 @@ class CreditSaleEndToEndTest {
     void a_credit_sale_can_be_recorded_then_settled_by_successive_payments() throws Exception {
         UUID customerId = createCustomer();
 
-        // 2 × 25 000 = 50 000, dont 20 000 versés au comptoir.
+        // Two items at 25,000 total 50,000, with 20,000 initially paid.
         String saleBody = mockMvc.perform(post("/api/v1/sales")
                         .with(authentication(seller()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -147,7 +141,7 @@ class CreditSaleEndToEndTest {
 
         UUID saleId = UUID.fromString(objectMapper.readTree(saleBody).get("saleId").asText());
 
-        // La créance apparaît telle quelle dans la vue du patron.
+        // The owner sees the outstanding debt.
         mockMvc.perform(get("/api/v1/debts").with(authentication(owner())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
@@ -155,7 +149,7 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.content[0].amountDue.amount").value("30000.00"))
                 .andExpect(jsonPath("$.content[0].settled").value(false));
 
-        // Premier remboursement : la dette diminue, elle ne disparaît pas.
+        // The first repayment reduces the debt without settling it.
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
                         .with(authentication(seller()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -164,7 +158,7 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.amountDue.amount").value("18000.00"))
                 .andExpect(jsonPath("$.settled").value(false));
 
-        // Second remboursement : la vente est soldée et sort de la liste des créances.
+        // The second repayment settles the sale.
         mockMvc.perform(post("/api/v1/sales/{saleId}/payments", saleId)
                         .with(authentication(seller()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -173,13 +167,13 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.amountDue.amount").value("0.00"))
                 .andExpect(jsonPath("$.settled").value(true));
 
-        // Elle quitte la liste des créances en cours...
+        // The sale leaves the outstanding list.
         mockMvc.perform(get("/api/v1/debts").with(authentication(owner())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty())
                 .andExpect(jsonPath("$.page.totalElements").value(0));
 
-        // ...sans disparaître pour autant. C'est ce que le patron reprochait au système.
+        // It remains accessible in settlement history.
         mockMvc.perform(get("/api/v1/debts")
                         .param("status", "SETTLED")
                         .with(authentication(owner())))
@@ -188,11 +182,11 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.content[0].settled").value(true))
                 .andExpect(jsonPath("$.content[0].amountDue.amount").value("0.00"))
                 .andExpect(jsonPath("$.content[0].settledAt").exists())
-                // Vendue et soldée le même jour : la créance n'a pas eu le temps de vieillir.
+                // Same-day settlement gives a debt age of zero.
                 .andExpect(jsonPath("$.content[0].daysOutstanding").value(0))
                 .andExpect(jsonPath("$.content[0].overdue").value(false));
 
-        // Les trois encaissements sont bien tracés en base, aucun n'a été écrasé.
+        // All three payments remain in the ledger.
         Integer payments = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM payment WHERE sale_id = ?", Integer.class, saleId);
         assertThat(payments).isEqualTo(3);
@@ -213,7 +207,7 @@ class CreditSaleEndToEndTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("CREDIT_SALE_REQUIRES_CUSTOMER"));
 
-        // Aucune vente n'a été enregistrée : le refus est total, pas partiel.
+        // The rejected request must not create a sale.
         Integer sales = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM sale", Integer.class);
         assertThat(sales).isZero();
     }
@@ -256,7 +250,7 @@ class CreditSaleEndToEndTest {
                 .andExpect(status().isForbidden());
     }
 
-    /** L'historique porte les mêmes données personnelles que la liste : même règle d'accès. */
+    /** Debt history requires the same access rights as the outstanding list. */
     @Test
     void a_seller_cannot_read_the_settled_debts_history() throws Exception {
         mockMvc.perform(get("/api/v1/debts")
@@ -266,11 +260,8 @@ class CreditSaleEndToEndTest {
     }
 
     /**
-     * L'historique d'un client sur sa fiche : ce qu'il doit encore, et ce qu'il a déjà réglé.
-     *
-     * <p>Les deux ventes sont créées dans le même ordre pour toutes les lectures, ce qui permet de
-     * vérifier que chaque statut retient bien la sienne — et que la pagination compte des ventes
-     * et non des encaissements.</p>
+     * Customer history filters outstanding and settled sales and counts sales rather than
+     * payments.
      */
     @Test
     void the_owner_can_read_what_a_customer_owes_and_what_he_already_repaid() throws Exception {
@@ -285,7 +276,7 @@ class CreditSaleEndToEndTest {
                         .content("{\"amount\": 25000}"))
                 .andExpect(status().isCreated());
 
-        // Par défaut, la fiche client montre ce qui reste dû.
+        // Customer history defaults to outstanding debts.
         mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
                         .with(authentication(owner())))
                 .andExpect(status().isOk())
@@ -293,7 +284,7 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.content[0].saleId").value(stillOwed.toString()))
                 .andExpect(jsonPath("$.content[0].amountDue.amount").value("50000.00"));
 
-        // L'historique de règlement du même client.
+        // Settled debts for the same customer.
         mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
                         .param("status", "SETTLED")
                         .with(authentication(owner())))
@@ -302,14 +293,14 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.content[0].saleId").value(repaid.toString()))
                 .andExpect(jsonPath("$.content[0].settledAt").exists());
 
-        // Les deux d'un seul tenant, et un comptage qui porte sur les ventes.
+        // Both statuses, with a count of sales.
         mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
                         .param("status", "ALL")
                         .with(authentication(owner())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page.totalElements").value(2));
 
-        // Une page d'un seul élément reste une page, pas une troncature silencieuse.
+        // A single-item page retains pagination metadata.
         mockMvc.perform(get("/api/v1/customers/{customerId}/debts", customerId)
                         .param("status", "ALL")
                         .param("size", "1")
@@ -338,12 +329,7 @@ class CreditSaleEndToEndTest {
         return UUID.fromString(objectMapper.readTree(body).get("saleId").asText());
     }
 
-    /**
-     * Le détail d'une créance vit sous {@code /debts} précisément pour hériter de cette règle sans
-     * ligne de configuration supplémentaire. Tant que rien ne le vérifie, l'argument n'est qu'une
-     * intention : un jour où {@code /debts/**} redeviendrait {@code /debts}, la route exposerait le
-     * nom et le téléphone du client à tout le personnel, en silence.
-     */
+    /** Debt details must inherit the owner-only /debts/** authorization rule. */
     @Test
     void a_seller_cannot_read_the_detail_of_a_debt() throws Exception {
         mockMvc.perform(get("/api/v1/debts/{saleId}", UUID.randomUUID())
@@ -351,15 +337,12 @@ class CreditSaleEndToEndTest {
                 .andExpect(status().isForbidden());
     }
 
-    /**
-     * Le parcours que réclamait le patron : depuis la liste des créances, ouvrir une vente et voir
-     * quels produits ont été vendus, par qui, quand, ce qui a été versé et ce qui reste.
-     */
+    /** Credit sale details include products, seller, customer, payments and balance. */
     @Test
     void the_owner_can_open_a_debt_and_see_what_was_sold_and_what_remains() throws Exception {
         UUID customerId = createCustomer();
 
-        // 3 × 25 000 = 75 000, dont 25 000 versés au comptoir : il reste 50 000.
+        // Three items at 25,000 total 75,000, with 25,000 paid and 50,000 due.
         String saleBody = mockMvc.perform(post("/api/v1/sales")
                         .with(authentication(seller()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -378,31 +361,31 @@ class CreditSaleEndToEndTest {
 
         mockMvc.perform(get("/api/v1/debts/{saleId}", saleId).with(authentication(owner())))
                 .andExpect(status().isOk())
-                // « Quel produit, en quelle quantité ? » — nommé, pas un identifiant.
+                // Product names and quantities.
                 .andExpect(jsonPath("$.lines[0].productName").value("Plaquettes " + productId))
                 .andExpect(jsonPath("$.lines[0].quantity").value(3))
                 .andExpect(jsonPath("$.lines[0].lineTotal.amount").value("75000.00"))
-                // « Vendu par qui, à qui, quand ? »
+                // Seller, customer and sale timestamp.
                 .andExpect(jsonPath("$.sellerName").value("Vendeur"))
                 .andExpect(jsonPath("$.customerGivenName").value("Ahmat"))
                 .andExpect(jsonPath("$.occurredAt").exists())
-                // « Combien versé, combien reste-t-il ? »
+                // Payments and remaining balance.
                 .andExpect(jsonPath("$.amountPaid.amount").value("25000.00"))
                 .andExpect(jsonPath("$.amountDue.amount").value("50000.00"))
                 .andExpect(jsonPath("$.settled").value(false))
-                // L'acompte du comptoir ouvre l'échéancier, avec le nom de qui l'a reçu.
+                // The initial payment includes its receiver's name.
                 .andExpect(jsonPath("$.payments.length()").value(1))
                 .andExpect(jsonPath("$.payments[0].amount.amount").value("25000.00"))
                 .andExpect(jsonPath("$.payments[0].receivedByName").value("Vendeur"));
 
-        // Et l'historique des mouvements annonce la même chose, sans quitter l'écran.
+        // Movement history exposes the same settlement state.
         mockMvc.perform(get("/api/v1/stock-movements").with(authentication(owner())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))
                 .andExpect(jsonPath("$.content[0].saleAmountDue.amount").value("50000.00"));
     }
 
-    /** Une créance soldée reste consultable : c'est la preuve du règlement, pas un déchet. */
+    /** Settled debt details remain accessible as payment history. */
     @Test
     void the_detail_of_a_debt_survives_its_settlement() throws Exception {
         UUID customerId = createCustomer();
@@ -423,7 +406,7 @@ class CreditSaleEndToEndTest {
 
         UUID saleId = UUID.fromString(objectMapper.readTree(saleBody).get("saleId").asText());
 
-        // Rien n'a été versé au comptoir : la créance porte le total, et le ledger est vide.
+        // No initial payment: the ledger is empty and the full total is due.
         mockMvc.perform(get("/api/v1/debts/{saleId}", saleId).with(authentication(owner())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.amountDue.amount").value("25000.00"))
@@ -435,7 +418,7 @@ class CreditSaleEndToEndTest {
                         .content("{\"amount\": 25000}"))
                 .andExpect(status().isCreated());
 
-        // La vente a quitté la liste des créances, mais son détail reste opposable au client.
+        // Settled sale details remain accessible after leaving the outstanding list.
         mockMvc.perform(get("/api/v1/debts").with(authentication(owner())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty());
@@ -447,7 +430,7 @@ class CreditSaleEndToEndTest {
                 .andExpect(jsonPath("$.payments.length()").value(1));
     }
 
-    /** Une vente au comptant n'est pas une créance : elle n'a rien à faire sur cet écran. */
+    /** A cash sale without a customer is absent from the debt view. */
     @Test
     void a_cash_sale_has_no_debt_detail() throws Exception {
         String saleBody = mockMvc.perform(post("/api/v1/sales")
@@ -468,7 +451,7 @@ class CreditSaleEndToEndTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("SALE_NOT_FOUND"));
 
-        // Mais l'historique annonce bien qu'elle a été réglée : zéro, et non « pas d'information ».
+        // History reports a zero balance rather than an unknown balance.
         mockMvc.perform(get("/api/v1/stock-movements").with(authentication(owner())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].saleId").value(saleId.toString()))

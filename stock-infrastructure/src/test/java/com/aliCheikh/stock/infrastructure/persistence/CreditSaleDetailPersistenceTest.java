@@ -43,12 +43,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Le détail d'une créance, lu depuis la base.
- *
- * <p>Ce test existe surtout pour une raison : le détail est assemblé à partir de <b>trois</b>
- * requêtes plutôt qu'une seule jointure. Une jointure unique sur les lignes et les paiements
- * produirait un produit cartésien — deux produits et deux encaissements donneraient quatre lignes,
- * et le cumul encaissé serait doublé. Le cas est donc reproduit explicitement.</p>
+ * Checks credit sale projections with multiple lines and payments, catching Cartesian-product
+ * duplication of totals.
  */
 @DataJpaTest
 @Testcontainers
@@ -113,7 +109,7 @@ class CreditSaleDetailPersistenceTest {
     void should_describe_what_was_sold_by_whom_and_what_remains_due() {
         saveReferenceData();
 
-        // 3 plaquettes à 40 000 + 2 filtres à 40 000 = 200 000, dont 100 000 versés au comptoir.
+        // Five items at 40,000 total 200,000, with 100,000 initially paid.
         Sale sale = Sale.create(
                 sellerId,
                 List.of(new SaleLineInput(brakePadsId, 3, xaf("40000")),
@@ -123,8 +119,7 @@ class CreditSaleDetailPersistenceTest {
         saleAdapter.save(sale);
         flushAndClear();
 
-        // Un second encaissement : c'est ce couple deux lignes / deux paiements qui piégerait
-        // une jointure unique.
+        // Two lines and two payments would multiply rows in a combined join.
         Sale reloaded = saleAdapter.findById(sale.getSaleId()).orElseThrow();
         reloaded.recordPayment(xaf("50000"), sellerId, LocalDateTime.now());
         saleAdapter.save(reloaded);
@@ -134,24 +129,24 @@ class CreditSaleDetailPersistenceTest {
                 .findCreditSaleDetail(sale.getSaleId().getValue())
                 .orElseThrow();
 
-        // « Quels produits ? » — nommés, pas des identifiants.
+        // Product names rather than only IDs.
         assertThat(detail.lines()).hasSize(2);
         assertThat(detail.lines())
                 .extracting(line -> line.productName() + " x" + line.quantity())
                 .containsExactlyInAnyOrder("Plaquettes de frein x3", "Filtre à huile x2");
 
-        // « Vendu par qui, à qui ? »
+        // Seller and customer identities.
         assertThat(detail.sellerName()).isEqualTo("Ahmat");
         assertThat(detail.customerGivenName()).isEqualTo("Moussa");
         assertThat(detail.customerPhoneNumber()).isEqualTo("+23566123456");
 
-        // « Combien payé, combien reste-t-il ? » Les montants ne doivent pas être doublés.
+        // Payment totals must not be duplicated.
         assertThat(detail.totalAmount()).isEqualTo(xaf("200000"));
         assertThat(detail.amountPaid()).isEqualTo(xaf("150000"));
         assertThat(detail.amountDue()).isEqualTo(xaf("50000"));
         assertThat(detail.settled()).isFalse();
 
-        // L'acompte du jour de la vente ouvre l'échéancier, le remboursement suit.
+        // Initial payment precedes the subsequent repayment.
         assertThat(detail.payments()).hasSize(2);
         assertThat(detail.payments())
                 .extracting(payment -> payment.amount())
@@ -180,11 +175,8 @@ class CreditSaleDetailPersistenceTest {
     }
 
     /**
-     * Le client emporte la marchandise sans rien verser : aucune ligne n'existe dans le ledger.
-     *
-     * <p>C'est la branche {@code COALESCE(..., 0)} de la requête d'en-tête. Une jointure interne
-     * aux paiements aurait fait disparaître la créance entière — celle-là même qui compte le plus
-     * pour le patron, puisque rien n'a été encaissé.</p>
+     * A sale without payments must remain visible through COALESCE; an inner payment join would
+     * incorrectly exclude it.
      */
     @Test
     void should_describe_a_credit_sale_where_nothing_was_paid_at_the_counter() {
@@ -210,7 +202,7 @@ class CreditSaleDetailPersistenceTest {
         assertThat(detail.settled()).isFalse();
     }
 
-    /** Une vente au comptant n'a pas de client : elle n'est pas une créance et n'a rien à exposer. */
+    /** A cash sale without a customer has no debt details. */
     @Test
     void should_ignore_a_cash_sale() {
         saveReferenceData();

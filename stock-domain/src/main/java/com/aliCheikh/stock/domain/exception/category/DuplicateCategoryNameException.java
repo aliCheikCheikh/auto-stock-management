@@ -2,7 +2,7 @@ package com.aliCheikh.stock.domain.exception.category;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
 
-/** Levée quand une catégorie portant déjà ce nom existe, à la casse près. */
+/** Raised when a category name already exists, ignoring case. */
 public class DuplicateCategoryNameException extends DomainException {
 
     private final String duplicatedName;

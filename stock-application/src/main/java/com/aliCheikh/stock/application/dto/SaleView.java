@@ -11,16 +11,14 @@ import java.util.Objects;
 
 public record SaleView(SaleId saleId,
                        UserId sellerId,
-                       /** Nom affichable du vendeur, pour que l'historique désigne une personne. */
+                       /** Seller display name. */
                        String sellerName,
                        List<SaleLineDto> lines,
                        Money totalAmount,
                        LocalDateTime createdAt,
                        /**
-                        * Solde restant dû, dérivé du ledger des paiements : zéro pour une vente
-                        * réglée, positif pour une vente à crédit. L'historique doit dire sous
-                        * quelle forme la vente a été encaissée sans que le front recalcule quoi
-                        * que ce soit.
+                        * Balance derived from the payment ledger: zero for a settled sale,
+                        * positive for an outstanding sale.
                         */
                        Money amountDue) {
     public SaleView {

@@ -19,11 +19,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Assemble le détail d'une créance à partir de trois projections plates.
- *
- * <p>L'agrégat {@code Sale} n'est pas rechargé : il ne porte que des identifiants de produits et
- * d'utilisateurs, quand cet écran a besoin de leurs noms. Le reconstruire imposerait ensuite une
- * requête par produit — un N+1 pour un résultat moins complet.</p>
+ * Assembles credit sale details from three flat projections without rebuilding the aggregate or
+ * querying each product separately.
  */
 @Repository
 public class CreditSaleDetailQueryJpaAdapter implements CreditSaleDetailQueryPort {
@@ -53,7 +50,7 @@ public class CreditSaleDetailQueryJpaAdapter implements CreditSaleDetailQueryPor
         Currency currency = Currency.getInstance(header.getCurrency());
         Money totalAmount = Money.create(header.getTotalAmount(), currency);
         Money amountPaid = Money.create(header.getAmountPaid(), currency);
-        // Le solde reste dérivé du total et des encaissements : une seule source de vérité.
+        // Derive the balance from the total and payments.
         Money amountDue = totalAmount.subtract(amountPaid);
 
         return new CreditSaleDetailView(

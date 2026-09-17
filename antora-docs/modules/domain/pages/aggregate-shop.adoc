@@ -1,15 +1,18 @@
-= Agrégat Shop
+= Shop aggregate
 :toc: left
 :icons: font
 
-== Rôle
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Le `Shop` représente une boutique physique.
-Chaque `StorageLocation` est rattaché à un `Shop`.
+== Responsibility
 
-Pour l'instant, il n'y a qu'une seule boutique. Mais le modèle est prêt pour le multi-boutiques dès le départ.
+`Shop` represents a physical shop. Each `StorageLocation` belongs to a `Shop`.
+The initial deployment uses one shop; the model allows for multiple shops.
 
-== Diagramme
+== Diagram
 
 [plantuml]
 ----
@@ -36,36 +39,29 @@ Shop *-- ShopId
 @enduml
 ----
 
-== Attributs
+== Attributes
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `shopId`
-| `ShopId` (Value Object)
-| Identifiant unique de la boutique.
+| `ShopId`
+| Unique shop identifier.
 
 | `name`
 | `String`
-| Nom de la boutique. Ex : "Auto Pièces Dubaï".
+| Shop name, for example "Demo Auto Parts".
 
 | `address`
 | `String`
-| Adresse physique de la boutique.
+| Physical shop address.
 |===
 
-== Invariants
+== Invariant
 
-[cols="1,3"]
-|===
-| Invariant | Description
+A shop must have a nonempty `name`.
 
-| `name` non vide
-| Une boutique doit avoir un nom.
-|===
+== Integration cost
 
-== Coût d'intégration
-
-L'ajout de `Shop` au modèle coûte un seul attribut : `shopId` sur `StorageLocation`.
-C'est un investissement minime qui évite une migration lourde le jour où le client ouvre une deuxième boutique.
+The relationship adds one attribute, `shopId`, to `StorageLocation`, avoiding a structural migration when a second shop is added.

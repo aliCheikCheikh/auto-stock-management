@@ -17,22 +17,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Vente réalisée par un vendeur, avec les encaissements qui la soldent.
- *
- * <p><b>Ce que l'agrégat contient.</b> Les lignes vendues sont un fait daté : elles ne changent
- * jamais. Les <b>paiements</b>, eux, s'accumulent dans le temps — l'acompte du jour de la vente,
- * puis les remboursements successifs. Une vente à crédit n'est pas un fait clos tant qu'elle n'est
- * pas soldée, et c'est pourquoi les paiements appartiennent à cet agrégat : la règle
- * « on n'encaisse jamais plus que ce qui reste dû » ne peut être garantie que si le total et les
- * encaissements sont dans la même frontière de cohérence.</p>
- *
- * <p><b>Rien n'est stocké deux fois.</b> Le montant encaissé est la somme des paiements, et le solde
- * restant dû s'en déduit ({@link #getAmountDue()}). Une donnée dérivable qu'on duplique finit par se
- * désynchroniser.</p>
- *
- * <p><b>Règle métier centrale :</b> si un solde reste dû, la vente <b>doit</b> être rattachée à un
- * client. On ne fait pas crédit à un anonyme — sans client, la créance serait irrécouvrable. À
- * l'inverse, une vente intégralement payée n'exige aucun client.</p>
+ * Sale aggregate containing immutable line items and an accumulating payment ledger. Keeping both
+ * in the same consistency boundary allows overpayment checks. Amount paid and amount due are
+ * derived from the ledger. An outstanding balance requires an identified customer.
  */
 public class Sale {
 
@@ -42,16 +29,13 @@ public class Sale {
     private final Money totalAmount;
     private final List<SaleLineItem> lines;
 
-    /** Client débiteur. {@code null} pour une vente au comptant, obligatoire dès qu'un solde reste dû. */
+    /** Debtor; optional for a fully paid sale, required when a balance remains. */
     private final CustomerId customerId;
 
-    /** Encaissements successifs, du plus ancien au plus récent. Seule collection qui peut croître. */
+    /** Payments ordered oldest first. */
     private final List<Payment> payments;
 
-    /**
-     * Porte les invariants de l'agrégat : tout chemin de construction, présent ou futur,
-     * passe obligatoirement par ici.
-     */
+    /** Validates invariants shared by all construction paths. */
     private Sale(SaleId saleId,
                  UserId soldBy,
                  LocalDateTime occurredAt,
@@ -79,13 +63,8 @@ public class Sale {
     }
 
     /**
-     * Enregistre une vente, éventuellement à crédit.
-     *
-     * @param sellerId     le vendeur, jamais nul
-     * @param lineRequests les lignes vendues, au moins une
-     * @param customerId   le client débiteur ; peut être {@code null} si la vente est intégralement
-     *                     payée, obligatoire sinon
-     * @param amountPaid   le montant encaissé au comptoir ; {@code null} signifie « payé en entier »
+     * Creates a sale with at least one line. {@code amountPaid} defaults to the full total when
+     * null; an outstanding balance requires {@code customerId}.
      */
     public static Sale create(UserId sellerId,
                               List<SaleLineInput> lineRequests,
@@ -110,14 +89,14 @@ public class Sale {
 
         Money totalAmount = sumOf(internalLines, "Sale.create invariant violated: lineRequests cannot be empty");
 
-        // Absence d'acompte = vente au comptant : le client repart sans rien devoir.
+        // A missing initial payment amount means the sale is paid in full.
         Money effectiveAmountPaid = (amountPaid == null) ? totalAmount : amountPaid;
 
         if (effectiveAmountPaid.isNegative()) {
             throw new InvalidSaleException(sellerId, "The amount paid cannot be negative");
         }
 
-        // Un acompte nul ne produit aucun paiement : le client repart sans avoir rien versé.
+        // A zero initial amount creates no payment entry.
         List<Payment> initialPayments = effectiveAmountPaid.isPositive()
                 ? List.of(Payment.record(effectiveAmountPaid, sellerId, occurredAt))
                 : List.of();
@@ -132,22 +111,12 @@ public class Sale {
                 initialPayments);
     }
 
-    /**
-     * Enregistre une vente au comptant, intégralement payée et sans client rattaché.
-     *
-     * <p>Surcharge de commodité : elle préserve les appelants antérieurs à la gestion des
-     * créances, dont le comportement reste strictement inchangé.</p>
-     */
+    /** Creates a fully paid cash sale without a customer. */
     public static Sale create(UserId sellerId, List<SaleLineInput> lineRequests) {
         return create(sellerId, lineRequests, null, null);
     }
 
-    /**
-     * Reconstruit une vente au comptant déjà persistée.
-     *
-     * <p>Surcharge de commodité pour les données antérieures à la gestion des créances : elles ont
-     * toutes été intégralement payées et n'ont pas de client rattaché.</p>
-     */
+    /** Reconstitutes a legacy cash sale as fully paid without a customer. */
     public static Sale rehydrate(SaleId saleId,
                                  UserId soldBy,
                                  LocalDateTime occurredAt,
@@ -157,7 +126,7 @@ public class Sale {
                 List.of(Payment.record(totalAmount, soldBy, occurredAt)));
     }
 
-    /** Reconstruit une vente déjà persistée, sans rejouer la génération d'identifiant ni l'horodatage. */
+    /** Reconstitutes a persisted sale without generating new IDs or timestamps. */
     public static Sale rehydrate(SaleId saleId,
                                  UserId soldBy,
                                  LocalDateTime occurredAt,
@@ -186,10 +155,8 @@ public class Sale {
     }
 
     /**
-     * Enregistre un remboursement du client sur cette vente.
-     *
-     * @throws SaleAlreadySettledException      si plus rien n'est dû
-     * @throws PaymentExceedsAmountDueException si le montant dépasse le solde restant
+     * Records a repayment. Throws {@link SaleAlreadySettledException} if nothing is due or {@link
+     * PaymentExceedsAmountDueException} if the payment exceeds the balance.
      */
     public Payment recordPayment(Money amount, UserId receivedBy, LocalDateTime receivedAt) {
         Money amountDue = getAmountDue();
@@ -198,10 +165,10 @@ public class Sale {
             throw new SaleAlreadySettledException(saleId);
         }
 
-        // Payment garantit déjà qu'un encaissement est strictement positif.
+        // Payment validates that its amount is strictly positive.
         Payment payment = Payment.record(amount, receivedBy, receivedAt);
 
-        // subtract lève CurrencyMismatchException si les devises diffèrent.
+        // Subtraction rejects mismatched currencies.
         if (amountDue.subtract(amount).isNegative()) {
             throw new PaymentExceedsAmountDueException(amount, amountDue);
         }
@@ -211,11 +178,8 @@ public class Sale {
     }
 
     /**
-     * Vérifie la cohérence entre le total, le montant encaissé et la présence d'un client.
-     *
-     * <p>L'ordre des contrôles est structurant : tant qu'on n'a pas écarté un encaissement
-     * supérieur au total, le solde dû peut être négatif — auquel cas il n'est pas « strictement
-     * positif » et le contrôle du client serait silencieusement sauté.</p>
+     * Validate overpayment before requiring a debtor, since an overpayment would otherwise produce
+     * a negative balance and bypass that check.
      */
     private static void requireConsistentPaymentTerms(UserId sellerId,
                                                       Money totalAmount,
@@ -262,34 +226,32 @@ public class Sale {
         return totalAmount;
     }
 
-    /** Le total encaissé à ce jour : la somme des paiements. */
+    /** Total of all recorded payments. */
     public Money getAmountPaid() {
         return sumOfPayments(payments, totalAmount.getCurrency());
     }
 
-    /** Les encaissements, du plus ancien au plus récent. */
+    /** Payments ordered oldest first. */
     public List<Payment> getPayments() {
         return List.copyOf(payments);
     }
 
-    /** Le client débiteur, s'il y en a un. Vide pour une vente au comptant. */
+    /** Optional debtor; absent for a cash sale without a customer. */
     public Optional<CustomerId> getCustomerId() {
         return Optional.ofNullable(customerId);
     }
 
-    /** Le solde restant dû, calculé à la demande. Vaut zéro pour une vente intégralement payée. */
+    /** Derived outstanding balance, zero when fully paid. */
     public Money getAmountDue() {
         return totalAmount.subtract(getAmountPaid());
     }
 
-    /** {@code true} si cette vente porte encore une créance. */
+    /** Whether an outstanding balance remains. */
     public boolean isOnCredit() {
         return getAmountDue().isPositive();
     }
 
     public List<SaleLineDto> getLines() {
-        // TODO (Architecture): Recreating this DTO list on every read can impact performance for large collections.
-        // Consider implementing a dedicated Read-Model (CQRS projection) if read scales.
         return this.lines.stream()
                 .map(line -> new SaleLineDto(line.getProductId(), line.getQuantity(), line.getUnitPrice(), line.getLineTotal()))
                 .toList();

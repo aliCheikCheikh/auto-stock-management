@@ -23,7 +23,7 @@ public class StockLevelTest {
                 .isInstanceOf(InsufficientStockException.class)
                 .extracting(ex -> (InsufficientStockException) ex)
                 .satisfies(ex -> {
-                    // On vérifie tout le contexte de l'erreur !
+
                     assertThat(ex.getProductId()).isEqualTo(productId);
                     assertThat(ex.getAvailableQuantity()).isEqualTo(initialQuantity);
                     assertThat(ex.getRequestedQuantity()).isEqualTo(quantityToDecrease);
@@ -39,11 +39,11 @@ public class StockLevelTest {
 
         StockLevel newStock = stock.decrease(quantityToDecrease);
 
-        // 1. On vérifie le nouvel objet
+
         assertThat(newStock.getQuantity()).isEqualTo(initialQuantity - quantityToDecrease);
         assertThat(newStock.getProductId()).isEqualTo(productId);
 
-        // 2. On prouve l'immuabilité : l'ancien objet n'a pas bougé !
+        // The original value remains unchanged.
         assertThat(stock.getQuantity()).isEqualTo(initialQuantity);
     }
 

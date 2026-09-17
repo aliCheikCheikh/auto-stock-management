@@ -1,18 +1,18 @@
-= Flux : Vente
+= Flow: Sale
 :toc: left
 :icons: font
 
-== Contexte
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Un client demande des produits. Le vendeur enregistre la vente.
-Le système alloue automatiquement le stock entre magasin et réserve.
+== Context and scenario
 
-== Scénario
+A customer requests four filters. There are three on the shop floor and seven in backstock.
+The seller records the sale; the system allocates stock across locations.
 
-[quote]
-Un client demande 4 filtres. Magasin : 3 unités, Réserve : 7 unités.
-
-== Diagramme de séquence
+== Sequence diagram
 
 [plantuml]
 ----
@@ -20,21 +20,21 @@ Un client demande 4 filtres. Magasin : 3 unités, Réserve : 7 unités.
 !theme plain
 skinparam backgroundColor transparent
 
-actor Vendeur as V
+actor Seller as V
 participant "SellProductUseCase" as AS
 participant "ProductRepository" as PR
 participant "StockAllocation\nService" as SAS
 participant "Sale" as SA
 participant "SaleRepository" as SR
-participant "StorageLocation\n(Magasin)" as SLM
-participant "StorageLocation\n(Réserve)" as SLR
+participant "StorageLocation\n(Shop floor)" as SLM
+participant "StorageLocation\n(Backstock)" as SLR
 participant "StockMovement\nRepository" as SMR
 participant "EventPublisher" as EP
 
 V -> AS : sell(SellProductCommand)
 activate AS
 
-== Phase 1 : Résolution du produit ==
+== Phase 1: Product lookup ==
 
 AS -> PR : findById(productId)
 PR --> AS : Product
@@ -43,22 +43,22 @@ PR --> AS : Product
 
 AS -> SAS : allocate(productId, 4, shopId)
 activate SAS
-SAS -> SAS : récupère les StorageLocation\n(priorité SHOP_FLOOR)
-SAS --> AS : [(magasin,3), (réserve,1)]
+SAS -> SAS : loads StorageLocation instances\n(SHOP_FLOOR first)
+SAS --> AS : [(shopFloor,3), (backstock,1)]
 deactivate SAS
 
-== Phase 3 : Création + persistance de la vente ==
+== Phase 3: Create and persist the sale ==
 
 AS -> SA : Sale.create(sellerId, [lineRequest])
 SA -> SA : lineTotal = 4 × unitPrice\ntotalAmount = sum(lineTotals)
-SA --> AS : sale (avec saleId)
+SA --> AS : sale (with saleId)
 AS -> SR : save(sale)
 
-== Phase 4 : Exécution des mouvements ==
+== Phase 4: Execute movements ==
 
-loop pour chaque AllocationResult
+loop for each AllocationResult
   AS -> SLM : decreaseStock(productId, qty)
-  SLM -> SLM : StockLevel -= qty\n(émet ShopFloorLow si seuil franchi)
+  SLM -> SLM : StockLevel -= qty\n(emits ShopFloorLow if threshold crossed)
   AS -> SLM : pullEvents()
   SLM --> AS : events
   AS -> SLM : save(location)
@@ -67,7 +67,7 @@ loop pour chaque AllocationResult
   AS -> SMR : save(movement)
 end
 
-== Phase 5 : Événements globaux ==
+== Phase 5: Global events ==
 
 AS -> AS : globalStock = sum(locations)
 alt globalStock < minimumGlobalThreshold
@@ -77,91 +77,38 @@ AS -> AS : append SaleCompleted
 
 AS -> EP : publish(events)
 
-AS --> V : void (Sale persistée,\nmouvements créés, événements publiés)
+AS --> V : void (Sale persisted,\nmovements created, events published)
 deactivate AS
 
 @enduml
 ----
 
-== Pourquoi 2 mouvements et pas 1 ?
+== Location traceability
+
+Two movements record where units came from: three from the shop floor and one from backstock.
+A single "four filters sold" record would lose location-level traceability and prevent reconstructing location quantities from movements.
+
+== Created objects
 
 [cols="1,1"]
 |===
-| 1 mouvement (rejeté) | 2 mouvements (retenu)
+| Object | Values
 
-| "4 filtres vendus" sans préciser d'où
-| "3 du magasin + 1 de la réserve"
+| Sale
+| `soldBy`: seller; `occurredAt`: now; `totalAmount`: 4 × unit price.
 
-| Perte de traçabilité physique
-| Traçabilité complète par emplacement
+| SaleLineItem
+| `productId`: oil filter; `quantity`: 4; `unitPrice`: price at sale time; `lineTotal`: 4 × unitPrice.
 
-| Impossible de recalculer les niveaux par emplacement
-| Cohérence entre mouvements et StockLevel garantie
+| StockMovement 1
+| `type`: `EXIT`; source: shop floor; destination: `null`; quantity: 3; `saleId`: sale reference.
+
+| StockMovement 2
+| `type`: `EXIT`; source: backstock; destination: `null`; quantity: 1; `saleId`: sale reference.
 |===
 
-== Objets créés
+== Events
 
-=== Sale
-
-[cols="1,2"]
-|===
-| Attribut | Valeur
-
-| soldBy | Vendeur
-| occurredAt | Maintenant
-| totalAmount | 4 × prix unitaire
-|===
-
-=== SaleLineItem
-
-[cols="1,2"]
-|===
-| Attribut | Valeur
-
-| productId | (filtre à huile)
-| quantity | 4
-| unitPrice | Prix au moment de la vente
-| lineTotal | 4 × unitPrice
-|===
-
-=== StockMovement n°1 (EXIT magasin)
-
-[cols="1,2"]
-|===
-| Attribut | Valeur
-
-| type | `EXIT`
-| sourceLocationId | Magasin
-| destinationLocationId | `null`
-| quantity | 3
-| saleId | (référence vers la Sale)
-|===
-
-=== StockMovement n°2 (EXIT réserve)
-
-[cols="1,2"]
-|===
-| Attribut | Valeur
-
-| type | `EXIT`
-| sourceLocationId | Réserve
-| destinationLocationId | `null`
-| quantity | 1
-| saleId | (référence vers la Sale)
-|===
-
-== Événements émis
-
-[cols="1,2"]
-|===
-| Événement | Condition
-
-| `SaleCompleted`
-| Toujours émis.
-
-| `LowStockAlert`
-| Si stock global < `minimumGlobalThreshold`.
-
-| `ShopFloorLow`
-| Si stock magasin < `lowStockIndicator` (ici le magasin passe à 0).
-|===
+* `SaleCompleted`: always emitted.
+* `LowStockAlert`: emitted if global stock < `minimumGlobalThreshold`.
+* `ShopFloorLow`: emitted if shop-floor stock < `lowStockIndicator`; the shop floor reaches zero in this example.

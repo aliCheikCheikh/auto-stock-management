@@ -34,7 +34,7 @@ public final class InitialOwnerSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments arguments) {
         if (ownerDisplayName.isBlank() || ownerEmail.isBlank() || ownerPassword.isBlank()) {
-            log.info("Amorçage du propriétaire ignoré : configuration de développement incomplète.");
+            log.info("Owner bootstrap skipped: incomplete development configuration.");
             return;
         }
 
@@ -43,7 +43,7 @@ public final class InitialOwnerSeeder implements ApplicationRunner {
                         ownerEmail,
                         ownerPassword))
                 .ifPresentOrElse(
-                        owner -> log.info("Premier propriétaire de développement créé."),
-                        () -> log.info("Amorçage ignoré : le registre des utilisateurs n'est pas vide."));
+                        owner -> log.info("Initial development owner created."),
+                        () -> log.info("Owner bootstrap skipped: user registry is not empty."));
     }
 }

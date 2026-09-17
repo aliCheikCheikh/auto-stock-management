@@ -50,11 +50,11 @@ public class SaleJpaMapper {
                                 )
                         ))
                         .toList(),
-                // customer_id est NULL pour une vente au comptant.
+                // A cash sale may have a null customer ID.
                 entity.getCustomerId() == null ? null : CustomerId.of(entity.getCustomerId()),
                 entity.getPayments()
                         .stream()
-                        // Ordre chronologique : l'historique des encaissements se lit du premier au dernier.
+                        // Order payments from oldest to newest.
                         .sorted(Comparator.comparing(PaymentJpaEntity::getReceivedAt))
                         .map(payment -> Payment.rehydrate(
                                 PaymentId.of(payment.getId()),
@@ -97,8 +97,7 @@ public class SaleJpaMapper {
 
         entity.replaceSaleLines(saleLineEntities);
 
-        // L'identité du paiement vient du domaine : la réécriture de la vente conserve donc les
-        // encaissements déjà enregistrés au lieu de les supprimer puis les recréer.
+        // Preserve payment identities when saving the sale again.
         entity.replacePayments(sale.getPayments().stream()
                 .map(payment -> PaymentJpaEntity.of(
                         payment.getPaymentId().getValue(),

@@ -1,16 +1,16 @@
 site:
-  title: Gestion de Stock - Pièces Auto
-  start_page: stock-management::index.adoc # Nom du module :: fichier
+  title: Auto Stock Management
+  start_page: stock-management::index.adoc # Module and start page
 content:
   sources:
-    - url: . # Si ta doc est dans le même dossier
+    - url: . # Local documentation source
       branches: HEAD
-      start_path: . # Le chemin vers ton dossier de doc Antora
+      start_path: . # Documentation root
 asciidoc:
   extensions:
-    - asciidoctor-kroki # L'extension pour PlantUML
+    - asciidoctor-kroki # Diagram extension
   attributes:
-    kroki-server-url: https://kroki.io # Serveur public pour générer les images
+    kroki-server-url: https://kroki.io # External diagram rendering service
     kroki-fetch-diagram: true
     icons: font
     sectnums: true
@@ -19,4 +19,4 @@ ui:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
     snapshot: true
 output:
-  dir: ./build/site # Où le site HTML sera généré
+  dir: ./build/site # Generated site output

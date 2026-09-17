@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Prouve l'assemblage complet de l'import CSV et son idempotence sur une vraie PostgreSQL. */
+/** CSV import and idempotency through the full application stack against PostgreSQL. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers

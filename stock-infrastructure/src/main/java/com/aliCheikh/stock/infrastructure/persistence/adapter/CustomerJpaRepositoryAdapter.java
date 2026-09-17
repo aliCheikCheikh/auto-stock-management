@@ -26,12 +26,8 @@ public class CustomerJpaRepositoryAdapter implements CustomerRepository {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>La vérification d'unicité faite en amont par le use case ne protège pas d'une création
-     * concurrente : deux requêtes simultanées peuvent la franchir toutes les deux. La contrainte
-     * en base tranche alors, et l'erreur technique est traduite ici en exception métier — sans
-     * quoi l'appelant recevrait un 500 au lieu d'un 409.</p>
+     * Translates database uniqueness violations into domain conflicts, including concurrent
+     * customer registrations.
      */
     @Override
     public void save(Customer customer) {

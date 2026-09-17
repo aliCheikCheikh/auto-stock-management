@@ -12,7 +12,7 @@ public final class ListUsersUseCase {
     private final UserRepository userRepository;
 
     public ListUsersUseCase(UserRepository userRepository) {
-        this.userRepository = Objects.requireNonNull(userRepository, "Le registre des utilisateurs est obligatoire.");
+        this.userRepository = Objects.requireNonNull(userRepository, "User repository is required.");
     }
 
     public List<User> execute() {

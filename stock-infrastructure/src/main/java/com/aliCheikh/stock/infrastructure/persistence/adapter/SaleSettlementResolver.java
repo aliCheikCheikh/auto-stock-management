@@ -14,13 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Résout en un seul appel le solde restant dû d'un lot de ventes.
- *
- * <p>L'historique des mouvements doit dire si une vente a été réglée ou reste à crédit. Interroger
- * chaque vente ligne par ligne produirait un N+1 sur un écran très consulté, d'où cette résolution
- * par page — le même parti que pour les noms d'auteurs.</p>
- */
+/** Resolves balances for a batch of sales to avoid one query per movement-history row. */
 @Component
 public class SaleSettlementResolver {
 
@@ -32,9 +26,8 @@ public class SaleSettlementResolver {
     }
 
     /**
-     * @param saleIds identifiants, doublons et {@code null} tolérés
-     * @return le solde restant dû par vente ; une vente entièrement réglée vaut zéro, une vente
-     * inconnue est simplement absente
+     * Accepts duplicate and null IDs. Returns balances by sale ID; settled sales have zero balance
+     * and unknown sales are omitted.
      */
     @Transactional(readOnly = true)
     public Map<UUID, Money> resolveAmountsDue(Collection<UUID> saleIds) {
@@ -57,7 +50,7 @@ public class SaleSettlementResolver {
     private static Money toAmountDue(SaleSettlementProjection settlement) {
         Currency currency = Currency.getInstance(settlement.getCurrency());
 
-        // Le solde reste dérivé, jamais stocké : une seule source de vérité.
+        // Derive the balance rather than storing it separately.
         return Money.create(settlement.getTotalAmount(), currency)
                 .subtract(Money.create(settlement.getAmountPaid(), currency));
     }

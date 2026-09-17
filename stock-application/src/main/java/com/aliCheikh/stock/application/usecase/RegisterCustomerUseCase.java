@@ -12,12 +12,8 @@ import com.aliCheikh.stock.domain.model.customer.port.CustomerRepository;
 import java.util.Objects;
 
 /**
- * Enregistre un client à qui des ventes à crédit pourront être accordées.
- *
- * <p>L'unicité du téléphone (et de l'email s'il est renseigné) ne peut pas être portée par
- * l'agrégat, qui ne voit que lui-même : elle est vérifiée ici, via le repository, pour renvoyer une
- * erreur métier explicite. La contrainte en base reste le garde-fou ultime en cas de création
- * concurrente.</p>
+ * Registers a customer after checking normalized phone and email uniqueness. Database constraints
+ * protect against concurrent duplicates.
  */
 public class RegisterCustomerUseCase {
 
@@ -36,8 +32,7 @@ public class RegisterCustomerUseCase {
     }
 
     private Customer doRegister(RegisterCustomerCommand command) {
-        // Le Value Object normalise avant toute comparaison : sans cela, "66 12 34 56" et
-        // "+235 66 12 34 56" échapperaient au contrôle de doublon.
+        // Normalize before comparing different representations of the same phone number.
         PhoneNumber phoneNumber = PhoneNumber.of(command.rawPhoneNumber());
 
         if (customerRepository.existsByPhoneNumber(phoneNumber)) {
@@ -51,7 +46,7 @@ public class RegisterCustomerUseCase {
                 command.fatherName(),
                 command.email());
 
-        // L'agrégat a normalisé l'email (trim + minuscules) : on interroge la forme canonique.
+        // Check the canonical email produced by the aggregate.
         customer.getEmail().ifPresent(email -> {
             if (customerRepository.existsByEmail(email)) {
                 throw new DuplicateCustomerEmailException(email);

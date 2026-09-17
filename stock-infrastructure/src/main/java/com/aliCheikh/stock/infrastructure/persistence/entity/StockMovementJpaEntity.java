@@ -45,7 +45,7 @@ public class StockMovementJpaEntity {
     @Column(name = "sale_id")
     private UUID saleId;
 
-    /** Opération métier à l'origine du mouvement : sert à regrouper l'historique. */
+    /** Business operation ID used to group movement history. */
     @Column(name = "operation_id", nullable = false)
     private UUID operationId;
 

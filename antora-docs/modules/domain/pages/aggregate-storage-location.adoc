@@ -1,15 +1,17 @@
-= Agrégat StorageLocation
+= StorageLocation aggregate
 :toc: left
 :icons: font
 
-== Rôle
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Le `StorageLocation` représente un emplacement physique de stockage (magasin ou réserve).
-C'est ici que vit la **vérité du stock par emplacement** : chaque emplacement connaît la quantité de chaque produit qu'il contient.
+== Responsibility
 
-C'est le gardien de l'invariant le plus critique du système : **la quantité ne peut jamais être négative**.
+`StorageLocation` represents a physical shop-floor or backstock location. It owns the quantity of each product stored there and protects the invariant that stock cannot be negative.
 
-== Diagramme
+== Diagram
 
 [plantuml]
 ----
@@ -52,119 +54,85 @@ enum LocationType <<Value Object>> {
 
 StorageLocation *-- LocationId
 StorageLocation *-- LocationType
-StorageLocation "1" *-- "0..*" StockLevel : contient
+StorageLocation "1" *-- "0..*" StockLevel : contains
 
 @enduml
 ----
 
-== Attributs
+== Attributes
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `locationId`
-| `LocationId` (Value Object)
-| Identifiant unique de l'emplacement.
+| `LocationId`
+| Unique location identifier.
 
 | `shopId`
-| `ShopId` (Value Object)
-| Référence vers la boutique à laquelle cet emplacement appartient. Prêt pour le multi-boutiques.
+| `ShopId`
+| Reference to the owning shop, supporting multiple shops.
 
 | `type`
-| `LocationType` (Enum/Value Object)
-| Type d'emplacement : `SHOP_FLOOR` (magasin/zone de vente) ou `BACKSTOCK` (réserve/stock arrière).
+| `LocationType`
+| `SHOP_FLOOR` (sales area) or `BACKSTOCK` (rear storage).
 
 | `label`
 | `String`
-| Libellé lisible. Ex : "Magasin principal", "Réserve Dubaï".
+| Readable label, for example "Main shop floor" or "Backstock".
 
 | `lowStockIndicator`
 | `int`
-| Indicateur secondaire : quantité en dessous de laquelle le magasin signale un besoin de transfert depuis la réserve. Pertinent uniquement pour les emplacements de type `SHOP_FLOOR`.
+| Threshold below which a shop-floor location needs replenishment from backstock. Applies only to `SHOP_FLOOR`.
 
 | `stockLevels`
 | `Map<ProductId, StockLevel>`
-| Niveaux de stock par produit dans cet emplacement.
+| Stock levels by product at this location.
 |===
 
-== StockLevel — Value Object interne
+== Internal StockLevel value object
 
-Le `StockLevel` est un Value Object qui vit à l'intérieur de l'agrégat `StorageLocation`.
+`StockLevel` lives inside `StorageLocation`. It has no independent identity; the `(locationId, productId)` pair identifies a level.
+It is immutable: each change returns a new instance.
 
-Il n'a pas d'identité propre — il est identifié par le couple `(locationId, productId)`.
-Il est immuable au sens DDD : chaque modification retourne une nouvelle instance.
-
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `productId`
 | `ProductId`
-| Référence vers le produit concerné.
+| Reference to the product.
 
 | `quantity`
 | `int`
-| Quantité disponible dans cet emplacement pour ce produit. Toujours ≥ 0.
+| Available quantity of that product at this location, always ≥ 0.
 |===
 
 == Invariants
 
-[cols="1,3"]
+[cols="1,1"]
 |===
 | Invariant | Description
 
-| **Quantité ≥ 0**
-| C'est l'invariant le plus important du système. Un `decreaseStock` qui ferait passer la quantité en dessous de zéro doit lever une exception métier (`InsufficientStockException`).
+| Quantity ≥ 0
+| `decreaseStock` throws `InsufficientStockException` if the resulting quantity would be negative.
 
-| `label` non vide
-| Un emplacement doit avoir un libellé.
+| Nonempty `label`
+| A location must have a label.
 
 | `lowStockIndicator` ≥ 0
-| L'indicateur ne peut pas être négatif.
+| The indicator cannot be negative.
 |===
 
-== Comportements
+== Behavior
 
-=== `increaseStock(productId, quantity)`
+* `increaseStock(productId, quantity)` adds to the product's level, creating it if absent. Used for receipts (`ENTRY`) and incoming transfers.
+* `decreaseStock(productId, quantity)` removes units and throws `InsufficientStockException` if the result would be negative. Used for sales (`EXIT`) and outgoing transfers.
+* `getStockLevel(productId)` returns the available quantity, or zero when no level exists.
+* `hasEnoughStock(productId, required)` checks whether at least `required` units are available. `StockAllocationService` uses this during allocation.
+* `isShopFloorLow(productId)` returns `true` when quantity is below `lowStockIndicator` and the location type is `SHOP_FLOOR`. It signals a need for internal replenishment, rather than a critical global-stock alert.
 
-Ajoute une quantité au `StockLevel` du produit dans cet emplacement.
-Si le produit n'a pas encore de `StockLevel`, un nouveau est créé avec la quantité fournie.
+== Why stock belongs to a location
 
-Utilisé lors d'un approvisionnement (`ENTRY`) ou d'un transfert entrant (`TRANSFER` côté destination).
-
-=== `decreaseStock(productId, quantity)`
-
-Retire une quantité du `StockLevel`.
-**Lève `InsufficientStockException`** si la quantité résultante serait négative.
-
-Utilisé lors d'une vente (`EXIT`) ou d'un transfert sortant (`TRANSFER` côté source).
-
-=== `getStockLevel(productId)`
-
-Retourne la quantité disponible pour un produit. Retourne 0 si le produit n'a pas de `StockLevel` dans cet emplacement.
-
-=== `hasEnoughStock(productId, required)`
-
-Vérifie si l'emplacement dispose d'au moins `required` unités du produit. Utilisé par le `StockAllocationService` pour l'allocation.
-
-=== `isShopFloorLow(productId)`
-
-Retourne `true` si la quantité est inférieure au `lowStockIndicator` ET que l'emplacement est de type `SHOP_FLOOR`.
-Cet indicateur signale un besoin de transfert depuis la réserve — pas une alerte critique.
-
-== Pourquoi le stock est ici et pas dans Product
-
-[cols="1,1"]
-|===
-| Argument | Explication
-
-| Réalité physique
-| Le stock est une propriété de l'endroit, pas du produit. "Il y a 3 filtres dans le magasin" décrit l'état du magasin.
-
-| Concurrence
-| Deux vendeurs peuvent vendre simultanément depuis le même emplacement. Le verrou transactionnel doit protéger l'emplacement, pas le produit.
-
-| Taille de l'agrégat
-| Un produit avec 1 000 mouvements + 5 niveaux de stock serait un agrégat obèse. L'emplacement avec ses niveaux reste petit.
-|===
+A quantity describes a physical location: "three filters on the shop floor".
+Concurrent sales must protect that location's stock. Separating levels and movements from `Product` also keeps the product aggregate small.

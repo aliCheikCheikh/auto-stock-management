@@ -2,7 +2,7 @@ package com.aliCheikh.stock.domain.exception.customer;
 
 import com.aliCheikh.stock.domain.exception.DomainException;
 
-/** Levée quand une adresse email est déjà rattachée à un autre client. */
+/** Raised when an email address already belongs to another customer. */
 public class DuplicateCustomerEmailException extends DomainException {
 
     private final String duplicatedEmail;

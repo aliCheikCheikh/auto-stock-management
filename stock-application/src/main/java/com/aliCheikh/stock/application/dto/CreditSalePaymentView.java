@@ -6,12 +6,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Un encaissement, du plus ancien au plus récent.
- *
- * <p>L'acompte versé le jour de la vente n'a rien de particulier : c'est le premier paiement du
- * ledger. Le patron lit ainsi une seule histoire — ce qui a été versé, quand, et par qui reçu.</p>
- *
- * @param receivedByName {@code null} si le compte de l'encaisseur a disparu
+ * Payment entry, ordered oldest first. The initial payment is part of the same ledger. {@code
+ * receivedByName} is null if the receiver account no longer exists.
  */
 public record CreditSalePaymentView(UUID paymentId,
                                     Money amount,

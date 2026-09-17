@@ -9,11 +9,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Demande de vente.
- *
- * <p>{@code customerId} et {@code amountPaid} sont facultatifs : absents, la vente est au comptant.
- * Un {@code amountPaid} inférieur au total crée une créance et exige alors un client — règle
- * vérifiée par le domaine, pas ici.</p>
+ * Sale request. Missing customer and payment amount imply a cash sale. The domain requires a
+ * customer when the amount paid is below the total.
  */
 public record CreateSaleRequest(UUID shopId,
                                 @Valid @NotEmpty List<CreateSaleLine> lines,

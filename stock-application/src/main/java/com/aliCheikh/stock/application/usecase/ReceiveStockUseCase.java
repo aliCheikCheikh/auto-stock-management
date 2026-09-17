@@ -107,7 +107,7 @@ public class ReceiveStockUseCase {
             return newProduct;
         }
 
-        // mode « produit existant » : on ajoute du stock, inchangé
+        // Receive additional stock for an existing product.
         Product product = productRepository.findByReference(command.productReference())
                 .orElseThrow(() -> new ProductNotFoundException(command.productReference()));
         product.ensureActive();

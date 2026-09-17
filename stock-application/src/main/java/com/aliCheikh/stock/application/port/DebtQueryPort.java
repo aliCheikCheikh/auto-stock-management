@@ -4,22 +4,12 @@ import com.aliCheikh.stock.application.dto.DebtView;
 import com.aliCheikh.stock.application.dto.ListDebtsQuery;
 import com.aliCheikh.stock.application.dto.PageResult;
 
-/**
- * Lecture des ventes à crédit, en cours comme éteintes.
- *
- * <p>Port de <b>requête</b> et non de repository : on lit un modèle plat destiné à l'affichage,
- * sans reconstruire les agrégats — inutile et coûteux pour une liste.</p>
- *
- * <p>Une seule méthode plutôt qu'une par combinaison de critères : le statut et le client sont des
- * filtres, pas des cas d'usage distincts, et les décliner en méthodes obligerait à en ajouter une
- * à chaque nouveau critère.</p>
- */
+/** Reads outstanding and settled credit sales as flat projections, filtered by status and customer. */
 public interface DebtQueryPort {
 
     /**
-     * @return la page demandée, dans l'ordre que le statut impose : de la plus ancienne à la plus
-     * récente pour les créances en cours, du règlement le plus récent au plus ancien pour les
-     * créances éteintes
+     * @return the requested page, oldest first for outstanding debts and most recently settled
+     * first for settled debts
      */
     PageResult<DebtView> findByQuery(ListDebtsQuery query);
 }

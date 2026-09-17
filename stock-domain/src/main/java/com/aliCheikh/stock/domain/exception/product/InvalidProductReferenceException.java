@@ -6,7 +6,7 @@ public class InvalidProductReferenceException extends DomainException {
     private final String invalidProductReference;
 
     public InvalidProductReferenceException(String invalidProductReference) {
-        // Règle : Le nom ne doit pas être vide ou null.
+
         super("Product reference cannot be null or blank. Provided value: '" + invalidProductReference + "'");
         this.invalidProductReference = invalidProductReference;
     }

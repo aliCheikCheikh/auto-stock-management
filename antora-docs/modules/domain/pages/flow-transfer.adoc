@@ -1,20 +1,18 @@
-= Flux : Transfert interne
+= Flow: Internal transfer
 :toc: left
 :icons: font
 
-== Contexte
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Le vendeur constate que le magasin est presque vide pour un produit donné.
-Il prend des unités de la réserve pour remplir le rayon.
+== Context and scenario
 
-C'est un mouvement interne : le stock global ne change pas, seule la répartition entre emplacements est modifiée.
+The seller replenishes the shop floor from backstock. Only the distribution changes; global stock remains unchanged.
+In this example, the shop floor has one filter and the seller transfers ten from backstock.
 
-== Scénario
-
-[quote]
-Le magasin n'a plus qu'un filtre. Le vendeur transfère 10 filtres de la réserve vers le magasin.
-
-== Diagramme de séquence
+== Sequence diagram
 
 [plantuml]
 ----
@@ -22,21 +20,21 @@ Le magasin n'a plus qu'un filtre. Le vendeur transfère 10 filtres de la réserv
 !theme plain
 skinparam backgroundColor transparent
 
-actor Vendeur as V
+actor Seller as V
 participant "Application Service\n(TransferStockUseCase)" as AS
-participant "StorageLocation\n(Réserve)" as SLR
-participant "StorageLocation\n(Magasin)" as SLM
+participant "StorageLocation\n(Backstock)" as SLR
+participant "StorageLocation\n(Shop floor)" as SLM
 participant "StockMovement\nRepository" as SMR
 
-V -> AS : transférer(productId,\n  sourceId=réserve,\n  destId=magasin,\n  qty=10, userId)
+V -> AS : transfer(productId,\n  sourceId=backstock,\n  destId=shopFloor,\n  qty=10, userId)
 activate AS
 
 == Phase 1 : Validation ==
 
 AS -> SLR : hasEnoughStock(productId, 10)
-SLR --> AS : true (stock réserve = 25)
+SLR --> AS : true (stock backstock = 25)
 
-== Phase 2 : Exécution ==
+== Phase 2: Execution ==
 
 AS -> SLR : decreaseStock(productId, 10)
 activate SLR
@@ -53,137 +51,81 @@ deactivate SLM
 AS -> AS : save(source)
 AS -> AS : save(destination)
 
-== Phase 3 : Enregistrement ==
+== Phase 3: Recording ==
 
-AS -> AS : StockMovement.createTransfer(\n  productId, réserveId,\n  magasinId, 10, userId)
+AS -> AS : StockMovement.createTransfer(\n  productId, backstockId,\n  shopFloorId, 10, userId)
 
 AS -> SMR : save(movement)
 
 note right of AS
-  Stock global inchangé :
-  Avant : 25 + 1 = 26
-  Après : 15 + 11 = 26
+  Global stock unchanged :
+  Before : 25 + 1 = 26
+  After : 15 + 11 = 26
 end note
 
-AS --> V : Transfert effectué
+AS --> V : Transfer completed
 deactivate AS
 
 @enduml
 ----
 
-== Détail du mouvement créé
+== Created movement
 
-=== StockMovement (TRANSFER)
+A single `StockMovement` uses `type = TRANSFER`, the oil-filter `productId`, backstock as its source, the shop floor as its destination, quantity 10, the seller's `performedBy` identifier, and `saleId = null`.
 
-[cols="1,2"]
-|===
-| Attribut | Valeur
-
-| type | `TRANSFER`
-| productId | (filtre à huile)
-| sourceLocationId | Réserve
-| destinationLocationId | Magasin
-| quantity | 10
-| performedBy | Vendeur
-| saleId | `null` (pas lié à une vente)
-|===
-
-== Différences avec les autres flux
+== Comparison with other flows
 
 [cols="1,1,1,1"]
 |===
-| | Approvisionnement | Vente | Transfert
+| Property | Receipt | Sale | Transfer
 
-| Type de mouvement
+| Movement type
 | `ENTRY`
 | `EXIT`
 | `TRANSFER`
 
 | Source
-| `null` (externe)
-| Emplacement(s) interne(s)
-| Emplacement interne
+| `null` (external)
+| Internal location(s)
+| Internal location
 
 | Destination
-| Emplacement(s) interne(s)
-| `null` (client)
-| Emplacement interne
+| Internal location(s)
+| `null` (customer)
+| Internal location
 
-| Stock global
-| Augmente
-| Diminue
-| **Inchangé**
+| Global stock
+| Increases
+| Decreases
+| Unchanged
 
-| Nombre de mouvements
-| 1 par emplacement cible
-| 1 par emplacement source
-| **1 seul**
+| Movements
+| One per target location
+| One per source location
+| One
 
-| Lien avec Sale
-| Non
-| Oui (`saleId`)
-| Non
+| Sale link
+| No
+| Yes (`saleId`)
+| No
 
-| Décision de répartition
-| Utilisateur
-| Système (allocation)
-| Utilisateur
+| Distribution decision
+| User
+| System allocation
+| User
 |===
 
-== Cas d'erreur
+== Errors
 
-=== Stock insuffisant dans la source
+If backstock has five filters and the requested transfer is ten, `StorageLocation.decreaseStock(productId, 10)` throws `InsufficientStockException`.
+The transfer is rejected, with no movement created and no stock changed.
 
-Si la réserve n'a que 5 filtres et qu'on demande un transfert de 10 :
+`StockMovement.createTransfer(productId, shopFloorId, shopFloorId, 10, userId)` throws `InvalidMovementException` because source and destination must differ.
+The factory method protects this invariant.
 
-[source]
-----
-StorageLocation.decreaseStock(productId, 10)
-→ InsufficientStockException
-  "Stock insuffisant en réserve pour le produit Filtre à huile.
-   Disponible : 5, demandé : 10"
-----
+== Events and manual confirmation
 
-Le transfert est refusé. Aucun mouvement n'est créé, aucun stock n'est modifié.
+`ShopFloorLow` can be emitted if the source is a `SHOP_FLOOR` location and its quantity falls below `lowStockIndicator` after transfer.
+A transfer never emits `LowStockAlert` or `StockReplenished`, because global stock is unchanged.
 
-=== Source et destination identiques
-
-[source]
-----
-StockMovement.createTransfer(productId, magasinId, magasinId, 10, userId)
-→ InvalidMovementException
-  "La source et la destination d'un transfert doivent être différentes"
-----
-
-Cet invariant est protégé par la factory method `createTransfer` du `StockMovement`.
-
-== Événements émis
-
-[cols="1,2"]
-|===
-| Événement | Condition
-
-| `ShopFloorLow`
-| Si, après le transfert, le stock de la **source** (si c'est un `SHOP_FLOOR`) passe en dessous du `lowStockIndicator`. Rare dans ce sens, mais le modèle le prévoit.
-|===
-
-[NOTE]
-====
-Un transfert ne déclenche **jamais** de `LowStockAlert` ni de `StockReplenished`, puisque le stock global ne change pas.
-====
-
-== Quand déclencher un transfert ?
-
-Le transfert est une action **manuelle** déclenchée par le vendeur.
-Cependant, le système aide à la décision grâce à l'événement `ShopFloorLow` :
-
-[source]
-----
-ShopFloorLow émis
-→ Notification sur le tableau de bord :
-  "Filtre à huile : seulement 1 unité en magasin.
-   15 unités disponibles en réserve."
-→ Le vendeur décide de transférer (ou pas)
-----
-
-Le système **suggère**, le vendeur **décide**. C'est conforme à la réalité opérationnelle de la boutique.
+Transfers are manual. `ShopFloorLow` can prompt the seller with a dashboard notification such as "Oil filter: one unit on the shop floor; 15 available in backstock". The seller decides whether to transfer stock.

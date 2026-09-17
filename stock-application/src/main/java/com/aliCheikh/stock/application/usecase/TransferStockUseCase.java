@@ -122,8 +122,7 @@ public class TransferStockUseCase {
                 command.destinationLocationId(),
                 command.quantity(),
                 command.userId(),
-                // Un transfert ne produit qu'un mouvement, mais il reste une opération à part
-                // entière : le marquer garde l'historique homogène.
+                // Assign an operation ID to keep transfer history consistent with other movements.
                 OperationId.generate(),
                 occurredAt
         );

@@ -14,12 +14,12 @@ public final class RenameUserUseCase {
     private final TransactionRunner transactionRunner;
 
     public RenameUserUseCase(UserRepository userRepository, TransactionRunner transactionRunner) {
-        this.userRepository = Objects.requireNonNull(userRepository, "Le registre des utilisateurs est obligatoire.");
-        this.transactionRunner = Objects.requireNonNull(transactionRunner, "La transaction est obligatoire.");
+        this.userRepository = Objects.requireNonNull(userRepository, "User repository is required.");
+        this.transactionRunner = Objects.requireNonNull(transactionRunner, "Transaction runner is required.");
     }
 
     public User execute(UserId userId, String displayName) {
-        Objects.requireNonNull(userId, "L'identifiant de l'utilisateur est obligatoire.");
+        Objects.requireNonNull(userId, "User ID is required.");
         return transactionRunner.execute(() -> {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new UserNotFoundException(userId));

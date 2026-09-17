@@ -6,7 +6,7 @@ import com.aliCheikh.stock.domain.model.product.ProductId;
 public class InvalidStockOperationException extends DomainException {
     private final ProductId productId;
     private final int currentQuantity;
-    private final int invalidQuantity; // Renommé pour être générique (increase ou decrease)
+    private final int invalidQuantity;
 
     public InvalidStockOperationException(ProductId productId, int currentQuantity, int invalidQuantity) {
         super(String.format("Invalid stock operation for product %s. Current quantity: %d, Invalid input: %d",

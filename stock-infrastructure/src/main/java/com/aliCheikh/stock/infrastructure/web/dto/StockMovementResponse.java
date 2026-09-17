@@ -17,11 +17,7 @@ public record StockMovementResponse(
         LocalDateTime executedAt,
         UUID saleId,
         UUID operationId,
-        /**
-         * Solde restant dû de la vente à l'origine du mouvement. {@code null} hors vente, zéro
-         * lorsque la vente est réglée : le front en déduit « payée » ou « à crédit — reste X »
-         * sans refaire le moindre calcul.
-         */
+        /** Originating sale balance: null for non-sale movements, zero when settled. */
         MoneyResponse saleAmountDue
 ) {
 }

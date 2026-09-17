@@ -10,14 +10,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-/** État de règlement d'un lot de ventes, lu en une seule requête. */
+/** Settlement state for a batch of sales in one query. */
 public interface SaleSettlementJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
 
-    /**
-     * Le cumul encaissé passe par une sous-requête : un {@code GROUP BY} sur une jointure aux
-     * paiements donnerait le même résultat, mais la sous-requête garde une ligne par vente même
-     * lorsqu'aucun encaissement n'existe, sans dépendre d'un {@code COALESCE} sur jointure externe.
-     */
+    /** A payment subquery keeps one row per sale, including sales with no payments. */
     @Query(value = """
             SELECT s.id             AS saleId,
                    s.total_amount   AS totalAmount,

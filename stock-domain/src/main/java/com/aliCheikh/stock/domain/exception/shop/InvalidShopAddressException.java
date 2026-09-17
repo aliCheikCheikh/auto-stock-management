@@ -7,7 +7,7 @@ public class InvalidShopAddressException extends DomainException {
 
     public InvalidShopAddressException(String invalidShopAddress) {
         super("Shop address cannot be null or blank. Provided value: '" + invalidShopAddress + "'");
-        this.invalidShopAddress = invalidShopAddress; // CORRIGÉ
+        this.invalidShopAddress = invalidShopAddress;
     }
 
     public String getInvalidShopAddress() {

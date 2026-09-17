@@ -11,30 +11,15 @@ import org.springframework.data.repository.query.Param;
 import java.util.UUID;
 
 /**
- * Lecture des ventes à crédit, par statut de règlement.
- *
- * <p>Requête native avec alias explicites, projetée sur une interface typée. On ne charge ni les
- * agrégats ni les lignes de vente, inutiles pour cet écran.</p>
- *
- * <p>Le corps de la requête est unique : les trois statuts n'en font varier que le {@code HAVING}
- * et l'ordre. Trois requêtes recopiées auraient dérivé à la première évolution du modèle de
- * lecture — et ce sont des montants qu'elles calculent.</p>
- *
- * <p>L'ordre est écrit dans le SQL plutôt que délégué au {@code Pageable}, qui est toujours reçu
- * sans tri : Spring Data ajouterait sinon son propre {@code ORDER BY} à la suite, et un tri sur un
- * agrégat ne survit pas à cette concaténation.</p>
+ * Debt projections by settlement status. Queries share the projection and vary HAVING and
+ * ordering. Pageable must remain unsorted because SQL owns the ordering.
  */
 public interface DebtJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
 
     /**
-     * Le montant encaissé est agrégé depuis le ledger des paiements : une vente sans aucun
-     * encaissement doit rester visible, d'où la jointure externe et le {@code COALESCE}. La
-     * jointure au client, elle, est interne — une vente sans client est une vente au comptant,
-     * jamais une créance.
-     *
-     * <p>Le client est filtré ici et non par une méthode dédiée : c'est un critère, pas un cas
-     * d'usage. Le {@code CAST} est nécessaire parce qu'un paramètre nul ne porte aucun type que
-     * PostgreSQL puisse deviner.</p>
+     * The outer payment join and COALESCE retain sales without payments. The inner customer join
+     * excludes sales without debtors. CAST gives nullable customer parameters an explicit
+     * PostgreSQL type.
      */
     String FROM_DEBTS = """
             FROM sale s
@@ -61,7 +46,7 @@ public interface DebtJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
                      c.phone_number, s.total_amount, s.total_currency
             """;
 
-    /** Le comptage ne retient que l'identifiant : le reste de la projection ne lui sert à rien. */
+    /** Count only sale IDs, without the display projection. */
     String COUNT_DEBTS = "SELECT COUNT(*) FROM (SELECT s.id " + FROM_DEBTS
             + " GROUP BY s.id, s.total_amount ";
 
@@ -69,22 +54,19 @@ public interface DebtJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
 
     String NOTHING_DUE = " HAVING COALESCE(SUM(p.amount), 0) >= s.total_amount ";
 
-    /** De la plus ancienne à la plus récente : c'est la plus ancienne qu'on relance. */
+    /** Outstanding debts ordered oldest first. */
     @Query(value = SELECT_DEBT + GROUP_BY_SALE + STILL_DUE + " ORDER BY s.occurred_at ASC",
             countQuery = COUNT_DEBTS + STILL_DUE + ") AS counted",
             nativeQuery = true)
     Page<DebtProjection> findOutstanding(@Param("customerId") UUID customerId, Pageable pageable);
 
-    /**
-     * Du règlement le plus récent au plus ancien : on ouvre l'historique pour retrouver ce qui
-     * vient d'être soldé, pas pour remonter à la première vente de la boutique.
-     */
+    /** Settled debts ordered by most recent settlement. */
     @Query(value = SELECT_DEBT + GROUP_BY_SALE + NOTHING_DUE + " ORDER BY MAX(p.received_at) DESC",
             countQuery = COUNT_DEBTS + NOTHING_DUE + ") AS counted",
             nativeQuery = true)
     Page<DebtProjection> findSettled(@Param("customerId") UUID customerId, Pageable pageable);
 
-    /** Les deux mêlées, l'activité la plus récente en tête. */
+    /** Combined history ordered by most recent activity. */
     @Query(value = SELECT_DEBT + GROUP_BY_SALE + " ORDER BY s.occurred_at DESC",
             countQuery = COUNT_DEBTS + ") AS counted",
             nativeQuery = true)

@@ -60,11 +60,11 @@ public class SaleQueryJpaAdapter implements ListSalesQueryPort {
                 PageRequest.of(query.page(), query.size(), toSort(query.sort()))
         );
 
-        // Un seul appel pour toute la page : résoudre le vendeur ligne par ligne serait un N+1.
+        // Resolve seller names for the entire page to avoid one query per row.
         Map<UUID, String> sellerNames = userDisplayNameResolver.resolve(
                 page.getContent().stream().map(SaleJpaEntity::getSoldBy).toList());
 
-        // Même parti que pour les noms d'auteurs : un seul appel pour la page.
+        // Resolve settlement state for the entire page.
         Map<UUID, Money> amountsDue = saleSettlementResolver.resolveAmountsDue(
                 page.getContent().stream().map(SaleJpaEntity::getId).toList());
 

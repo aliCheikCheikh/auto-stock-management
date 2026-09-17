@@ -7,7 +7,7 @@ import com.aliCheikh.stock.domain.model.shared.Money;
 import java.util.Objects;
 
 public class Product {
-    private final ProductId productId; // L'identité est immuable
+    private final ProductId productId;
     private String name;
     private final String reference;
     private final CategoryId categoryId;

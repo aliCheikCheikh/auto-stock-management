@@ -3,7 +3,7 @@ package com.aliCheikh.stock.domain.exception.sale;
 import com.aliCheikh.stock.domain.exception.DomainException;
 import com.aliCheikh.stock.domain.model.sale.SaleId;
 
-/** Levée quand on tente d'encaisser sur une vente qui ne doit plus rien. */
+/** Raised when a payment is attempted on an already settled sale. */
 public class SaleAlreadySettledException extends DomainException {
 
     private final SaleId saleId;

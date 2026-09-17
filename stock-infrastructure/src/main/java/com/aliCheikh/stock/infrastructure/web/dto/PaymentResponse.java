@@ -5,12 +5,7 @@ import com.aliCheikh.stock.application.dto.RecordPaymentResult;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Encaissement enregistré, avec l'état de la dette après opération.
- *
- * <p>Le solde est renvoyé pour que le vendeur l'annonce au client sans que l'interface ait à le
- * recalculer : une seule source de vérité.</p>
- */
+/** Recorded payment with the server-computed remaining balance. */
 public record PaymentResponse(UUID saleId,
                               MoneyResponse amountPaid,
                               LocalDateTime receivedAt,

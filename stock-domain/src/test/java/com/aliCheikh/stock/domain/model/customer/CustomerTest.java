@@ -15,10 +15,10 @@ public class CustomerTest {
 
     @Test
     public void should_create_customer_with_all_fields() {
-        // WHEN on crée un client complet (email en casse mixte, avec espaces)
+
         Customer customer = Customer.create(ID, PHONE, "Ahmat", "Youssouf", " Ahmat@Example.COM ");
 
-        // THEN les champs sont posés et l'email est normalisé (trim + minuscules)
+
         assertThat(customer.getCustomerId()).isEqualTo(ID);
         assertThat(customer.getPhoneNumber()).isEqualTo(PHONE);
         assertThat(customer.getGivenName()).isEqualTo("Ahmat");
@@ -28,10 +28,10 @@ public class CustomerTest {
 
     @Test
     public void should_create_customer_without_optional_fields() {
-        // WHEN le nom du père et l'email sont absents (cas courant au Tchad)
+
         Customer customer = Customer.create(ID, PHONE, "Ahmat", null, null);
 
-        // THEN les optionnels sont vides, pas d'exception
+
         assertThat(customer.getGivenName()).isEqualTo("Ahmat");
         assertThat(customer.getFatherName()).isEmpty();
         assertThat(customer.getEmail()).isEmpty();
@@ -70,11 +70,11 @@ public class CustomerTest {
 
     @Test
     public void two_customers_with_same_id_are_equal() {
-        // GIVEN deux clients partageant le même identifiant technique
+
         Customer a = Customer.create(ID, PHONE, "Ahmat", null, null);
         Customer b = Customer.create(ID, PhoneNumber.of("99 99 99 99"), "Autre", "Nom", null);
 
-        // THEN ils sont égaux : l'identité passe par le CustomerId, pas par les données
+        // Equality uses CustomerId rather than customer details.
         assertThat(a).isEqualTo(b);
         assertThat(a.hashCode()).isEqualTo(b.hashCode());
     }

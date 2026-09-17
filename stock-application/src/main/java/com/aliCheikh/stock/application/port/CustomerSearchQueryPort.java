@@ -4,23 +4,15 @@ import com.aliCheikh.stock.application.dto.CustomerSearchView;
 
 import java.util.List;
 
-/**
- * Recherche de clients pour le sélecteur de vente.
- *
- * <p>Port de requête : on lit un modèle plat destiné à l'affichage, sans reconstruire les
- * agrégats. La recherche est faite côté base et non côté client, pour ne pas dépendre du
- * volume de clients.</p>
- */
+/** Database-backed customer search returning a flat read model for the checkout selector. */
 public interface CustomerSearchQueryPort {
 
     /**
-     * Clients dont le nom, le nom du père ou le numéro correspond au mot-clé.
-     *
-     * @param keyword terme de recherche, déjà nettoyé par le use case
-     * @param limit   nombre maximum de résultats
+     * Matches the customer's name, father name or phone number. {@code keyword} is normalized by
+     * the use case; {@code limit} bounds the results.
      */
     List<CustomerSearchView> findCustomersByKeyword(String keyword, int limit);
 
-    /** Les clients les plus récemment enregistrés, pour amorcer le sélecteur sans saisie. */
+    /** Most recently registered customers, used before a search term is entered. */
     List<CustomerSearchView> findMostRecent(int limit);
 }

@@ -3,27 +3,21 @@ package com.aliCheikh.stock.domain.model.customer;
 import com.aliCheikh.stock.domain.exception.customer.InvalidPhoneNumberException;
 
 /**
- * Numéro de téléphone tchadien, stocké sous forme canonique E.164 : {@code +235XXXXXXXX}.
- *
- * <p>La normalisation est la raison d'être de ce Value Object : deux écritures humaines du même
- * numéro ({@code "66 12 34 56"}, {@code "+235-66-12-34-56"}, {@code "0023566123456"}) produisent
- * le même objet. C'est ce qui rend l'unicité du téléphone fiable, en mémoire comme en base.</p>
- *
- * <p>Le seul point d'entrée est {@link #of(String)} : un {@code PhoneNumber} qui existe est
- * forcément valide et canonique.</p>
+ * Chadian phone number in canonical E.164 form: {@code +235XXXXXXXX}. {@link #of(String)}
+ * normalizes common input formats and validates the national number length.
  */
 public final class PhoneNumber {
 
-    /** Indicatif du Tchad, en chiffres seuls (le {@code +} appartient à l'affichage, pas à la donnée). */
+    /** Chad country code without the leading plus sign. */
     private static final String CHAD_COUNTRY_CODE = "235";
 
-    /** Longueur du numéro national tchadien, une fois tout préfixe retiré. */
+    /** National phone number length after removing prefixes. */
     private static final int NATIONAL_NUMBER_LENGTH = 8;
 
-    /** Préfixe international composé au clavier, équivalent du {@code +}. */
+    /** International dialing prefix, equivalent to a leading plus sign. */
     private static final String INTERNATIONAL_CALL_PREFIX = "00";
 
-    /** Tout ce qui n'est pas un chiffre : espaces, tirets, points, parenthèses, {@code +}. */
+    /** Separators and other non-digit characters removed during normalization. */
     private static final String NON_DIGIT_PATTERN = "\\D";
 
     private final String value;
@@ -33,11 +27,8 @@ public final class PhoneNumber {
     }
 
     /**
-     * Construit un numéro canonique à partir d'une saisie libre.
-     *
-     * @param rawPhoneNumber la saisie de l'utilisateur, dans n'importe quel format usuel
-     * @throws InvalidPhoneNumberException si la saisie est vide ou ne contient pas un numéro
-     *                                     national de {@value #NATIONAL_NUMBER_LENGTH} chiffres
+     * Creates a canonical phone number from user input. Throws {@link InvalidPhoneNumberException}
+     * for blank input or an invalid national number length.
      */
     public static PhoneNumber of(String rawPhoneNumber) {
         if (rawPhoneNumber == null || rawPhoneNumber.isBlank()) {
@@ -57,11 +48,8 @@ public final class PhoneNumber {
     }
 
     /**
-     * Ramène une saisie libre au seul numéro national.
-     *
-     * <p>L'ordre des trois étapes est structurant : on retire d'abord la ponctuation (sans quoi un
-     * {@code +} en tête empêcherait de reconnaître l'indicatif), puis on retire le préfixe, et
-     * seulement ensuite l'appelant peut juger de la longueur.</p>
+     * Remove punctuation before stripping international prefixes, then validate the national
+     * number length.
      */
     private static String extractNationalNumber(String rawPhoneNumber) {
         String digits = rawPhoneNumber.replaceAll(NON_DIGIT_PATTERN, "");
@@ -78,7 +66,7 @@ public final class PhoneNumber {
         return digits;
     }
 
-    /** Le numéro sous forme canonique {@code +235XXXXXXXX}. */
+    /** Canonical phone number in {@code +235XXXXXXXX} form. */
     public String getValue() {
         return value;
     }

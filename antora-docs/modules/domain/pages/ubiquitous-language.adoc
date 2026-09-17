@@ -1,91 +1,92 @@
-= Langage ubiquitaire
+= Ubiquitous language
 :toc: left
 :icons: font
 
-Le langage ubiquitaire est le vocabulaire partagé entre les développeurs et les experts métier.
-Chaque terme a une définition unique et non ambiguë dans le contexte de ce système.
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-== Termes du domaine
+The ubiquitous language is the shared vocabulary used by developers and domain experts.
+Each term has one meaning within this system.
 
-[cols="1,3,1"]
+== Domain terms
+
+[cols="1,1,1"]
 |===
-| Terme | Définition | Type DDD
+| Term | Definition | DDD type
 
-| **Produit** (`Product`)
-| Article référencé dans le catalogue de la boutique (filtre à huile, bougie, etc.). Identifié par un nom et une référence unique.
+| Product (`Product`)
+| Catalog item, such as an oil filter or spark plug, identified by name and unique reference.
 | Aggregate Root
 
-| **Catégorie** (`Category`)
-| Classification logique des produits (Filtres, Huiles, Pièces moteur, etc.). Un produit appartient à une seule catégorie.
+| Category (`Category`)
+| Classification such as filters, oils or engine parts. Each product belongs to one category.
 | Aggregate Root
 
-| **Emplacement** (`StorageLocation`)
-| Lieu physique où sont stockés les produits. Il existe deux types : le **magasin** (zone de vente) et la **réserve** (stock arrière).
+| Storage location (`StorageLocation`)
+| Physical location holding products: shop floor or backstock.
 | Aggregate Root
 
-| **Magasin** (`SHOP_FLOOR`)
-| Zone de vente accessible aux clients. Le vendeur y puise en priorité lors d'une vente.
-| Valeur de `LocationType`
+| Shop floor (`SHOP_FLOOR`)
+| Customer-facing sales area, used first when allocating a sale.
+| `LocationType` value
 
-| **Réserve** (`BACKSTOCK`)
-| Zone de stockage arrière. La marchandise y est entreposée en attendant d'être transférée vers le magasin.
-| Valeur de `LocationType`
+| Backstock (`BACKSTOCK`)
+| Rear storage area holding goods before transfer to the shop floor.
+| `LocationType` value
 
-| **Niveau de stock** (`StockLevel`)
-| Quantité d'un produit disponible dans un emplacement donné. Invariant : ne peut jamais être négatif.
+| Stock level (`StockLevel`)
+| Quantity of a product at a location; never negative.
 | Value Object
 
-| **Mouvement de stock** (`StockMovement`)
-| Enregistrement immuable d'une opération sur le stock. Trois types : entrée, sortie, transfert.
+| Stock movement (`StockMovement`)
+| Immutable record of a receipt, issue or transfer.
 | Aggregate Root
 
-| **Entrée** (`ENTRY`)
-| Mouvement d'approvisionnement. La marchandise entre dans un emplacement depuis l'extérieur (fournisseur). Pas de source.
-| Valeur de `MovementType`
+| Receipt (`ENTRY`)
+| Goods enter a location from an external supplier. No internal source.
+| `MovementType` value
 
-| **Sortie** (`EXIT`)
-| Mouvement de vente. La marchandise quitte un emplacement. Pas de destination. Généralement lié à une `Sale`.
-| Valeur de `MovementType`
+| Issue (`EXIT`)
+| Goods leave a location, usually for a `Sale`. No internal destination.
+| `MovementType` value
 
-| **Transfert** (`TRANSFER`)
-| Mouvement interne entre deux emplacements (ex : réserve → magasin). Le stock global ne change pas.
-| Valeur de `MovementType`
+| Transfer (`TRANSFER`)
+| Internal movement between locations; global stock is unchanged.
+| `MovementType` value
 
-| **Vente** (`Sale`)
-| Transaction commerciale enregistrant la cession de produits à un client. Composée de lignes de vente.
+| Sale (`Sale`)
+| Commercial transaction recording products sold to a customer, composed of line items.
 | Aggregate Root
 
-| **Ligne de vente** (`SaleLineItem`)
-| Détail d'une vente pour un produit donné : quantité, prix unitaire, total ligne.
-| Entité interne de `Sale`
+| Sale line (`SaleLineItem`)
+| Product, quantity, unit price and line total within a sale.
+| Internal `Sale` entity
 
-| **Seuil d'alerte global** (`minimumGlobalThreshold`)
-| Quantité minimale de stock global (magasin + réserve) en dessous de laquelle une alerte est émise.
-| Attribut de `Product`
+| Global alert threshold (`minimumGlobalThreshold`)
+| Minimum combined shop-floor/backstock quantity below which an alert is raised.
+| `Product` attribute
 
-| **Indicateur magasin bas** (`lowStockIndicator`)
-| Quantité en dessous de laquelle l'emplacement magasin signale un besoin de réapprovisionnement depuis la réserve. Ce n'est pas une alerte critique.
-| Attribut de `StorageLocation`
+| Shop-floor low-stock indicator (`lowStockIndicator`)
+| Quantity below which the shop floor needs replenishment from backstock; not a critical alert.
+| `StorageLocation` attribute
 
-| **Stock global**
-| Somme des `StockLevel` d'un produit à travers tous les emplacements. C'est une **vue calculée**, pas une entité.
-| Concept dérivé
+| Global stock
+| Sum of a product's `StockLevel` quantities across all locations; a calculated view.
+| Derived concept
 
-| **Boutique** (`Shop`)
-| Établissement physique possédant un ou plusieurs emplacements. Prévu pour le multi-boutiques.
+| Shop (`Shop`)
+| Physical establishment containing one or more storage locations; supports multiple shops.
 | Aggregate Root
 
-| **Allocation**
-| Processus de répartition automatique d'une demande de vente entre les emplacements disponibles. Règle : puiser d'abord dans le magasin, puis dans la réserve.
-| Concept métier (Domain Service)
+| Allocation
+| Automatic distribution of a sale request across available locations, using the shop floor first.
+| Domain Service concept
 |===
 
-== Ambiguïtés résolues
+== Terminology clarification
 
-[IMPORTANT]
-====
-Le client utilise parfois le mot **"stock"** pour désigner uniquement ce qui est en réserve.
-
-Dans ce système, **"stock"** désigne toujours la quantité totale (magasin + réserve).
-Pour désigner la quantité en réserve uniquement, on utilise le terme **"stock en réserve"** ou `StockLevel` de l'emplacement `BACKSTOCK`.
-====
+The customer sometimes uses "stock" to mean only backstock.
+In this system, "stock" means the combined shop-floor and backstock quantity.
+Use "backstock quantity" or the `StockLevel` of a `BACKSTOCK` location when referring only to rear storage.

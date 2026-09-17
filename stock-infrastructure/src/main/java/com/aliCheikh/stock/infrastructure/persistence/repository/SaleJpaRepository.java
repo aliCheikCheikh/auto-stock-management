@@ -13,20 +13,9 @@ import java.util.UUID;
 public interface SaleJpaRepository extends JpaRepository<SaleJpaEntity, UUID> {
 
     /**
-     * Charge une vente en verrouillant sa ligne jusqu'à la fin de la transaction.
-     *
-     * <p>Nécessaire pour encaisser : sans ce verrou, deux règlements simultanés liraient le même
-     * solde, chacun se croirait dans les limites du montant dû, et la vente finirait sur-payée.
-     * Le verrou pessimiste sérialise les encaissements d'une même vente — sémantique exacte
-     * recherchée, et sans coût réel ici, les règlements concurrents sur une même dette étant
-     * rarissimes dans une boutique à un comptoir.</p>
-     *
-     * <p>Les collections {@code saleLines} et {@code payments} ne doivent pas être jointes dans
-     * cette requête. Une jointure simultanée produit une ligne SQL par couple ligne de vente ×
-     * paiement ; comme les paiements sont ordonnés dans une {@link java.util.List}, Hibernate les
-     * duplique alors en mémoire et fausse le solde. Le mapper initialise les deux collections par
-     * deux lectures secondaires, toujours dans la transaction qui porte ce verrou. Il ne s'agit
-     * pas d'un N+1 : une seule vente est chargée par encaissement.</p>
+     * Locks the sale until the transaction ends to serialize payments. Do not fetch-join both
+     * saleLines and payments: their Cartesian product can duplicate payments in memory. The mapper
+     * loads each collection separately within the same transaction.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM SaleJpaEntity s WHERE s.id = :saleId")

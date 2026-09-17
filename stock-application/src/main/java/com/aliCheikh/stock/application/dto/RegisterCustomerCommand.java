@@ -3,10 +3,8 @@ package com.aliCheikh.stock.application.dto;
 import java.util.Objects;
 
 /**
- * Demande d'enregistrement d'un client.
- *
- * <p>Le téléphone arrive ici en texte brut, tel que saisi par le vendeur : c'est le Value Object
- * {@code PhoneNumber} qui le normalisera. Prénom (nom du père) et email sont facultatifs.</p>
+ * Customer registration request. {@code PhoneNumber} normalizes the raw phone input. Father name
+ * and email are optional.
  */
 public record RegisterCustomerCommand(String rawPhoneNumber,
                                       String givenName,

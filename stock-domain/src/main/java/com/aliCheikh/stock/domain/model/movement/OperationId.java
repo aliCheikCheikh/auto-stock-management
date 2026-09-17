@@ -4,16 +4,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Identifiant de l'opération à l'origine d'un ensemble de mouvements de stock.
- *
- * <p>Une réception, un transfert ou une vente produisent chacun <b>plusieurs</b> mouvements : un par
- * produit, parfois un par emplacement. Sans marqueur commun, l'historique les présente comme autant
- * d'événements indépendants, et rien ne distingue trois lignes d'une même réception de trois
- * réceptions séparées.</p>
- *
- * <p>Regrouper d'après la date et l'auteur serait une heuristique : deux opérations rapprochées du
- * même vendeur seraient fusionnées à tort. L'identité est donc posée explicitement au moment où
- * l'opération est décidée.</p>
+ * Identity shared by stock movements from the same receipt, transfer or sale. Explicit grouping
+ * avoids merging separate operations performed close together by the same user.
  */
 public final class OperationId {
 

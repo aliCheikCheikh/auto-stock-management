@@ -1,15 +1,17 @@
-= Événements de domaine
+= Domain events
 :toc: left
 :icons: font
 
-== Qu'est-ce qu'un événement de domaine ?
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Un événement de domaine signale qu'**un fait métier significatif s'est produit**.
-Il est au passé ("stock bas détecté", "stock réapprovisionné") et il est immuable.
+== Definition
 
-Les événements permettent la communication entre agrégats sans couplage direct.
+A domain event records a significant business fact that has already occurred. Events are immutable and allow aggregates to communicate without direct coupling.
 
-== Liste des événements
+== Event model
 
 [plantuml]
 ----
@@ -61,77 +63,41 @@ class StockReceived <<Domain Event>> {
 @enduml
 ----
 
-== Détail des événements
+== Events
 
-=== LowStockAlert
-
-[cols="1,3"]
+[cols="1,1,1,1"]
 |===
-| Déclencheur | Le stock global d'un produit passe en dessous de `minimumGlobalThreshold`.
-| Émis par | L'Application Service, après une vente ou un mouvement de sortie.
-| Consommé par | Le tableau de bord (notification), le système d'alertes.
-| Données | `productId`, `productName`, `globalQuantity`, `threshold`, `occurredAt`.
-|===
+| Event | Trigger | Publisher | Consumer / data
 
-=== StockReplenished
-
-[cols="1,3"]
-|===
-| Déclencheur | Le stock global d'un produit repasse au-dessus de `minimumGlobalThreshold` après un approvisionnement.
-| Émis par | Le `ReceivingService` (via l'Application Service).
-| Consommé par | Le tableau de bord (désactivation de l'alerte).
-| Données | `productId`, `productName`, `globalQuantity`, `threshold`, `occurredAt`.
-|===
-
-=== ShopFloorLow
-
-[cols="1,3"]
-|===
-| Déclencheur | La quantité d'un produit dans un emplacement `SHOP_FLOOR` passe en dessous du `lowStockIndicator`.
-| Émis par | `StorageLocation` après un `decreaseStock`.
-| Consommé par | Le tableau de bord (indicateur de transfert nécessaire).
-| Données | `productId`, `locationId`, `currentQuantity`, `lowStockIndicator`, `occurredAt`.
-|===
-
-[NOTE]
-====
-`ShopFloorLow` n'est **pas** une alerte critique comme `LowStockAlert`.
-C'est un signal opérationnel : "il faut transférer des unités de la réserve vers le magasin".
-====
-
-=== SaleCompleted
-
-[cols="1,3"]
-|===
-| Déclencheur | Une vente est finalisée.
-| Émis par | L'Application Service, après la création de la `Sale` et des `StockMovement`.
-| Consommé par | Le tableau de bord (recettes du jour), le système de reporting.
-| Données | `saleId`, `totalAmount`, `lineItemCount`, `soldBy`, `occurredAt`.
-|===
-
-=== StockReceived
-
-[cols="1,3"]
-|===
-| Déclencheur | Un approvisionnement est enregistré.
-| Émis par | Le `ReceivingService` (via l'Application Service).
-| Consommé par | Le tableau de bord (historique des réceptions).
-| Données | `productId`, `totalQuantityReceived`, `locationBreakdown`, `receivedBy`, `occurredAt`.
-|===
-
-== Stratégie d'alerte — rappel
-
-[cols="1,2,1"]
-|===
-| Niveau | Seuil | Événement
-
-| **Critique** (commande fournisseur nécessaire)
-| Stock global < `minimumGlobalThreshold` du `Product`
 | `LowStockAlert`
+| Global product quantity falls below `minimumGlobalThreshold`.
+| Application Service after a sale or issue.
+| Dashboard notifications and alerts. Data: `productId`, `productName`, `globalQuantity`, `threshold`, `occurredAt`.
 
-| **Opérationnel** (transfert interne nécessaire)
-| Stock magasin < `lowStockIndicator` du `StorageLocation`
+| `StockReplenished`
+| Global quantity rises above `minimumGlobalThreshold` after receipt.
+| `ReceivingService`, via the Application Service.
+| Dashboard clears the alert. Data: `productId`, `productName`, `globalQuantity`, `threshold`, `occurredAt`.
+
 | `ShopFloorLow`
+| Product quantity at a `SHOP_FLOOR` location falls below `lowStockIndicator`.
+| `StorageLocation` after `decreaseStock`.
+| Dashboard indicates a required transfer. Data: `productId`, `locationId`, `currentQuantity`, `lowStockIndicator`, `occurredAt`.
+
+| `SaleCompleted`
+| A sale is finalized.
+| Application Service after creating the sale and movements.
+| Daily revenue dashboard and reporting. Data: `saleId`, `totalAmount`, `lineItemCount`, `soldBy`, `occurredAt`.
+
+| `StockReceived`
+| A receipt is recorded.
+| `ReceivingService`, via the Application Service.
+| Receipt history dashboard. Data: `productId`, `totalQuantityReceived`, `locationBreakdown`, `receivedBy`, `occurredAt`.
 |===
 
-Cette double stratégie évite la surcharge d'alertes tout en couvrant les deux niveaux d'action.
+== Two alert levels
+
+* `LowStockAlert` is critical: global quantity is below the product threshold and a supplier order is needed.
+* `ShopFloorLow` is operational: the shop-floor quantity is below the location threshold and an internal transfer is needed.
+
+These distinguish replenishment from a supplier from replenishment using existing backstock.

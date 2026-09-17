@@ -23,11 +23,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * Le contrat d'entrée du résolveur, indépendamment de la base.
- *
- * <p>Ce qu'il reçoit vient d'une page de mouvements : une liste brute, avec des {@code null} pour
- * les mouvements hors vente et des doublons dès que plusieurs lignes partagent la même vente. Ces
- * deux cas sont la norme, pas l'exception, et c'est ici qu'ils sont absorbés.</p>
+ * Resolver input contract: movement pages may contain duplicate sale IDs and null IDs for non-sale
+ * movements.
  */
 class SaleSettlementResolverTest {
 
@@ -53,7 +50,7 @@ class SaleSettlementResolverTest {
                 .containsExactly(Map.entry(saleId, xaf("100000")));
     }
 
-    /** Une vente réglée vaut zéro : c'est une réponse, à distinguer d'une absence de réponse. */
+    /** A settled balance is zero, distinct from an absent balance. */
     @Test
     void should_report_zero_for_a_settled_sale() {
         UUID saleId = UUID.randomUUID();
@@ -64,10 +61,7 @@ class SaleSettlementResolverTest {
         assertThat(resolver.resolveAmountsDue(List.of(saleId)).get(saleId)).isEqualTo(xaf("0"));
     }
 
-    /**
-     * Trois lignes d'une même vente ne doivent produire qu'un identifiant interrogé : le tri
-     * évite le N+1 autant que la clé dupliquée qui ferait échouer la collecte en Map.
-     */
+    /** Repeated sale IDs must be queried only once and must not cause duplicate map keys. */
     @Test
     void should_query_each_sale_once_whatever_the_page_contains() {
         UUID saleId = UUID.randomUUID();
@@ -81,11 +75,7 @@ class SaleSettlementResolverTest {
         assertThat(amountsDue).containsExactly(Map.entry(saleId, xaf("50000")));
     }
 
-    /**
-     * Les mouvements hors vente — réceptions, transferts — arrivent avec un identifiant nul. Les
-     * laisser passer produirait un {@code IN (NULL)} inutile, et une page qui n'en contient que
-     * produirait un {@code IN ()}, invalide en SQL. D'où l'absence totale d'appel.
-     */
+    /** Filter null IDs from non-sale movements and avoid a database call when none remain. */
     @Test
     void should_not_query_anything_when_no_movement_comes_from_a_sale() {
         List<UUID> onlyNulls = new ArrayList<>(Arrays.asList(null, null));
@@ -96,7 +86,7 @@ class SaleSettlementResolverTest {
         verify(repository, never()).findSettlements(anyCollection());
     }
 
-    /** Une vente introuvable est simplement absente : l'appelant décide quoi en faire. */
+    /** Unknown sales are omitted from the result. */
     @Test
     void should_omit_a_sale_which_no_longer_exists() {
         given(repository.findSettlements(anyCollection())).willReturn(List.of());

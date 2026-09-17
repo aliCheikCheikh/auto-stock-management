@@ -11,13 +11,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * Consultation des créances, en cours ou éteintes, globalement ou pour un client.
- *
- * <p>C'est ici qu'on applique la politique de crédit du domaine, de sorte que tous les canaux —
- * écran, export, future relance — partagent la même règle plutôt que d'en recopier chacun sa
- * version.</p>
- */
+/** Lists debts and applies the domain credit policy consistently to outstanding and settled sales. */
 public class ListDebtsUseCase {
 
     private final DebtQueryPort debtQueryPort;
@@ -26,7 +20,7 @@ public class ListDebtsUseCase {
     public ListDebtsUseCase(DebtQueryPort debtQueryPort, Clock clock) {
         this.debtQueryPort = Objects.requireNonNull(
                 debtQueryPort, "debtQueryPort cannot be null");
-        // Injectée plutôt que LocalDateTime.now() en dur : l'ancienneté devient testable.
+        // Inject the clock to make debt age deterministic in tests.
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
@@ -44,20 +38,12 @@ public class ListDebtsUseCase {
                 page.totalPages());
     }
 
-    /**
-     * Une créance éteinte cesse de vieillir au jour de son règlement.
-     *
-     * <p>Continuer à compter jusqu'à aujourd'hui afficherait « 180 jours, en retard » sur une
-     * dette réglée en une semaine. Le patron lirait un retard là où il n'y a qu'un dossier ancien,
-     * et cesserait de faire confiance à l'écran.</p>
-     */
+    /** Stops debt aging at the settlement date. */
     private static DebtSummary summarize(DebtView debt, LocalDateTime now) {
-        // Le solde fait foi, et non la présence d'un paiement : une vente peut être soldée d'un
-        // seul versement au comptoir comme de cinq remboursements successifs.
+        // Use the remaining balance, not the number of payments, to determine settlement.
         boolean settled = !debt.amountDue().isPositive();
 
-        // Le total d'une vente est strictement positif : une vente soldée porte donc forcément au
-        // moins un encaissement, et sa date de règlement ne peut pas manquer.
+        // A sale has a positive total, so a settled sale must have a payment and settlement date.
         LocalDateTime settledAt = settled ? debt.lastPaymentAt() : null;
         LocalDateTime reference = settled ? settledAt : now;
 

@@ -58,7 +58,7 @@ public class ApiExceptionHandler {
         return problem(
                 status,
                 "invalid-stock-receipt-import-file",
-                "Fichier d'import invalide",
+                "Invalid import file",
                 exception.getMessage(),
                 exception.code().name()
         );
@@ -69,8 +69,8 @@ public class ApiExceptionHandler {
         return problem(
                 HttpStatus.PAYLOAD_TOO_LARGE,
                 "stock-receipt-import-file-too-large",
-                "Fichier d'import trop volumineux",
-                "Le fichier dépasse la taille maximale autorisée de 1 Mo.",
+                "Import file too large",
+                "The file exceeds the maximum allowed size of 1 MB.",
                 StockReceiptImportFileErrorCode.FILE_TOO_LARGE.name()
         );
     }
@@ -82,7 +82,7 @@ public class ApiExceptionHandler {
         ProblemDetail problem = problem(
                 HttpStatus.BAD_REQUEST,
                 "invalid-stock-receipt-import-selection",
-                "Sélection d'import invalide",
+                "Invalid import selection",
                 exception.getMessage(),
                 "INVALID_IMPORT_SELECTION"
         );
@@ -97,7 +97,7 @@ public class ApiExceptionHandler {
         ProblemDetail problem = problem(
                 HttpStatus.CONFLICT,
                 "stock-receipt-import-id-reused",
-                "Import déjà utilisé",
+                "Import ID already used",
                 exception.getMessage(),
                 "IMPORT_ID_REUSED"
         );
@@ -358,7 +358,7 @@ public class ApiExceptionHandler {
         return problem(
                 HttpStatus.NOT_FOUND,
                 "user-not-found",
-                "Utilisateur introuvable",
+                "User not found",
                 exception.getMessage(),
                 "USER_NOT_FOUND"
         );
@@ -369,7 +369,7 @@ public class ApiExceptionHandler {
         return problem(
                 HttpStatus.CONFLICT,
                 "user-email-already-used",
-                "Email déjà utilisé",
+                "Email already used",
                 exception.getMessage(),
                 "USER_EMAIL_ALREADY_USED"
         );
@@ -380,7 +380,7 @@ public class ApiExceptionHandler {
         return problem(
                 HttpStatus.CONFLICT,
                 "last-active-owner",
-                "Dernier propriétaire actif",
+                "Last active owner",
                 exception.getMessage(),
                 "LAST_ACTIVE_OWNER"
         );
@@ -391,7 +391,7 @@ public class ApiExceptionHandler {
         return problem(
                 HttpStatus.CONFLICT,
                 "owner-password-reset-forbidden",
-                "Réinitialisation indisponible",
+                "Password reset unavailable",
                 exception.getMessage(),
                 "OWNER_PASSWORD_RESET_FORBIDDEN"
         );
@@ -402,7 +402,7 @@ public class ApiExceptionHandler {
         return problem(
                 HttpStatus.UNAUTHORIZED,
                 "incorrect-current-password",
-                "Mot de passe actuel incorrect",
+                "Incorrect current password",
                 exception.getMessage(),
                 "CURRENT_PASSWORD_INCORRECT"
         );
@@ -413,7 +413,7 @@ public class ApiExceptionHandler {
         return problem(
                 HttpStatus.BAD_REQUEST,
                 "invalid-user-data",
-                "Données utilisateur invalides",
+                "Invalid user data",
                 exception.getMessage(),
                 "INVALID_USER_DATA"
         );

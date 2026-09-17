@@ -6,7 +6,7 @@ public class InvalidThresholdException extends DomainException {
     private final int invalidThreshold;
 
     public InvalidThresholdException(int invalidThreshold) {
-        // Règle : Le seuil ne peut pas être négatif.
+
         super("Minimum global threshold cannot be negative. Provided value: '" + invalidThreshold + "'");
         this.invalidThreshold = invalidThreshold;
     }

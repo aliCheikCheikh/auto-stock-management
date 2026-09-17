@@ -16,12 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Currency;
 import java.util.Objects;
 
-/**
- * Lecture des créances par jointure directe vente ↔ client.
- *
- * <p>Projection plate typée : aucun agrégat n'est reconstruit, ce qui évite de charger les lignes
- * de vente inutiles à cet écran.</p>
- */
+/** Reads debts through typed sale/customer projections without loading unused sale lines. */
 @Repository
 public class DebtQueryJpaAdapter implements DebtQueryPort {
 
@@ -37,8 +32,7 @@ public class DebtQueryJpaAdapter implements DebtQueryPort {
     public PageResult<DebtView> findByQuery(ListDebtsQuery query) {
         Objects.requireNonNull(query, "query cannot be null");
 
-        // Pageable sans tri : chaque requête porte son propre ORDER BY, et Spring Data ajouterait
-        // le sien à la suite s'il en recevait un.
+        // Keep Pageable unsorted: each query defines its own ORDER BY.
         Pageable pageable = PageRequest.of(query.page(), query.size());
         Page<DebtProjection> page = findPage(query, pageable);
 
@@ -51,8 +45,7 @@ public class DebtQueryJpaAdapter implements DebtQueryPort {
     }
 
     private Page<DebtProjection> findPage(ListDebtsQuery query, Pageable pageable) {
-        // Un switch exhaustif sur l'énumération : ajouter un statut sans lui donner de requête ne
-        // compilera pas, là où un if/else aurait silencieusement renvoyé la branche par défaut.
+        // An exhaustive switch requires a query for every status.
         return switch (query.status()) {
             case OUTSTANDING -> debtJpaRepository.findOutstanding(query.customerId(), pageable);
             case SETTLED -> debtJpaRepository.findSettled(query.customerId(), pageable);
@@ -74,7 +67,7 @@ public class DebtQueryJpaAdapter implements DebtQueryPort {
                 projection.getCustomerPhoneNumber(),
                 totalAmount,
                 amountPaid,
-                // Le solde reste dérivé, jamais stocké : une seule source de vérité.
+                // Derive the balance rather than storing it separately.
                 totalAmount.subtract(amountPaid),
                 projection.getLastPaymentAt());
     }

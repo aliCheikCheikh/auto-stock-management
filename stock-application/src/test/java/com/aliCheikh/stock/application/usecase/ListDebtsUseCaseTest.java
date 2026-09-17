@@ -27,12 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
-/**
- * C'est ici que la politique de crédit rencontre les créances éteintes.
- *
- * <p>Le point délicat n'est pas de lire une dette, c'est de décider à quel instant on arrête de la
- * compter : une créance soldée cesse de vieillir au jour de son règlement.</p>
- */
+/** Credit policy applied to settled debts: debt age stops at settlement. */
 class ListDebtsUseCaseTest {
 
     private static final Currency XAF = Currency.getInstance("XAF");
@@ -59,15 +54,11 @@ class ListDebtsUseCaseTest {
         assertThat(summary.amountDue()).isEqualTo(xaf("150000"));
         assertThat(summary.daysOutstanding()).isEqualTo(12);
         assertThat(summary.overdue()).isFalse();
-        // La créance vit encore : elle n'a pas de date de solde, même si des versements existent.
+        // Partial payments do not give an outstanding debt a settlement date.
         assertThat(summary.settledAt()).isNull();
     }
 
-    /**
-     * Le cœur de la fonctionnalité : une dette réglée en huit jours il y a six mois doit se lire
-     * « réglée en 8 jours », et non « 180 jours, en retard ». Sans cela, l'historique ferait passer
-     * chaque dossier ancien pour un mauvais payeur.
-     */
+    /** A debt paid in eight days must retain that duration even six months later. */
     @Test
     void should_stop_ageing_a_debt_on_the_day_it_was_settled() {
         LocalDateTime sale = NOW.minusDays(180);
@@ -84,7 +75,7 @@ class ListDebtsUseCaseTest {
         assertThat(summary.amountDue()).isEqualTo(xaf("0"));
     }
 
-    /** Une dette réglée hors délai le reste : l'information survit au paiement. */
+    /** Late settlement remains visible after payment. */
     @Test
     void should_remember_that_a_debt_was_settled_late() {
         LocalDateTime sale = NOW.minusDays(300);
@@ -99,8 +90,8 @@ class ListDebtsUseCaseTest {
     }
 
     /**
-     * Un versement supérieur au total ne devrait pas exister — l'agrégat le refuse — mais si la
-     * base en portait un, la vente resterait soldée plutôt que d'afficher une dette négative.
+     * If inconsistent persisted data contains an overpayment, show a settled sale rather than a
+     * negative debt.
      */
     @Test
     void should_treat_an_overpaid_sale_as_settled() {
@@ -125,7 +116,7 @@ class ListDebtsUseCaseTest {
 
         assertThat(captor.getValue().status()).isEqualTo(DebtStatus.SETTLED);
         assertThat(captor.getValue().customerId()).isEqualTo(customerId);
-        // Le use case enrichit le contenu, il ne repagine rien.
+        // Enrich the page content without changing pagination.
         assertThat(result.page()).isEqualTo(2);
         assertThat(result.size()).isEqualTo(5);
         assertThat(result.totalElements()).isEqualTo(42);

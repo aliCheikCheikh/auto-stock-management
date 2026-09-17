@@ -1,17 +1,19 @@
-= Agrégat Sale
+= Sale aggregate
 :toc: left
 :icons: font
 
-== Rôle
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-La `Sale` représente une transaction de vente.
-Elle suit le modèle du **Panier Validé** : l'agrégat est créé de manière atomique (en une seule fois) lorsque le vendeur valide sa sélection.
-Elle contient les lignes de vente (`SaleLineItem`) qui détaillent les produits vendus, leurs quantités et leurs prix.
+== Responsibility
 
-La `Sale` est le concept **commercial** : elle porte le montant total et sait _quoi_ a été vendu à _quel prix_.
-La traçabilité physique (d'où vient chaque unité) est portée par les `StockMovement` liés.
+`Sale` represents a sales transaction. The aggregate is created atomically when the seller confirms the basket.
+It contains `SaleLineItem` entries describing the products, quantities and prices sold.
+The sale records the commercial transaction; linked `StockMovement` records provide physical traceability.
 
-== Diagramme
+== Diagram
 
 [plantuml]
 ----
@@ -54,119 +56,111 @@ class SaleId <<Value Object>> {
 }
 
 Sale *-- SaleId
-Sale "1" *-- "1..*" SaleLineItem : contient (immuable)
+Sale "1" *-- "1..*" SaleLineItem : contains (immutable)
 SaleLineItem *-- Money : unitPrice, lineTotal
-Sale ..> SaleLineRequest : utilise pour création
+Sale ..> SaleLineRequest : creation input
 
 @enduml
 ----
 
-== Contrat d'Entrée : SaleLineRequest
+== Creation input: SaleLineRequest
 
-Pour protéger l'encapsulation de l'entité interne, la création d'une vente prend en entrée une liste de `SaleLineInput` (un DTO immuable / Record).
+Creation accepts a list of immutable `SaleLineInput` DTOs/records to protect the internal entity's encapsulation.
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `productId`
 | `ProductId`
-| Identifiant du produit à vendre.
+| Product to sell.
 
 | `quantity`
 | `int`
-| Quantité demandée par le vendeur.
+| Quantity requested by the seller.
 
 | `unitPrice`
 | `Money`
-| Prix unitaire au moment de la demande.
+| Unit price when the request is made.
 |===
 
-== Attributs de Sale
+== Sale attributes
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `saleId`
-| `SaleId` (Value Object)
-| Identifiant unique de la vente.
+| `SaleId`
+| Unique sale identifier.
 
 | `soldBy`
 | `UserId`
-| Utilisateur ayant enregistré la vente.
+| User who recorded the sale.
 
 | `occurredAt`
 | `DateTime`
-| Date et heure exactes de la validation de la vente.
+| Timestamp when the sale was confirmed.
 
 | `totalAmount`
-| `Money` (Value Object)
-| Montant total de la vente. Calculé dynamiquement lors de la création.
+| `Money`
+| Total amount calculated at creation.
 
 | `lines`
 | `List<SaleLineItem>`
-| Lignes de vente internes. Au moins une ligne obligatoire. Rendue immuable (`List.copyOf`) à la construction. Exposée à l'extérieur via `getLines()` sous forme de `List<SaleLineDto>` pour protéger l'encapsulation.
+| At least one line is required. Copied with `List.copyOf` at construction and exposed through `getLines()` as `List<SaleLineDto>`.
 |===
 
-== Attributs de SaleLineItem
+== SaleLineItem attributes
 
-[cols="1,1,3"]
+[cols="1,1,1"]
 |===
-| Attribut | Type | Description
+| Attribute | Type | Description
 
 | `productId`
 | `ProductId`
-| Produit vendu sur cette ligne.
+| Product sold on this line.
 
 | `quantity`
 | `int`
-| Nombre d'unités vendues.
+| Units sold.
 
 | `unitPrice`
 | `Money`
-| Prix unitaire au moment de la vente (snapshot du prix du produit).
+| Snapshot of the product's unit price at the time of sale.
 
 | `lineTotal`
 | `Money`
-| Total de la ligne : `quantity × unitPrice`. Calculé à l'instanciation de la ligne.
+| `quantity × unitPrice`, calculated when the line is instantiated.
 |===
 
-== Invariants (Règles Métier)
+== Business invariants
 
-[cols="1,1,3"]
+[cols="1,1"]
 |===
-| Code | Nom de l'Invariant | Description
+| Code | Invariant
 
-| **R-SALE-01**
-| **Atomicité & Présence**
-| Une vente doit être créée avec au minimum une ligne (`SaleLineInput`).
+| R-SALE-01
+| Create a sale with at least one `SaleLineInput`.
 
-| **R-SALE-02**
-| **Quantité > 0**
-| Chaque ligne doit vendre au moins une unité (vérifié dans `SaleLineItem`).
+| R-SALE-02
+| Each line sells at least one unit, checked in `SaleLineItem`.
 
-| **R-SALE-03**
-| **Prix unitaire > 0**
-| Le prix capturé doit être strictement positif (vérifié dans `SaleLineItem`).
+| R-SALE-03
+| Each captured unit price is strictly positive, checked in `SaleLineItem`.
 
-| **R-SALE-04**
-| **Intégrité du Total**
-| Le `totalAmount` de la vente est la somme exacte des `lineTotal` de ses lignes.
+| R-SALE-04
+| `totalAmount` equals the exact sum of all `lineTotal` values.
 |===
 
-== SaleLineItem : entité interne, pas Value Object
+== Internal line entity
 
-Le `SaleLineItem` est une **entité interne** de l'agrégat `Sale`, pas un Value Object.
+`SaleLineItem` is an internal entity with positional identity within its sale. Two lines may refer to the same product at the same price, for example following an adjustment.
+A line cannot be queried, changed or referenced independently of its `Sale`.
 
-Pourquoi ? Parce que deux lignes dans la même vente pourraient concerner le même produit au même prix (par exemple si un ajustement est fait).
-L'identité de la ligne est positionnelle au sein de la vente.
+== Relationship to StockMovement
 
-Cependant, elle n'a **aucune existence hors de sa Sale** — on ne peut pas la consulter, la modifier ou la référencer indépendamment.
-
-== Relation avec StockMovement
-
-La `Sale` déclenche la création de `StockMovement`, mais ne les contient pas.
+The sale triggers stock movements but does not contain them.
 
 [plantuml]
 ----
@@ -175,34 +169,28 @@ La `Sale` déclenche la création de `StockMovement`, mais ne les contient pas.
 skinparam backgroundColor transparent
 
 rectangle "Sale" as S #E6F1FB
-rectangle "SaleLineItem\n(4 filtres)" as SLI #E6F1FB
-rectangle "StockMovement\nEXIT magasin x3" as SM1 #EEEDFE
-rectangle "StockMovement\nEXIT réserve x1" as SM2 #EEEDFE
+rectangle "SaleLineItem\n(4 filters)" as SLI #E6F1FB
+rectangle "StockMovement\nEXIT shop floor x3" as SM1 #EEEDFE
+rectangle "StockMovement\nEXIT backstock x1" as SM2 #EEEDFE
 
-S *-down- SLI : contient
+S *-down- SLI : contains
 SM1 .left.> S : saleId
 SM2 .left.> S : saleId
-SLI .right.> SM1 : déclenche
-SLI .right.> SM2 : déclenche
+SLI .right.> SM1 : triggers
+SLI .right.> SM2 : triggers
 
 note bottom of SM1
-  Les mouvements référencent
-  la vente par saleId,
-  mais ne sont PAS dans
-  l'agrégat Sale
+  Movements reference
+  the sale by saleId,
+  but are not part of
+  the Sale aggregate
 end note
 @enduml
 ----
 
-Le `SaleLineItem` dit "4 filtres vendus à 10€".
-Les `StockMovement` disent "3 sortis du magasin, 1 sorti de la réserve".
-Ce sont deux perspectives complémentaires : commerciale et logistique.
+A sale line records "four filters sold at €10 each". The stock movements record "three units from the shop floor and one from backstock".
 
-== Recettes journalières
+== Daily revenue
 
-Les recettes journalières sont une **vue calculée** à partir des ventes :
-
-* Filtrer les `Sale` par `occurredAt` sur la journée
-* Sommer les `totalAmount`
-
-Cette requête est gérée au niveau du Repository ou d'un Read Model, pas par l'agrégat.
+Daily revenue is a calculated view: filter sales by `occurredAt` for the day and sum their `totalAmount` values.
+A repository or read model handles this query.

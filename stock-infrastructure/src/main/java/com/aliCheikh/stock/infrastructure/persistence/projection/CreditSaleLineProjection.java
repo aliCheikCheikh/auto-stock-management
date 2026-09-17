@@ -3,7 +3,7 @@ package com.aliCheikh.stock.infrastructure.persistence.projection;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/** Une ligne de vente jointe au catalogue, pour que l'écran nomme le produit. */
+/** Sale line joined to the product catalog for display names. */
 public interface CreditSaleLineProjection {
 
     UUID getProductId();

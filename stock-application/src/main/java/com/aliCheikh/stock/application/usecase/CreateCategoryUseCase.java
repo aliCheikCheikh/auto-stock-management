@@ -9,11 +9,8 @@ import com.aliCheikh.stock.domain.model.category.port.CategoryRepository;
 import java.util.Objects;
 
 /**
- * Crée une famille de pièces.
- *
- * <p>L'unicité du nom ne peut pas être portée par l'agrégat, qui ne voit pas les autres catégories :
- * elle est vérifiée ici pour renvoyer une erreur métier explicite plutôt qu'une violation de
- * contrainte SQL. L'index en base reste le garde-fou en cas de création concurrente.</p>
+ * Creates a category after checking name uniqueness. The database constraint protects against
+ * concurrent duplicates.
  */
 public class CreateCategoryUseCase {
 
@@ -27,7 +24,7 @@ public class CreateCategoryUseCase {
 
     public Category create(String name) {
         return transactionRunner.execute(() -> {
-            // L'agrégat normalise le nom : on interroge la forme qui sera réellement stockée.
+            // Check the normalized name that the aggregate will store.
             Category category = Category.create(CategoryId.generate(), name);
 
             if (categoryRepository.existsByName(category.getName())) {

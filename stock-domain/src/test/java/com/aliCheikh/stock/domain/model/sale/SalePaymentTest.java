@@ -17,7 +17,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Encaissement des remboursements sur une vente à crédit. */
+/** Repayments on a credit sale. */
 public class SalePaymentTest {
 
     private static final Currency XAF = Currency.getInstance("XAF");
@@ -48,7 +48,7 @@ public class SalePaymentTest {
 
     @Test
     public void a_sale_without_down_payment_records_no_payment_at_all() {
-        // Le client de confiance repart sans rien verser : aucun encaissement à tracer.
+        // A zero initial payment creates no ledger entry.
         Sale sale = creditSaleWithDownPayment(0);
 
         assertThat(sale.getPayments()).isEmpty();
@@ -102,7 +102,7 @@ public class SalePaymentTest {
         assertThatThrownBy(() -> sale.recordPayment(xaf(30_001), UserId.generate(), LATER))
                 .isInstanceOf(PaymentExceedsAmountDueException.class);
 
-        // L'agrégat n'a pas bougé : un encaissement refusé ne laisse aucune trace.
+        // Rejected payments must leave the aggregate unchanged.
         assertThat(sale.getAmountDue()).isEqualTo(xaf(30_000));
         assertThat(sale.getPayments()).hasSize(1);
     }

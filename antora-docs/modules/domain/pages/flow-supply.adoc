@@ -1,18 +1,18 @@
-= Flux : Approvisionnement
+= Flow: Stock receipt
 :toc: left
 :icons: font
 
-== Contexte
+[NOTE]
+====
+These are original domain design notes. Diagrams, planned behavior and examples may differ from the current implementation. Consult the repository README, current source code and OpenAPI contract for implemented behavior.
+====
 
-Le propriétaire reçoit de la marchandise (ex : import depuis Dubaï).
-Il décide de la répartition entre le magasin et la réserve.
+== Context and scenario
 
-== Scénario
+The owner receives goods and chooses how to distribute them between the shop floor and backstock.
+In this example, 50 oil filters are received: 15 on the shop floor and 35 in backstock.
 
-[quote]
-50 filtres à huile reçus. 15 au magasin, 35 en réserve.
-
-== Diagramme de séquence
+== Sequence diagram
 
 [plantuml]
 ----
@@ -20,35 +20,35 @@ Il décide de la répartition entre le magasin et la réserve.
 !theme plain
 skinparam backgroundColor transparent
 
-actor Propriétaire as V
+actor Owner as V
 participant "ReceiveStockUseCase" as AS
 participant "ProductRepository" as PR
 participant "ReceivingService" as RS
-participant "StorageLocation\n(Magasin)" as SLM
-participant "StorageLocation\n(Réserve)" as SLR
+participant "StorageLocation\n(Shop floor)" as SLM
+participant "StorageLocation\n(Backstock)" as SLR
 participant "StorageLocation\nRepository" as SLR_R
 participant "StockMovement\nRepository" as SMR
 participant "EventPublisher" as EP
 
-V -> AS : execute(ReceiveStockCommand)\n(reference, [(magasin,15), (réserve,35)])
+V -> AS : execute(ReceiveStockCommand)\n(reference, [(shopFloor,15), (backstock,35)])
 activate AS
 
-== 1. Résolution / création du produit ==
+== 1. Find or create the product ==
 
 AS -> PR : findByReference(reference)
-alt produit inconnu
-  AS -> AS : exige newProductInfo
+alt unknown product
+  AS -> AS : requires newProductInfo
   AS -> PR : save(new Product(...))
 end
 PR --> AS : product
 
-== 2. Délégation au Domain Service ==
+== 2. Delegate to the Domain Service ==
 
-AS -> AS : mappe TargetLocation → ReceivingEntry
+AS -> AS : map TargetLocation → ReceivingEntry
 AS -> RS : receive(entries, userId)
 activate RS
 
-loop pour chaque ReceivingEntry
+loop for each ReceivingEntry
   RS -> SLR_R : findById(locationId)
   RS -> SLM : increaseStock(productId, qty)
   SLM -> SLM : StockLevel += qty
@@ -59,11 +59,11 @@ end
 RS --> AS : [movement1, movement2]
 deactivate RS
 
-== 3. Persistance des mouvements ==
+== 3. Persist movements ==
 
 AS -> SMR : saveAll(movements)
 
-== 4. Événements ==
+== 4. Events ==
 
 AS -> AS : events += StockReceived(productId, totalReceived,\n  locationBreakdown, userId)
 AS -> AS : globalStock = sum(findAll().stockLevel(productId))
@@ -79,41 +79,14 @@ deactivate AS
 @enduml
 ----
 
-== Détail des objets créés
+== Created movements
 
-=== StockMovement n°1
+Both movements use `type = ENTRY`, the oil-filter `productId`, a null external source, the owner's `performedBy` identifier and `saleId = null`.
+The first movement sends 15 units to the shop floor; the second sends 35 to backstock.
 
-[cols="1,2"]
-|===
-| Attribut | Valeur
+== New product
 
-| type | `ENTRY`
-| productId | (filtre à huile)
-| sourceLocationId | `null` (externe)
-| destinationLocationId | Magasin
-| quantity | 15
-| performedBy | Propriétaire
-| saleId | `null`
-|===
-
-=== StockMovement n°2
-
-[cols="1,2"]
-|===
-| Attribut | Valeur
-
-| type | `ENTRY`
-| productId | (filtre à huile)
-| sourceLocationId | `null` (externe)
-| destinationLocationId | Réserve
-| quantity | 35
-| performedBy | Propriétaire
-| saleId | `null`
-|===
-
-== Cas particulier : nouveau produit
-
-Si le produit n'existe pas encore dans le catalogue :
+When the product is not yet in the catalog:
 
 [plantuml]
 ----
@@ -121,41 +94,29 @@ Si le produit n'existe pas encore dans le catalogue :
 !theme plain
 skinparam backgroundColor transparent
 
-actor Vendeur as V
+actor Seller as V
 participant "Application Service" as AS
 participant "Product\nRepository" as PR
 
-V -> AS : recevoir(productInfo, répartition)
+V -> AS : receive(productInfo, allocation)
 activate AS
 
 AS -> PR : findByReference(ref)
-PR --> AS : null (non trouvé)
+PR --> AS : null (not found)
 
-AS -> AS : Créer Product(\n  name, reference,\n  categoryId, unitPrice,\n  threshold)
+AS -> AS : Create Product(\n  name, reference,\n  categoryId, unitPrice,\n  threshold)
 AS -> PR : save(newProduct)
 
-AS -> AS : Continuer le flux\nd'approvisionnement normal
+AS -> AS : Continue the normal\nreceiving flow
 
 deactivate AS
 
 @enduml
 ----
 
-[IMPORTANT]
-====
-La création du produit et l'enregistrement de l'entrée sont **deux opérations sur deux agrégats différents**.
-Elles sont orchestrées par l'Application Service, pas couplées dans un même agrégat.
-====
+Creating the product and recording the receipt affect two different aggregates. The Application Service coordinates them.
 
-== Événements émis
+== Events
 
-[cols="1,2"]
-|===
-| Événement | Condition
-
-| `StockReceived`
-| Toujours émis après un approvisionnement réussi.
-
-| `StockReplenished`
-| Émis si le stock global repasse au-dessus du `minimumGlobalThreshold`.
-|===
+* `StockReceived`: always emitted after a successful receipt.
+* `StockReplenished`: emitted if global stock rises above `minimumGlobalThreshold`.

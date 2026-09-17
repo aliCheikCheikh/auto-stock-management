@@ -14,11 +14,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Un encaissement rattaché à une vente.
- *
- * <p>Identifiant technique propre à la ligne : contrairement aux lignes de vente, un paiement n'a
- * pas de numéro d'ordre métier, et deux encaissements du même montant le même jour restent deux
- * faits distincts.</p>
+ * Persisted payment with its own identity. Equal amounts and timestamps do not imply the same
+ * payment.
  */
 @Entity
 @Table(name = "payment")

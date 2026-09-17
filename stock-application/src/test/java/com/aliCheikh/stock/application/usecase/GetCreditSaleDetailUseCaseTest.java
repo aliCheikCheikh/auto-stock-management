@@ -44,10 +44,7 @@ class GetCreditSaleDetailUseCaseTest {
         assertThat(useCase.detailOf(saleId)).isEqualTo(expected);
     }
 
-    /**
-     * Une vente au comptant n'est pas une créance. La signaler comme introuvable plutôt que comme
-     * refusée évite de renseigner l'appelant sur l'existence d'une vente qui ne le regarde pas.
-     */
+    /** Treat cash sales as absent from the debt view without revealing unrelated sales. */
     @Test
     void should_reject_a_sale_which_is_not_a_debt() {
         SaleId saleId = SaleId.generate();

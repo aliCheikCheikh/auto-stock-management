@@ -29,16 +29,16 @@ public final class ResetSellerPasswordUseCase {
                                       PasswordProtection passwordProtection,
                                       UserSessionRevoker sessionRevoker,
                                       TransactionRunner transactionRunner) {
-        this.userRepository = Objects.requireNonNull(userRepository, "Le registre des utilisateurs est obligatoire.");
-        this.credentialStore = Objects.requireNonNull(credentialStore, "Le gestionnaire des accès est obligatoire.");
-        this.passwordGenerator = Objects.requireNonNull(passwordGenerator, "Le générateur de mot de passe est obligatoire.");
-        this.passwordProtection = Objects.requireNonNull(passwordProtection, "La protection des mots de passe est obligatoire.");
-        this.sessionRevoker = Objects.requireNonNull(sessionRevoker, "La fermeture des sessions est obligatoire.");
-        this.transactionRunner = Objects.requireNonNull(transactionRunner, "La transaction est obligatoire.");
+        this.userRepository = Objects.requireNonNull(userRepository, "User repository is required.");
+        this.credentialStore = Objects.requireNonNull(credentialStore, "Credential store is required.");
+        this.passwordGenerator = Objects.requireNonNull(passwordGenerator, "Password generator is required.");
+        this.passwordProtection = Objects.requireNonNull(passwordProtection, "Password protection is required.");
+        this.sessionRevoker = Objects.requireNonNull(sessionRevoker, "Session revoker is required.");
+        this.transactionRunner = Objects.requireNonNull(transactionRunner, "Transaction runner is required.");
     }
 
     public TemporaryPassword execute(UserId userId) {
-        Objects.requireNonNull(userId, "L'identifiant de l'utilisateur est obligatoire.");
+        Objects.requireNonNull(userId, "User ID is required.");
         return transactionRunner.execute(() -> reset(userId));
     }
 

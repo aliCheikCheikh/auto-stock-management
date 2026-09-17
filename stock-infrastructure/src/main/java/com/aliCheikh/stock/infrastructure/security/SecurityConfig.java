@@ -38,11 +38,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("OWNER")
                         .requestMatchers("/api/v1/users", "/api/v1/users/**").hasRole("OWNER")
-                        // Créances et fiches clients portent des données personnelles (nom, téléphone) :
-                        // la règle générale « GET public » ne doit pas s'y appliquer.
-                        // Les créances relèvent de la gestion : même exigence, quel que soit le chemin
-                        // d'accès — global ou par client.
-                        // La gestion des familles appartient au patron.
+                        // Category administration and debt views require the owner role. Customer
+                        // endpoints remain authenticated.
                         .requestMatchers(HttpMethod.POST, "/api/v1/categories").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/categories/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/categories/**").hasRole("OWNER")
@@ -54,8 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/**").authenticated()
-                        // Toute nouvelle route métier est privée jusqu'à ce qu'une règle explicite
-                        // décide du contraire. Cela évite qu'un oubli expose les données du magasin.
+                        // New routes require authentication unless explicitly made public.
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(temporaryPasswordFilter, JwtAuthenticationFilter.class);

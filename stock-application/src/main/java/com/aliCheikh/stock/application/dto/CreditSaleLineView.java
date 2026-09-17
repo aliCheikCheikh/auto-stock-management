@@ -4,12 +4,7 @@ import com.aliCheikh.stock.domain.model.shared.Money;
 
 import java.util.UUID;
 
-/**
- * Une ligne de la vente, nommée.
- *
- * <p>Le prix unitaire est celui pratiqué <b>au moment de la vente</b>, tel que la ligne l'a figé :
- * une créance se discute sur ce qui a été facturé, pas sur le tarif du jour.</p>
- */
+/** Sale line with the product name and the unit price recorded at the time of sale. */
 public record CreditSaleLineView(UUID productId,
                                  String productName,
                                  String productReference,

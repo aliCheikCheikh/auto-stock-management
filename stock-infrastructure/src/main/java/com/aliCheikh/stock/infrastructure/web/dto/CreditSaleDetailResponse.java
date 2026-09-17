@@ -8,12 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Le détail d'une créance : ce qui a été vendu, à qui, par qui, et ce qui reste dû.
- *
- * <p>{@code amountDue} et {@code settled} sont fournis pour que le front n'ait jamais à refaire un
- * calcul de montant : la seule source de vérité est le serveur.</p>
- */
+/** Credit sale details with server-computed balance and settlement status. */
 public record CreditSaleDetailResponse(UUID saleId,
                                        LocalDateTime occurredAt,
                                        UUID sellerId,

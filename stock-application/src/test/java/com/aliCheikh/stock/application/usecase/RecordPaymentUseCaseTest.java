@@ -46,7 +46,7 @@ public class RecordPaymentUseCaseTest {
         return Money.create(BigDecimal.valueOf(amount), XAF);
     }
 
-    /** Vente de 50 000 avec 20 000 déjà versés : il reste 30 000 dus. */
+    /** Sale total 50,000, amount paid 20,000, amount due 30,000. */
     private static Sale creditSale() {
         return Sale.create(
                 UserId.generate(),
@@ -101,7 +101,7 @@ public class RecordPaymentUseCaseTest {
 
         useCase.record(new RecordPaymentCommand(sale.getSaleId(), xaf(1_000), UserId.generate()));
 
-        // Une lecture ordinaire laisserait deux règlements simultanés lire le même solde.
+        // A regular read would allow concurrent payments to observe the same balance.
         verify(saleRepository).findByIdForUpdate(sale.getSaleId());
     }
 

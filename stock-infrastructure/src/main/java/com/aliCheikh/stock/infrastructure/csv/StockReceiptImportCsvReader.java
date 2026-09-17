@@ -58,7 +58,7 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
         }
         if (csv.isBlank()) {
             throw invalid(StockReceiptImportFileErrorCode.EMPTY_FILE,
-                    "Le fichier CSV est vide.");
+                    "The CSV file is empty.");
         }
 
         CSVFormat format = format(detectDelimiter(csv));
@@ -69,10 +69,10 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
             throw exception;
         } catch (IllegalArgumentException exception) {
             throw invalid(StockReceiptImportFileErrorCode.INVALID_HEADER,
-                    "Les en-têtes du fichier CSV sont invalides ou dupliqués.", exception);
+                    "CSV headers are invalid or duplicated.", exception);
         } catch (IOException | UncheckedIOException exception) {
             throw invalid(StockReceiptImportFileErrorCode.MALFORMED_CSV,
-                    "Le fichier CSV est mal formé. Vérifiez les séparateurs et les guillemets.", exception);
+                    "The CSV file is malformed. Check delimiters and quotation marks.", exception);
         }
     }
 
@@ -91,8 +91,8 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
 
         if (matchingDelimiters.size() != 1) {
             throw invalid(StockReceiptImportFileErrorCode.INVALID_HEADER,
-                    "Les colonnes attendues sont : " + String.join(", ", EXPECTED_HEADERS)
-                            + ". Utilisez un séparateur point-virgule ou virgule.");
+                    "Expected columns: " + String.join(", ", EXPECTED_HEADERS)
+                            + ". Use a semicolon or comma delimiter.");
         }
         return matchingDelimiters.get(0);
     }
@@ -111,7 +111,7 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
     private static void validateFilename(String filename) {
         if (!filename.toLowerCase(Locale.ROOT).endsWith(".csv")) {
             throw invalid(StockReceiptImportFileErrorCode.UNSUPPORTED_FILE,
-                    "Le fichier doit être au format CSV (.csv).");
+                    "The file must use CSV format (.csv).");
         }
     }
 
@@ -124,14 +124,14 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
                     .toString();
         } catch (CharacterCodingException exception) {
             throw invalid(StockReceiptImportFileErrorCode.INVALID_ENCODING,
-                    "Le fichier doit être enregistré en UTF-8.", exception);
+                    "The file must be encoded in UTF-8.", exception);
         }
     }
 
     private static void validateHeaders(List<String> actualHeaders) {
         if (!headersMatch(actualHeaders)) {
             throw invalid(StockReceiptImportFileErrorCode.INVALID_HEADER,
-                    "Les colonnes attendues sont : " + String.join(", ", EXPECTED_HEADERS) + ".");
+                    "Expected columns: " + String.join(", ", EXPECTED_HEADERS) + ".");
         }
     }
 
@@ -152,11 +152,11 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
             }
             if (!record.isConsistent()) {
                 throw invalid(StockReceiptImportFileErrorCode.MALFORMED_CSV,
-                        "La ligne " + sourceRow + " ne contient pas le nombre de colonnes attendu.");
+                        "Row " + sourceRow + " does not contain the expected number of columns.");
             }
             if (rows.size() == MAX_ROWS) {
                 throw invalid(StockReceiptImportFileErrorCode.TOO_MANY_ROWS,
-                        "Le fichier ne peut pas contenir plus de " + MAX_ROWS + " lignes de produits.");
+                        "The file must not contain more than " + MAX_ROWS + " product rows.");
             }
 
             rows.add(toRowData(record, sourceRow));
@@ -165,7 +165,7 @@ public class StockReceiptImportCsvReader implements StockReceiptImportReader {
 
         if (rows.isEmpty()) {
             throw invalid(StockReceiptImportFileErrorCode.EMPTY_FILE,
-                    "Le fichier ne contient aucune ligne de produit.");
+                    "The file contains no product rows.");
         }
         return List.copyOf(rows);
     }

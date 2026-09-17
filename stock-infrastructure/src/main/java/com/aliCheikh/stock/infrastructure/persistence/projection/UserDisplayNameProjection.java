@@ -2,7 +2,7 @@ package com.aliCheikh.stock.infrastructure.persistence.projection;
 
 import java.util.UUID;
 
-/** Identifiant et nom affichable d'un utilisateur, sans charger le reste du compte. */
+/** User identity and display name without loading the full account. */
 public interface UserDisplayNameProjection {
 
     UUID getId();

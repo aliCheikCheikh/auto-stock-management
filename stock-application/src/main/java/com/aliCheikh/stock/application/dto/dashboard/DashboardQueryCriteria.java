@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.Objects;
 
-/** Bornes de lecture calculées une seule fois avec l'horloge métier. */
+/** Query boundaries computed once using the business clock. */
 public record DashboardQueryCriteria(
         LocalDateTime now,
         LocalDateTime todayStart,

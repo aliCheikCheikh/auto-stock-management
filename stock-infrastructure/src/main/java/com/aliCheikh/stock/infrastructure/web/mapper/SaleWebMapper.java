@@ -33,8 +33,8 @@ public final class SaleWebMapper {
     private static final List<String> DEFAULT_SORT = List.of("createdAt,desc");
 
     /**
-     * Devise du magasin (Franc CFA). L'API reçoit un montant nu ; la devise est celle du catalogue.
-     * Le domaine refusera de toute façon un acompte dans une devise différente du total.
+     * Shop currency. Requests carry a bare amount; the domain rejects a currency mismatch with the
+     * sale total.
      */
     private static final Currency SHOP_CURRENCY = Currency.getInstance("XAF");
 
@@ -49,12 +49,12 @@ public final class SaleWebMapper {
                         .map(SaleWebMapper::toLineCommand)
                         .toList(),
                 request.customerId() == null ? null : CustomerId.of(request.customerId()),
-                // L'acompte est saisi dans la devise du magasin ; absent, la vente est au comptant.
+                // Use the shop currency; a missing initial amount means a cash sale.
                 request.amountPaid() == null ? null : Money.create(request.amountPaid(), SHOP_CURRENCY)
         );
     }
 
-    /** Encaissement d'un remboursement : le montant est saisi nu, dans la devise du magasin. */
+    /** Maps a repayment amount using the shop currency. */
     public static RecordPaymentCommand toCommand(UUID saleId, RecordPaymentRequest request, UUID receivedBy) {
         return new RecordPaymentCommand(
                 SaleId.of(saleId),
@@ -66,7 +66,7 @@ public final class SaleWebMapper {
         return new SaleResponse(
                 result.saleId().getValue(),
                 result.sellerId().getValue(),
-                // La création renvoie l'auteur de l'appel : le front connaît déjà son propre nom.
+                // The caller already knows their own display name.
                 null,
                 result.lines().stream()
                         .map(SaleWebMapper::toSaleLineResponse)
@@ -95,11 +95,7 @@ public final class SaleWebMapper {
         );
     }
 
-    /**
-     * L'historique porte le solde restant dû, pour que l'écran des ventes dise sous quelle forme
-     * chacune a été encaissée sans interroger un second endpoint. Le client et le montant versé,
-     * eux, restent l'affaire de l'écran des créances, qui joint déjà les informations du client.
-     */
+    /** Includes the remaining balance in sale history without a second API call. */
     private static SaleResponse toResponse(SaleView saleView) {
         return new SaleResponse(
                 saleView.saleId().getValue(),
@@ -166,7 +162,7 @@ public final class SaleWebMapper {
         );
     }
 
-    /** Une vente dont le règlement n'a pas pu être résolu n'affiche rien plutôt qu'un faux zéro. */
+    /** An unresolved balance remains absent rather than appearing as a false zero. */
     private static MoneyResponse nullableMoneyToResponse(Money money) {
         return money == null ? null : moneyToResponse(money);
     }

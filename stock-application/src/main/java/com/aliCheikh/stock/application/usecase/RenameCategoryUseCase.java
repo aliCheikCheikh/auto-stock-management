@@ -9,12 +9,7 @@ import com.aliCheikh.stock.domain.model.category.port.CategoryRepository;
 
 import java.util.Objects;
 
-/**
- * Renomme une famille de pièces.
- *
- * <p>Les produits référencent leur catégorie par identité : le renommage ne rompt aucune
- * association et n'exige aucune reprise de données.</p>
- */
+/** Renames a category while preserving product associations through its stable ID. */
 public class RenameCategoryUseCase {
 
     private final CategoryRepository categoryRepository;
@@ -34,8 +29,7 @@ public class RenameCategoryUseCase {
 
             category.rename(newName);
 
-            // La catégorie elle-même est exclue du contrôle : corriger la casse de son propre nom
-            // ne doit pas être refusé comme un doublon.
+            // Exclude this category so a case-only rename is not treated as a duplicate.
             if (categoryRepository.existsByNameExcluding(category.getName(), categoryId)) {
                 throw new DuplicateCategoryNameException(category.getName());
             }

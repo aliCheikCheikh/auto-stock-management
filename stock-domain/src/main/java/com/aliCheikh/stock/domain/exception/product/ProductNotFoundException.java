@@ -10,15 +10,15 @@ public class ProductNotFoundException extends DomainException {
 
     // Constructeur historique (recherche par ID)
     public ProductNotFoundException(ProductId productId) {
-        super("Produit introuvable dans le catalogue. Aucun produit avec l'ID : '" + productId + "'");
+        super("Product not found in the catalog. No product with ID '" + productId + "'");
         this.productId = productId;
-        this.reference = null; // Indispensable car l'attribut est 'final'
+        this.reference = null;
     }
 
-    // Nouveau constructeur (recherche par Référence)
+    // Lookup by product reference.
     public ProductNotFoundException(String reference) {
-        super("Le produit avec la référence '" + reference + "' est introuvable dans le catalogue.");
-        this.productId = null; // Indispensable car l'attribut est 'final'
+        super("Product with reference '" + reference + "' was not found in the catalog.");
+        this.productId = null;
         this.reference = reference;
     }
 
